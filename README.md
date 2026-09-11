@@ -7,17 +7,19 @@ is en welke grammaticaregel erachter zit.
 ## Functionaliteit
 
 - **Accounts**: registratie/login (bcrypt-gehashte wachtwoorden, sessie-cookie).
-- **Lessen**: 24 categorieën, Nederlands ↔ Russisch, niveau A1 t/m B1.
+- **Lessen**: 32 categorieën, Nederlands ↔ Russisch, niveau A1 t/m B1.
   - *Woordenschat*: alfabet & uitspraak, begroetingen, getallen 1-10 en 11-100,
     kleuren, familie, eten & drinken, tijd & dagen van de week, lichaamsdelen,
     kleding, weer, huis & wonen, beroepen, reizen, bijvoeglijke naamwoorden,
-    vraagwoorden, veelgebruikte werkwoorden.
+    vraagwoorden, veelgebruikte werkwoorden, gevoelens, seizoenen & maanden,
+    vervoer, sport & hobby's, natuur & dieren, werk & school.
   - *Grammatica*: geslacht en meervoud van zelfstandige naamwoorden, alle zes
     naamvallen (nominatief, genitief, datief, accusatief, instrumentalis,
     prepositief), overeenkomst van bijvoeglijke naamwoorden, werkwoordvervoeging
     in de tegenwoordige tijd, verleden en toekomende tijd, het aspectonderscheid
     (voltooid/onvoltooid), ontkenning en vraagzinnen, zacht/hard teken, klemtoon
-    (akanje).
+    (akanje), vergrotende & overtreffende trap, wederkerende werkwoorden
+    (-ся/-сь).
   - *Praktische zinnen*: complete, bruikbare zinnen voor echte situaties (de
     weg vragen, bestellen, jezelf voorstellen) die je met woord-chips in de
     juiste volgorde legt — in plaats van losse, willekeurige woordjes.
@@ -41,6 +43,10 @@ is en welke grammaticaregel erachter zit.
 - **Voortgangsdashboard**: nauwkeurigheid, aantal geoefende/onder-de-knie
   woorden per les, niveau/streak/badges, en overzichten van de vaakst gemaakte
   fouten en recente fouten (met uitleg).
+- **Ranglijst**: alle geregistreerde gebruikers gerangschikt op XP, met niveau,
+  leer-reeks en aantal onder-de-knie woorden — handig om onderling een beetje
+  te wedijveren. Vereist een internetverbinding (`GET /api/leaderboard`),
+  net als inloggen en registreren.
 
 ## Techniek
 
@@ -171,7 +177,7 @@ het gaat via de normale Add-on Store en heeft geen SSH/Portainer nodig.
 4. Ga naar het tabblad **Configuration** en vul `session_secret` in (een
    lange, willekeurige string, bv. gegenereerd met `openssl rand -hex 32`).
    `anthropic_api_key` is optioneel (voor de AI-uitleg-knop). Sla op.
-5. Start de add-on. De 24 lessen worden bij deze allereerste start automatisch
+5. Start de add-on. De 32 lessen worden bij deze allereerste start automatisch
    ingeladen (geen aparte seed-stap nodig). Je voortgang staat in de
    persistente `/data`-opslag van de add-on en overleeft dus herstarts en
    updates.
@@ -349,6 +355,7 @@ Alle routes onder `/api`, JSON in/uit, sessie-cookie voor authenticatie.
 | POST | `/sync/attempts` | Batch van offline gegeven antwoorden verwerken (idempotent via `clientId`) |
 | GET | `/progress/stats` | XP, niveau, leer-reeks ("streak") en badges |
 | POST | `/ai/explain` | Diepere AI-uitleg bij één fout antwoord (503 als er geen `ANTHROPIC_API_KEY` is ingesteld) |
+| GET | `/leaderboard` | Alle gebruikers gerangschikt op XP, met niveau, streak en onder-de-knie woorden |
 
 ## Bekende beperkingen (bewuste keuzes voor deze versie)
 

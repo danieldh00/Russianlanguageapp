@@ -204,6 +204,7 @@ function renderNav() {
   if (state.user) {
     nav.appendChild(el(`<a href="#/dashboard">Lessen</a>`));
     nav.appendChild(el(`<a href="#/progress">Voortgang</a>`));
+    nav.appendChild(el(`<a href="#/leaderboard">Ranglijst</a>`));
     const gamBadge = renderGamificationBadge();
     if (gamBadge) nav.appendChild(gamBadge);
     nav.appendChild(renderSyncBadge());
@@ -274,6 +275,7 @@ async function router() {
   if (route === 'dashboard') return renderDashboard();
   if (route === 'lesson') return renderLesson(param);
   if (route === 'progress') return renderProgress();
+  if (route === 'leaderboard') return renderLeaderboard();
   return renderDashboard();
 }
 
@@ -752,7 +754,7 @@ async function renderProgress() {
     app.appendChild(achCard);
   }
 
-  const catCard = el(`<div class="card"><h2>Voortgang per les</h2><table><thead><tr><th>Les</th><th>Gestart</th><th>Onder de knie</th></tr></thead><tbody id="cat-body"></tbody></table></div>`);
+  const catCard = el(`<div class="card"><h2>Voortgang per les</h2><div class="table-scroll"><table><thead><tr><th>Les</th><th>Gestart</th><th>Onder de knie</th></tr></thead><tbody id="cat-body"></tbody></table></div></div>`);
   app.appendChild(catCard);
   const catBody = catCard.querySelector('#cat-body');
   for (const cat of content.categories) {
@@ -774,7 +776,9 @@ async function renderProgress() {
     for (const m of topMissed) {
       tbody.appendChild(el(`<tr><td>${escapeHtml(m.prompt)}</td><td>${escapeHtml(m.correctAnswer)}</td><td>${escapeHtml(m.explanation)}</td><td>${m.count}</td></tr>`));
     }
-    missedCard.appendChild(table);
+    const scroll = el(`<div class="table-scroll"></div>`);
+    scroll.appendChild(table);
+    missedCard.appendChild(scroll);
   }
   app.appendChild(missedCard);
 
@@ -787,7 +791,71 @@ async function renderProgress() {
     for (const m of mistakes.slice(0, 20)) {
       tbody.appendChild(el(`<tr><td>${escapeHtml(m.prompt)}</td><td>${escapeHtml(m.given || '-')}</td><td>${escapeHtml(m.correctAnswer)}</td><td>${escapeHtml(m.explanation)}</td></tr>`));
     }
-    recentCard.appendChild(table);
+    const scroll = el(`<div class="table-scroll"></div>`);
+    scroll.appendChild(table);
+    recentCard.appendChild(scroll);
   }
   app.appendChild(recentCard);
+}
+
+// ---------- leaderboard (live only: ranking across accounts needs the server) ----------
+
+const MEDALS = ['🥇', '🥈', '🥉'];
+
+async function renderLeaderboard() {
+  app.innerHTML = '';
+  app.appendChild(el(`
+    <div>
+      <h1>Ranglijst</h1>
+      <p class="muted">Vergelijk je voortgang met andere leerlingen. Dit overzicht vraagt een internetverbinding.</p>
+      <div id="leaderboard-content"></div>
+    </div>
+  `));
+  const slot = document.getElementById('leaderboard-content');
+
+  if (!navigator.onLine) {
+    slot.appendChild(el(`<div class="card"><p class="muted">Je bent offline. Maak verbinding met internet om de ranglijst te bekijken.</p></div>`));
+    return;
+  }
+
+  slot.appendChild(el(`<div class="card"><p class="muted">Ranglijst laden…</p></div>`));
+  try {
+    const data = await api('/leaderboard');
+    slot.innerHTML = '';
+
+    const table = el(`
+      <div class="card">
+        <div class="table-scroll">
+          <table class="leaderboard-table">
+            <thead><tr><th>#</th><th>Gebruiker</th><th>Niveau</th><th>XP</th><th>Reeks</th><th>Woorden</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    `);
+    const tbody = table.querySelector('tbody');
+    data.leaderboard.forEach((entry) => {
+      const isMe = state.user && entry.userId === state.user.id;
+      const rankLabel = MEDALS[entry.rank - 1] || entry.rank;
+      const row = el(`
+        <tr class="${isMe ? 'leaderboard-me' : ''}">
+          <td class="rank-cell">${rankLabel}</td>
+          <td>${escapeHtml(entry.username)}${isMe ? ' <span class="muted">(jij)</span>' : ''}</td>
+          <td>${entry.level} &middot; <span class="muted">${escapeHtml(entry.levelTitle)}</span></td>
+          <td>${entry.xp} XP</td>
+          <td>🔥 ${entry.currentStreak}</td>
+          <td>${entry.wordsMastered}</td>
+        </tr>
+      `);
+      tbody.appendChild(row);
+    });
+    slot.appendChild(table);
+
+    if (!data.leaderboard.length) {
+      slot.appendChild(el(`<div class="card"><p class="muted">Nog geen andere leerlingen om mee te vergelijken.</p></div>`));
+    }
+  } catch (err) {
+    slot.innerHTML = '';
+    slot.appendChild(el(`<div class="card"><p class="error-message">${escapeHtml(err.message || 'Kon de ranglijst niet laden.')}</p></div>`));
+  }
 }

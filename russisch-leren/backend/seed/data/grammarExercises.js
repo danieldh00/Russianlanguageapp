@@ -303,5 +303,57 @@ module.exports = [
     options: ['Говоришь ты по-русски?', 'Ты говоришь по-русски?', 'До ты говоришь по-русски?'],
     explanation:
       "In het Russisch verandert de woordvolgorde niet bij een ja/nee-vraag zoals in het Nederlands ('spreek je...?'). Je gebruikt exact dezelfde woordvolgorde als de mededeling en maakt er met stijgende intonatie (en een vraagteken in geschreven tekst) een vraag van: Ты говоришь по-русски?"
+  },
+
+  // COMPARATIVE-SUPERLATIVE
+  {
+    category: 'grammar-comparatives', grammarRule: 'COMPARATIVE-SUPERLATIVE', type: 'mc',
+    prompt: "Wat is de vergrotende trap van быстрый (snel)?",
+    correctAnswer: 'быстрее',
+    options: ['быстрее', 'самый быстрый', 'быстрый'],
+    explanation:
+      "De vergrotende trap vorm je meestal door -ее achter de stam te plakken: быстрый (snel) → быстрее (sneller). 'самый быстрый' is de overtreffende trap (de snelste)."
+  },
+  {
+    category: 'grammar-comparatives', grammarRule: 'COMPARATIVE-SUPERLATIVE', type: 'mc',
+    prompt: "Wat betekent 'лучше'?",
+    correctAnswer: 'beter',
+    options: ['beter', 'goed', 'de beste'],
+    explanation:
+      "'лучше' is de onregelmatige vergrotende trap van хороший (goed): хороший → лучше (beter). Deze vorm moet je apart leren, want hij volgt niet het gewone -ее-patroon."
+  },
+  {
+    category: 'grammar-comparatives', grammarRule: 'COMPARATIVE-SUPERLATIVE', type: 'mc',
+    prompt: "Hoe zeg je 'de snelste' in het Russisch?",
+    correctAnswer: 'самый быстрый',
+    options: ['быстрее', 'самый быстрый', 'быстрее всех'],
+    explanation:
+      "De overtreffende trap vorm je meestal met самый + het gewone bijvoeglijk naamwoord: самый быстрый (de snelste)."
+  },
+
+  // REFLEXIVE-VERBS
+  {
+    category: 'grammar-reflexive', grammarRule: 'REFLEXIVE-VERBS', type: 'mc',
+    prompt: "Vul aan: Я ___ каждое утро. (ik was me elke ochtend — мыться)",
+    correctAnswer: 'моюсь',
+    options: ['моюсь', 'моется', 'моешься'],
+    explanation:
+      "Bij 'я' krijgt het werkwoord de normale vervoeging (мою) plus het achtervoegsel -сь na een klinker: моюсь. Het achtervoegsel -ся/-сь verandert niet mee met de persoon, alleen het stamdeel ervoor."
+  },
+  {
+    category: 'grammar-reflexive', grammarRule: 'REFLEXIVE-VERBS', type: 'mc',
+    prompt: "Welk achtervoegsel hoort bij een wederkerend werkwoord na een medeklinker, zoals bij 'он моет...'?",
+    correctAnswer: '-ся',
+    options: ['-ся', '-сь', '-ла'],
+    explanation:
+      "Na een medeklinker gebruik je -ся: он моется (hij wast zich). Na een klinker gebruik je -сь, zoals in я моюсь (ik was me)."
+  },
+  {
+    category: 'grammar-reflexive', grammarRule: 'REFLEXIVE-VERBS', type: 'mc',
+    prompt: "Wat betekent 'учиться'?",
+    correctAnswer: 'leren / studeren',
+    options: ['leren / studeren', 'onderwijzen', 'lezen'],
+    explanation:
+      "'учиться' is het wederkerende werkwoord voor 'leren/studeren' (zelf leren), terwijl 'учить' (zonder -ся) 'onderwijzen' of 'iets uit het hoofd leren' betekent."
   }
 ];

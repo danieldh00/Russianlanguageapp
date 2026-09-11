@@ -61,6 +61,12 @@ module.exports = [
   { category: 'food', russian: 'молоко', transliteration: 'moloko', translation_nl: 'melk', gender: 'o', grammarRule: 'STRESS-VOWEL-REDUCTION' },
   { category: 'food', russian: 'яблоко', transliteration: 'yabloko', translation_nl: 'appel', gender: 'o' },
   { category: 'food', russian: 'суп', transliteration: 'sup', translation_nl: 'soep', gender: 'm' },
+  { category: 'food', russian: 'сыр', transliteration: 'syr', translation_nl: 'kaas', gender: 'm' },
+  { category: 'food', russian: 'мясо', transliteration: 'myaso', translation_nl: 'vlees', gender: 'o' },
+  { category: 'food', russian: 'рыба', transliteration: 'ryba', translation_nl: 'vis', gender: 'v' },
+  { category: 'food', russian: 'овощи', transliteration: 'ovoshchi', translation_nl: 'groenten', gender: 'mv' },
+  { category: 'food', russian: 'фрукты', transliteration: 'frukty', translation_nl: 'fruit', gender: 'mv' },
+  { category: 'food', russian: 'пицца', transliteration: 'pitstsa', translation_nl: 'pizza', gender: 'v' },
 
   // --- grammar-verbs vocabulary (infinitives used in exercises) ---
   { category: 'grammar-verbs', russian: 'читать', transliteration: 'chitat', translation_nl: 'lezen', grammarRule: 'VERB-PRES-1' },
@@ -209,5 +215,85 @@ module.exports = [
 
   // --- grammar-questions-negation vocabulary ---
   { category: 'grammar-questions-negation', russian: 'ничего', transliteration: 'nichego', translation_nl: 'niets', grammarRule: 'NEGATION-NE' },
-  { category: 'grammar-questions-negation', russian: 'никто', transliteration: 'nikto', translation_nl: 'niemand', grammarRule: 'NEGATION-NE' }
+  { category: 'grammar-questions-negation', russian: 'никто', transliteration: 'nikto', translation_nl: 'niemand', grammarRule: 'NEGATION-NE' },
+
+  // --- gevoelens ---
+  { category: 'gevoelens', russian: 'счастливый', transliteration: 'schastlivyy', translation_nl: 'blij / gelukkig' },
+  { category: 'gevoelens', russian: 'грустный', transliteration: 'grustnyy', translation_nl: 'verdrietig' },
+  { category: 'gevoelens', russian: 'злой', transliteration: 'zloy', translation_nl: 'boos' },
+  { category: 'gevoelens', russian: 'усталый', transliteration: 'ustalyy', translation_nl: 'moe' },
+  { category: 'gevoelens', russian: 'удивлённый', transliteration: 'udivlyonnyy', translation_nl: 'verrast' },
+  { category: 'gevoelens', russian: 'испуганный', transliteration: 'ispugannyy', translation_nl: 'bang' },
+  { category: 'gevoelens', russian: 'спокойный', transliteration: 'spokoynyy', translation_nl: 'rustig' },
+  { category: 'gevoelens', russian: 'влюблённый', transliteration: 'vlyublyonnyy', translation_nl: 'verliefd' },
+
+  // --- seizoenen-maanden ---
+  { category: 'seizoenen-maanden', russian: 'весна', transliteration: 'vesna', translation_nl: 'lente', gender: 'v' },
+  { category: 'seizoenen-maanden', russian: 'лето', transliteration: 'leto', translation_nl: 'zomer', gender: 'o' },
+  { category: 'seizoenen-maanden', russian: 'осень', transliteration: 'osen', translation_nl: 'herfst', gender: 'v' },
+  { category: 'seizoenen-maanden', russian: 'зима', transliteration: 'zima', translation_nl: 'winter', gender: 'v' },
+  { category: 'seizoenen-maanden', russian: 'январь', transliteration: 'yanvar', translation_nl: 'januari', gender: 'm' },
+  { category: 'seizoenen-maanden', russian: 'февраль', transliteration: 'fevral', translation_nl: 'februari', gender: 'm' },
+  { category: 'seizoenen-maanden', russian: 'март', transliteration: 'mart', translation_nl: 'maart', gender: 'm' },
+  { category: 'seizoenen-maanden', russian: 'апрель', transliteration: 'aprel', translation_nl: 'april', gender: 'm' },
+  { category: 'seizoenen-maanden', russian: 'май', transliteration: 'may', translation_nl: 'mei', gender: 'm' },
+  { category: 'seizoenen-maanden', russian: 'июнь', transliteration: 'iyun', translation_nl: 'juni', gender: 'm' },
+  { category: 'seizoenen-maanden', russian: 'июль', transliteration: 'iyul', translation_nl: 'juli', gender: 'm' },
+  { category: 'seizoenen-maanden', russian: 'август', transliteration: 'avgust', translation_nl: 'augustus', gender: 'm' },
+  { category: 'seizoenen-maanden', russian: 'сентябрь', transliteration: 'sentyabr', translation_nl: 'september', gender: 'm' },
+  { category: 'seizoenen-maanden', russian: 'октябрь', transliteration: 'oktyabr', translation_nl: 'oktober', gender: 'm' },
+  { category: 'seizoenen-maanden', russian: 'ноябрь', transliteration: 'noyabr', translation_nl: 'november', gender: 'm' },
+  { category: 'seizoenen-maanden', russian: 'декабрь', transliteration: 'dekabr', translation_nl: 'december', gender: 'm' },
+
+  // --- vervoer ---
+  { category: 'vervoer', russian: 'машина', transliteration: 'mashina', translation_nl: 'auto', gender: 'v' },
+  { category: 'vervoer', russian: 'автобус', transliteration: 'avtobus', translation_nl: 'bus', gender: 'm' },
+  { category: 'vervoer', russian: 'велосипед', transliteration: 'velosiped', translation_nl: 'fiets', gender: 'm' },
+  { category: 'vervoer', russian: 'метро', transliteration: 'metro', translation_nl: 'metro', gender: 'o', notes: "Onverbuigbaar leenwoord: 'метро' verandert nooit van vorm." },
+  { category: 'vervoer', russian: 'такси', transliteration: 'taksi', translation_nl: 'taxi', gender: 'o', notes: "Onverbuigbaar leenwoord, net als 'метро'." },
+  { category: 'vervoer', russian: 'мотоцикл', transliteration: 'mototsikl', translation_nl: 'motor', gender: 'm' },
+  { category: 'vervoer', russian: 'корабль', transliteration: 'korabl', translation_nl: 'schip', gender: 'm' },
+  { category: 'vervoer', russian: 'пешком', transliteration: 'peshkom', translation_nl: 'te voet' },
+
+  // --- sport-hobby ---
+  { category: 'sport-hobby', russian: 'футбол', transliteration: 'futbol', translation_nl: 'voetbal', gender: 'm' },
+  { category: 'sport-hobby', russian: 'плавание', transliteration: 'plavanie', translation_nl: 'zwemmen', gender: 'o' },
+  { category: 'sport-hobby', russian: 'бег', transliteration: 'beg', translation_nl: 'hardlopen', gender: 'm' },
+  { category: 'sport-hobby', russian: 'музыка', transliteration: 'muzyka', translation_nl: 'muziek', gender: 'v' },
+  { category: 'sport-hobby', russian: 'чтение', transliteration: 'chtenie', translation_nl: 'lezen (hobby)', gender: 'o' },
+  { category: 'sport-hobby', russian: 'танцы', transliteration: 'tantsy', translation_nl: 'dansen', gender: 'mv' },
+  { category: 'sport-hobby', russian: 'рисование', transliteration: 'risovanie', translation_nl: 'tekenen', gender: 'o' },
+  { category: 'sport-hobby', russian: 'путешествие', transliteration: 'puteshestvie', translation_nl: 'reizen (hobby)', gender: 'o' },
+
+  // --- natuur-dieren ---
+  { category: 'natuur-dieren', russian: 'собака', transliteration: 'sobaka', translation_nl: 'hond', gender: 'v' },
+  { category: 'natuur-dieren', russian: 'кошка', transliteration: 'koshka', translation_nl: 'kat', gender: 'v' },
+  { category: 'natuur-dieren', russian: 'птица', transliteration: 'ptitsa', translation_nl: 'vogel', gender: 'v' },
+  { category: 'natuur-dieren', russian: 'дерево', transliteration: 'derevo', translation_nl: 'boom', gender: 'o' },
+  { category: 'natuur-dieren', russian: 'цветок', transliteration: 'tsvetok', translation_nl: 'bloem', gender: 'm' },
+  { category: 'natuur-dieren', russian: 'река', transliteration: 'reka', translation_nl: 'rivier', gender: 'v' },
+  { category: 'natuur-dieren', russian: 'море', transliteration: 'more', translation_nl: 'zee', gender: 'o' },
+  { category: 'natuur-dieren', russian: 'гора', transliteration: 'gora', translation_nl: 'berg', gender: 'v' },
+  { category: 'natuur-dieren', russian: 'лес', transliteration: 'les', translation_nl: 'bos', gender: 'm' },
+  { category: 'natuur-dieren', russian: 'лошадь', transliteration: 'loshad', translation_nl: 'paard', gender: 'v' },
+
+  // --- werk-school ---
+  { category: 'werk-school', russian: 'работа', transliteration: 'rabota', translation_nl: 'werk', gender: 'v' },
+  { category: 'werk-school', russian: 'школа', transliteration: 'shkola', translation_nl: 'school', gender: 'v' },
+  { category: 'werk-school', russian: 'университет', transliteration: 'universitet', translation_nl: 'universiteit', gender: 'm' },
+  { category: 'werk-school', russian: 'урок', transliteration: 'urok', translation_nl: 'les', gender: 'm' },
+  { category: 'werk-school', russian: 'домашнее задание', transliteration: 'domashnee zadanie', translation_nl: 'huiswerk', gender: 'o' },
+  { category: 'werk-school', russian: 'коллега', transliteration: 'kollega', translation_nl: 'collega', gender: 'm' },
+  { category: 'werk-school', russian: 'начальник', transliteration: 'nachalnik', translation_nl: 'baas', gender: 'm' },
+  { category: 'werk-school', russian: 'компьютер', transliteration: 'kompyuter', translation_nl: 'computer', gender: 'm' },
+
+  // --- grammar-comparatives vocabulary ---
+  { category: 'grammar-comparatives', russian: 'быстрый', transliteration: 'bystryy', translation_nl: 'snel', grammarRule: 'COMPARATIVE-SUPERLATIVE' },
+  { category: 'grammar-comparatives', russian: 'быстрее', transliteration: 'bystree', translation_nl: 'sneller', grammarRule: 'COMPARATIVE-SUPERLATIVE' },
+  { category: 'grammar-comparatives', russian: 'лучше', transliteration: 'luchshe', translation_nl: 'beter', grammarRule: 'COMPARATIVE-SUPERLATIVE', notes: "Onregelmatige vergrotende trap van 'хороший' (goed)." },
+
+  // --- grammar-reflexive vocabulary ---
+  { category: 'grammar-reflexive', russian: 'мыться', transliteration: 'myt\'sya', translation_nl: 'zich wassen', grammarRule: 'REFLEXIVE-VERBS' },
+  { category: 'grammar-reflexive', russian: 'одеваться', transliteration: 'odevat\'sya', translation_nl: 'zich aankleden', grammarRule: 'REFLEXIVE-VERBS' },
+  { category: 'grammar-reflexive', russian: 'учиться', transliteration: 'uchit\'sya', translation_nl: 'studeren / zich leren', grammarRule: 'REFLEXIVE-VERBS' }
 ];

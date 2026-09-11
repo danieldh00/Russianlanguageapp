@@ -22,5 +22,13 @@ module.exports = [
   { slug: 'grammar-verbs', name: 'Grammatica: werkwoorden (tegenwoordige tijd)', description: 'Vervoeging van werkwoorden in de tegenwoordige tijd.', level: 'A2', sort_order: 21 },
   { slug: 'grammar-tense', name: 'Grammatica: verleden & toekomende tijd', description: 'Werkwoorden vervoegen in het verleden en de toekomst, en het aspectonderscheid.', level: 'B1', sort_order: 22 },
   { slug: 'grammar-questions-negation', name: 'Grammatica: vragen & ontkenning', description: 'Vragen stellen en zinnen ontkennen.', level: 'A2', sort_order: 23 },
-  { slug: 'praktische-zinnen', name: 'Praktische zinnen', description: 'Complete, bruikbare zinnen voor echte situaties: de weg vragen, bestellen, jezelf voorstellen.', level: 'A2', sort_order: 24 }
+  { slug: 'praktische-zinnen', name: 'Praktische zinnen', description: 'Complete, bruikbare zinnen voor echte situaties: de weg vragen, bestellen, jezelf voorstellen.', level: 'A2', sort_order: 24 },
+  { slug: 'gevoelens', name: 'Gevoelens', description: 'Emoties en stemmingen benoemen.', level: 'A1', sort_order: 25 },
+  { slug: 'seizoenen-maanden', name: 'Seizoenen & maanden', description: 'De vier seizoenen en alle maanden van het jaar.', level: 'A1', sort_order: 26 },
+  { slug: 'vervoer', name: 'Vervoer', description: 'Vervoersmiddelen benoemen.', level: 'A1', sort_order: 27 },
+  { slug: 'sport-hobby', name: "Sport & hobby's", description: 'Vrije tijd, sport en hobby\'s.', level: 'A2', sort_order: 28 },
+  { slug: 'natuur-dieren', name: 'Natuur & dieren', description: 'Dieren, planten en landschap.', level: 'A1', sort_order: 29 },
+  { slug: 'werk-school', name: 'Werk & school', description: 'Woordenschat voor op kantoor en op school.', level: 'A2', sort_order: 30 },
+  { slug: 'grammar-comparatives', name: 'Grammatica: vergelijken', description: 'De vergrotende en overtreffende trap van bijvoeglijke naamwoorden.', level: 'B1', sort_order: 31 },
+  { slug: 'grammar-reflexive', name: 'Grammatica: wederkerende werkwoorden', description: 'Werkwoorden met -ся/-сь, zoals "zich wassen" of "elkaar ontmoeten".', level: 'B1', sort_order: 32 }
 ];

@@ -124,5 +124,19 @@ module.exports = [
     explanation:
       "Een ja/nee-vraag vorm je in het Russisch niet door de woordvolgorde om te draaien (zoals in het Nederlands 'ga je?'), maar met stijgende intonatie op het belangrijkste woord — de woordvolgorde blijft hetzelfde als in de mededeling. Vragen mét een vraagwoord (что, где, когда, почему) beginnen meestal met dat vraagwoord, net als in het Nederlands.",
     example: 'Ты говоришь по-русски? heeft dezelfde volgorde als: Ты говоришь по-русски. — alleen de intonatie (en het vraagteken) maakt het een vraag.'
+  },
+  {
+    code: 'COMPARATIVE-SUPERLATIVE',
+    title: 'Vergrotende en overtreffende trap',
+    explanation:
+      "De vergrotende trap vorm je meestal door -ее (of de korte vorm -ей) achter de stam van het bijvoeglijk naamwoord te plakken: быстрый (snel) → быстрее (sneller). Een aantal veelgebruikte bijvoeglijke naamwoorden heeft een onregelmatige vergrotende trap die je apart moet leren: хороший (goed) → лучше (beter), плохой (slecht) → хуже (slechter), большой (groot) → больше (groter), маленький (klein) → меньше (kleiner). De overtreffende trap vorm je meestal met самый + het gewone bijvoeglijk naamwoord: самый быстрый (de snelste).",
+    example: 'быстрый → быстрее → самый быстрый (snel → sneller → de snelste); хороший → лучше (goed → beter, onregelmatig)'
+  },
+  {
+    code: 'REFLEXIVE-VERBS',
+    title: 'Wederkerende werkwoorden (-ся/-сь)',
+    explanation:
+      "Wederkerende werkwoorden krijgen een vast achtervoegsel: -ся na een medeklinker, -сь na een klinker. Dit komt overeen met het Nederlandse 'zich' (zich wassen, zich aankleden) of soms met 'elkaar' (elkaar ontmoeten). Het achtervoegsel verandert niet mee met de persoon — je vervoegt het werkwoord gewoon normaal en plakt -ся/-сь achter elke vorm: мыться (zich wassen) → я моюсь, ты моешься, он моется, мы моемся, вы моетесь, они моются.",
+    example: 'мыться (zich wassen): я моюсь (ik was me), он моется (hij wast zich)'
   }
 ];
