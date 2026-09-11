@@ -6,13 +6,13 @@ const session = require('express-session');
 const db = require('./db');
 const { seedDatabase } = require('../seed/seed');
 
-// First boot on any fresh database (a new install, any deployment method):
-// load the lesson content automatically so there's no separate manual step.
-// Safe to skip on every later restart since it only fires when empty.
-if (db.prepare('SELECT COUNT(*) c FROM categories').get().c === 0) {
-  console.log('Database is leeg -- lesinhoud wordt automatisch geladen...');
-  console.log('Seed voltooid:', seedDatabase());
-}
+// Load/refresh the lesson content on every boot: on a fresh database this
+// is the first-boot seed, and on an already-provisioned one it's how new
+// content added to the seed data files (new categories/words/grammar
+// rules/exercises) reaches a live install. It never touches `attempts` or
+// `user_word_progress`, so real accounts and progress are never at risk.
+console.log('Lesinhoud synchroniseren...');
+console.log('Sync voltooid:', seedDatabase());
 
 const authRoutes = require('./routes/auth');
 const lessonRoutes = require('./routes/lessons');
