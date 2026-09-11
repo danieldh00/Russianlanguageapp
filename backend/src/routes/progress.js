@@ -35,6 +35,22 @@ router.get('/', requireAuth, (req, res) => {
   res.json({ totalAttempts, correctAttempts, accuracyPct, wordsStarted, wordsMastered, totalWords, perCategory });
 });
 
+// GET /api/progress/words -> full per-word SRS state, used to seed/reconcile
+// a device's local progress mirror (e.g. first login on a new iPad after
+// studying on the iPhone).
+router.get('/words', requireAuth, (req, res) => {
+  const userId = req.session.userId;
+  const rows = db
+    .prepare(
+      `SELECT word_id as wordId, ease_factor as easeFactor, interval_days as intervalDays, repetitions,
+              correct_count as correctCount, incorrect_count as incorrectCount,
+              next_review_at as nextReviewAt, last_reviewed_at as lastReviewedAt
+       FROM user_word_progress WHERE user_id = ?`
+    )
+    .all(userId);
+  res.json({ words: rows });
+});
+
 router.get('/mistakes', requireAuth, (req, res) => {
   const userId = req.session.userId;
 

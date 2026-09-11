@@ -39,31 +39,43 @@ is en welke grammaticaregel erachter zit.
   kleurenpalet met lichte/donkere modus (volgt de systeeminstelling).
 - **PWA**: `manifest.webmanifest` + `sw.js` (app-shell caching) maken de app
   installeerbaar op iPhone/iPad en Android — zie hieronder.
-- **Data**: `data/russian.sqlite`, wordt automatisch aangemaakt bij eerste start.
+- **Offline-first + synchronisatie tussen toestellen**: de app werkt volledig
+  zonder internet en houdt je voortgang bij op elk toestel waarop je bent
+  ingelogd — zie de sectie hieronder.
+- **Data**: `data/russian.sqlite` op de server is de centrale, blijvende
+  opslag; wordt automatisch aangemaakt bij eerste start.
 
 ## Projectstructuur
 
 ```
 backend/
   src/
-    server.js        Express-app + sessies + static hosting van frontend/
-    db.js             SQLite-verbinding + schema-init
-    schema.sql        Databaseschema
-    srs.js            Spaced-repetition-planner
-    middleware.js      Auth-middleware
+    server.js          Express-app + sessies + static hosting van frontend/
+    db.js               SQLite-verbinding + schema-init + migraties
+    schema.sql          Databaseschema
+    srs.js               Spaced-repetition-planner (server)
+    recordAttempt.js      Gedeelde logica: antwoord verwerken + SRS bijwerken
+                           (gebruikt door zowel /exercises/:id/answer als /sync/attempts)
+    middleware.js          Auth-middleware
     routes/
-      auth.js         Registreren/inloggen/uitloggen
-      lessons.js        Lessenoverzicht + voortgang per les
-      exercises.js      Oefeningen ophalen + antwoorden verwerken
-      progress.js       Statistieken + foutenoverzicht
+      auth.js             Registreren/inloggen/uitloggen
+      lessons.js            Lessenoverzicht + voortgang per les
+      exercises.js           Oefeningen ophalen + antwoorden verwerken
+      progress.js             Statistieken + foutenoverzicht + per-woord SRS-status
+      content.js                Volledige lesinhoud voor offline gebruik
+      sync.js                    Offline-wachtrij van antwoorden verwerken
   seed/
     seed.js            Vult de database met lesinhoud
     data/              Woordenschat, grammaticaregels, grammatica-oefeningen
 frontend/
-  index.html, css/, js/app.js   SPA (login, dashboard, quiz, voortgang)
-  manifest.webmanifest           PWA-manifest (naam, iconen, themakleur)
-  sw.js                           Service worker (cachet de app-shell)
-  icons/                          App-iconen (192/512/maskable/apple-touch/favicon)
+  index.html, css/            SPA-opmaak en vormgeving
+  js/
+    app.js                    Router + alle views (login, dashboard, quiz, voortgang)
+    storage.js                 Lokale opslag (localStorage), per gebruiker genamespaced
+    srs.js                      Spaced-repetition-planner (client, spiegelt backend/src/srs.js)
+  manifest.webmanifest        PWA-manifest (naam, iconen, themakleur)
+  sw.js                        Service worker (cachet de app-shell)
+  icons/                       App-iconen (192/512/maskable/apple-touch/favicon)
 data/                  SQLite-bestand (niet in git)
 ```
 
@@ -129,6 +141,53 @@ opent hij zonder Safari-balken, met een eigen app-icoon en in de systeemkleur.
 Dit werkt hetzelfde op iPad. Je voortgang staat gewoon in de SQLite-database op
 de server, dus die blijft behouden ongeacht op welk apparaat je inlogt.
 
+## Offline gebruik & synchronisatie tussen toestellen
+
+De app is *local-first*: lesinhoud en al je voortgang staan lokaal op het
+toestel (in `localStorage`), en oefeningen worden daar ook direct nagekeken —
+er is geen netwerk nodig om te leren. Op de achtergrond synchroniseert de app
+met de centrale SQLite-database op de server, zodat dezelfde voortgang
+beschikbaar is op al je toestellen (bv. verder leren op de iPad waar je op de
+iPhone was gebleven).
+
+**Hoe het werkt:**
+
+1. Bij het eerste (online) inloggen op een toestel haalt de app de volledige
+   lesinhoud op (`GET /api/content`, inclusief de juiste antwoorden en uitleg
+   — nodig om offline te kunnen nakijken) en je bestaande voortgang
+   (`GET /api/progress/words`), en slaat dit lokaal op.
+2. Vanaf dat moment werkt alles lokaal: een les kiezen, een antwoord nakijken,
+   de spaced-repetitionplanning bijwerken — allemaal zonder netwerk.
+3. Elk gegeven antwoord komt in een lokale wachtrij ("outbox"). Zodra er weer
+   internet is, stuurt de app die wachtrij naar `POST /api/sync/attempts`, dat
+   idempotent is (een `clientId` per antwoord voorkomt dubbele verwerking als
+   een verzoek wordt herhaald) en vervolgens de nieuwste voortgang weer
+   terugleest — zo blijven meerdere toestellen convergeren naar dezelfde staat.
+4. De statusindicator naast "Voortgang" in de navigatiebalk toont of alles
+   gesynchroniseerd is, hoeveel antwoorden nog in de wachtrij staan, of dat je
+   offline bent.
+
+**Bewuste grenzen van dit ontwerp:**
+
+- **Eerste keer per toestel moet online.** Zonder ooit online te zijn geweest
+  op een toestel heeft de app nog geen lesinhoud om mee te werken — logisch,
+  want die moet ergens vandaan komen. Daarna werkt dat toestel altijd offline.
+- **Synchroniseren gebeurt alleen terwijl de app open is.** iOS/Safari staat
+  geen achtergrondsynchronisatie toe voor PWA's (de Background Sync API wordt
+  niet ondersteund); open de app dus even terwijl je online bent om bij te
+  werken, in plaats van te verwachten dat dit vanzelf op de achtergrond
+  gebeurt.
+- **"Recente fouten" en "vaakst fout beantwoord" op het voortgangsscherm zijn
+  per toestel** (ze zijn gebaseerd op een lokaal logboek, niet op de server) —
+  gemarkeerd als "(dit toestel)" in de app. De nauwkeurigheid, het aantal
+  onder-de-knie woorden en de les-voortgang tellen wél toestel-overstijgend
+  correct op, omdat die uit de gesynchroniseerde per-woord-voortgang komen.
+- Bij een conflict (bv. hetzelfde woord op twee toestellen geoefend terwijl
+  beide een tijd offline waren) verwerkt de server de binnenkomende
+  antwoorden gewoon op volgorde van binnenkomst — er is geen "slimme" merge.
+  Voor een persoonlijke leerapp met één gebruiker per account is dat in de
+  praktijk geen probleem.
+
 ## Uitbreiden met eigen content
 
 Nieuwe woorden, categorieën of grammaticaregels toevoegen kan zonder de
@@ -158,6 +217,9 @@ Alle routes onder `/api`, JSON in/uit, sessie-cookie voor authenticatie.
 | POST | `/exercises/:id/answer` | Antwoord indienen → correct/fout + uitleg + grammaticaregel |
 | GET | `/progress` | Algemene statistieken + voortgang per les |
 | GET | `/progress/mistakes` | Vaakst en meest recent gemaakte fouten met uitleg |
+| GET | `/progress/words` | Volledige per-woord SRS-status (voor het lokale voortgangs-mirror op een toestel) |
+| GET | `/content` | Volledige lesinhoud incl. juiste antwoorden/uitleg (voor offline gebruik op een toestel) |
+| POST | `/sync/attempts` | Batch van offline gegeven antwoorden verwerken (idempotent via `clientId`) |
 
 ## Bekende beperkingen (bewuste keuzes voor deze versie)
 

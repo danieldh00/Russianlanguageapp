@@ -66,6 +66,7 @@ CREATE TABLE IF NOT EXISTS attempts (
   exercise_id INTEGER NOT NULL REFERENCES exercises(id),
   given_answer TEXT,
   is_correct INTEGER NOT NULL,
+  client_id TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -74,3 +75,4 @@ CREATE INDEX IF NOT EXISTS idx_exercises_category ON exercises(category_id);
 CREATE INDEX IF NOT EXISTS idx_uwp_user ON user_word_progress(user_id);
 CREATE INDEX IF NOT EXISTS idx_attempts_user ON attempts(user_id);
 CREATE INDEX IF NOT EXISTS idx_attempts_exercise ON attempts(exercise_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_attempts_client_id ON attempts(user_id, client_id) WHERE client_id IS NOT NULL;

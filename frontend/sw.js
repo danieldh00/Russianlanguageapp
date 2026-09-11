@@ -1,8 +1,10 @@
-const CACHE_NAME = 'russisch-leren-v1';
+const CACHE_NAME = 'russisch-leren-v2';
 const APP_SHELL = [
   '/',
   '/css/style.css',
   '/js/app.js',
+  '/js/storage.js',
+  '/js/srs.js',
   '/manifest.webmanifest',
   '/icons/icon-192.png',
   '/icons/icon-512.png'

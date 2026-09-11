@@ -10,6 +10,18 @@ const db = new Database(DB_PATH);
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
+function migrateLegacyColumns() {
+  const attemptsTable = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='attempts'").get();
+  if (!attemptsTable) return; // fresh database: schema.sql below creates the table with all columns already
+
+  const columns = db.prepare('PRAGMA table_info(attempts)').all().map((c) => c.name);
+  if (!columns.includes('client_id')) {
+    db.exec('ALTER TABLE attempts ADD COLUMN client_id TEXT');
+  }
+}
+
+migrateLegacyColumns();
+
 const schema = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
 db.exec(schema);
 

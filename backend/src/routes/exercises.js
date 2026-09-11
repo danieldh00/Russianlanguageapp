@@ -1,7 +1,7 @@
 const express = require('express');
 const db = require('../db');
 const { requireAuth } = require('../middleware');
-const { schedule } = require('../srs');
+const { recordAttempt } = require('../recordAttempt');
 
 const router = express.Router();
 
@@ -71,58 +71,8 @@ router.post('/:id/answer', requireAuth, (req, res) => {
   const exercise = db.prepare('SELECT * FROM exercises WHERE id = ?').get(req.params.id);
   if (!exercise) return res.status(404).json({ error: 'Oefening niet gevonden.' });
 
-  const given = ((req.body && req.body.answer) || '').toString();
-  const isCorrect = given.trim().toLowerCase() === exercise.correct_answer.trim().toLowerCase() ? 1 : 0;
-
-  db.prepare('INSERT INTO attempts (user_id, exercise_id, given_answer, is_correct) VALUES (?, ?, ?, ?)').run(
-    userId,
-    exercise.id,
-    given,
-    isCorrect
-  );
-
-  let srsInfo = null;
-  if (exercise.word_id) {
-    let progress = db
-      .prepare('SELECT * FROM user_word_progress WHERE user_id = ? AND word_id = ?')
-      .get(userId, exercise.word_id);
-    if (!progress) {
-      db.prepare('INSERT INTO user_word_progress (user_id, word_id) VALUES (?, ?)').run(userId, exercise.word_id);
-      progress = db.prepare('SELECT * FROM user_word_progress WHERE user_id = ? AND word_id = ?').get(userId, exercise.word_id);
-    }
-    const updated = schedule(progress, !!isCorrect);
-    db.prepare(
-      `UPDATE user_word_progress
-       SET ease_factor = ?, interval_days = ?, repetitions = ?,
-           correct_count = correct_count + ?, incorrect_count = incorrect_count + ?,
-           next_review_at = ?, last_reviewed_at = datetime('now')
-       WHERE id = ?`
-    ).run(
-      updated.ease_factor,
-      updated.interval_days,
-      updated.repetitions,
-      isCorrect,
-      isCorrect ? 0 : 1,
-      updated.next_review_at,
-      progress.id
-    );
-    srsInfo = updated;
-  }
-
-  let grammarRule = null;
-  if (exercise.grammar_rule_id) {
-    grammarRule = db
-      .prepare('SELECT code, title, explanation, example FROM grammar_rules WHERE id = ?')
-      .get(exercise.grammar_rule_id);
-  }
-
-  res.json({
-    correct: !!isCorrect,
-    correctAnswer: exercise.correct_answer,
-    explanation: exercise.explanation,
-    grammarRule,
-    srs: srsInfo
-  });
+  const result = recordAttempt(userId, exercise, req.body && req.body.answer);
+  res.json(result);
 });
 
 module.exports = router;

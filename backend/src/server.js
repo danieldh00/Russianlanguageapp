@@ -6,6 +6,8 @@ const authRoutes = require('./routes/auth');
 const lessonRoutes = require('./routes/lessons');
 const exerciseRoutes = require('./routes/exercises');
 const progressRoutes = require('./routes/progress');
+const contentRoutes = require('./routes/content');
+const syncRoutes = require('./routes/sync');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -25,6 +27,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/lessons', lessonRoutes);
 app.use('/api/exercises', exerciseRoutes);
 app.use('/api/progress', progressRoutes);
+app.use('/api/content', contentRoutes);
+app.use('/api/sync', syncRoutes);
 
 const FRONTEND_DIR = path.join(__dirname, '..', '..', 'frontend');
 app.use(
