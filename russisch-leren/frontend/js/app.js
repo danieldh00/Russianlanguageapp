@@ -198,25 +198,57 @@ async function ensureContentLoaded() {
 
 const app = document.getElementById('app');
 const nav = document.getElementById('nav');
+const bottomNav = document.getElementById('bottom-nav');
+
+// Bottom tab bar: the primary navigation, styled as a floating glass pill
+// (like an iOS tab bar) so it never has to wrap or overflow on a narrow
+// phone screen -- unlike a top nav row, which runs out of horizontal room
+// once badges + username + several links are all fighting for the same line.
+const NAV_ITEMS = [
+  { route: 'dashboard', label: 'Lessen', icon: '📚' },
+  { route: 'progress', label: 'Voortgang', icon: '📊' },
+  { route: 'leaderboard', label: 'Ranglijst', icon: '🏆' }
+];
+
+function currentRouteSection() {
+  const route = (location.hash || '#/dashboard').split('/')[1] || 'dashboard';
+  return route === 'lesson' ? 'dashboard' : route; // a lesson screen is reached from, and belongs to, the "Lessen" tab
+}
 
 function renderNav() {
   nav.innerHTML = '';
+  bottomNav.innerHTML = '';
+  document.body.classList.toggle('has-bottom-nav', !!state.user);
+
   if (state.user) {
-    nav.appendChild(el(`<a href="#/dashboard">Lessen</a>`));
-    nav.appendChild(el(`<a href="#/progress">Voortgang</a>`));
-    nav.appendChild(el(`<a href="#/leaderboard">Ranglijst</a>`));
     const gamBadge = renderGamificationBadge();
     if (gamBadge) nav.appendChild(gamBadge);
     nav.appendChild(renderSyncBadge());
-    nav.appendChild(el(`<span class="muted" style="margin-left:4px">${escapeHtml(state.user.username)}</span>`));
-    const btn = el(`<button>Uitloggen</button>`);
-    btn.addEventListener('click', async () => {
+    nav.appendChild(el(`<span class="muted user-name">${escapeHtml(state.user.username)}</span>`));
+
+    const activeSection = currentRouteSection();
+    NAV_ITEMS.forEach((item) => {
+      const tab = el(`
+        <a href="#/${item.route}" class="bottom-nav-item ${activeSection === item.route ? 'active' : ''}">
+          <span class="bottom-nav-icon">${item.icon}</span>
+          <span class="bottom-nav-label">${item.label}</span>
+        </a>
+      `);
+      bottomNav.appendChild(tab);
+    });
+    const logoutTab = el(`
+      <button type="button" class="bottom-nav-item">
+        <span class="bottom-nav-icon">🚪</span>
+        <span class="bottom-nav-label">Uitloggen</span>
+      </button>
+    `);
+    logoutTab.addEventListener('click', async () => {
       api('/auth/logout', { method: 'POST' }).catch(() => {});
       Storage.clearAuth();
       state.user = null;
       location.hash = '#/login';
     });
-    nav.appendChild(btn);
+    bottomNav.appendChild(logoutTab);
   } else {
     nav.appendChild(el(`<a href="#/login">Inloggen</a>`));
     nav.appendChild(el(`<a href="#/register">Registreren</a>`));
