@@ -131,6 +131,63 @@ docker compose exec app node seed/seed.js   # eenmalig, na de allereerste build
 De SQLite-data staat in een named volume (`russian-data`) en blijft dus
 behouden tussen herstarts en updates van de container.
 
+## Draaien op een Raspberry Pi naast Home Assistant OS (HAOS)
+
+HAOS is een dichtgetimmerde appliance-OS: je hebt geen gewone Linux-shell met
+`apt`/`docker` beschikbaar zonder daarvoor bewust een uitzondering te maken.
+Twee bruikbare routes om deze app er toch naast te draaien:
+
+**Optie 1 — Portainer-add-on (aanbevolen)**
+
+1. Installeer de **Portainer** add-on via de Add-on Store (Instellingen →
+   Add-ons → Add-on Store; zoek op "Portainer", vaak onder de "Home Assistant
+   Community Add-ons"-repository).
+2. Open de Portainer-webinterface, ga naar **Stacks → Add stack**.
+3. Plak de inhoud van de `docker-compose.yml` uit dit project (of verwijs naar het
+   Git-repository — Portainer kan ook rechtstreeks van een Git-URL deployen).
+4. Zet als environment-variabelen minimaal `SESSION_SECRET` (een lange
+   willekeurige string) en eventueel `APP_PORT` als je niet op poort 3000 wilt
+   draaien (zie hieronder), en `ANTHROPIC_API_KEY` als je de AI-uitleg wilt
+   gebruiken. Deploy de stack.
+5. Draai eenmalig de seed vanuit de Portainer-consolefunctie van de container
+   (Containers → jouw app-container → Console): `node seed/seed.js`.
+
+**Optie 2 — SSH & Web Terminal (protection mode uit)**
+
+1. Installeer de **"Advanced SSH & Web Terminal"**-add-on en zet **Protection
+   mode** uit in de add-on-configuratie (hiermee krijg je toegang tot de
+   Docker-daemon van de host — alleen doen als je weet wat je doet).
+2. SSH naar de Pi, `git clone` dit repository ergens buiten de HA-config-map
+   (bv. `/root/russianlanguageapp` of een gedeelde map), en draai daar gewoon
+   `docker compose up -d --build` zoals hierboven beschreven.
+
+**Poortconflict controleren.** Deze app luistert standaard op poort 3000 —
+hetzelfde als de standaardpoort van Grafana, mocht je die ook als add-on
+draaien. Zet zo nodig een andere poort via een `.env`-bestand naast de
+`docker-compose.yml` (`APP_PORT=3300`) of als environment-variabele in
+Portainer.
+
+**Cloudflare Tunnel koppelen.** Als je tunnel via het Cloudflare Zero
+Trust-dashboard wordt beheerd (de gebruikelijke opzet): ga naar **Networks →
+Tunnels → jouw tunnel → Public Hostname → Add a public hostname**, kies een
+subdomein (bv. `russisch.jouwdomein.nl`), Service type **HTTP**, en als URL
+`localhost:3000` (of `<pi-lan-ip>:3000` als de tunnel-daemon niet op dezelfde
+Docker-host draait, en de gekozen poort als je die aangepast hebt). Beheer je
+`cloudflared` zelf via een `config.yml` met eigen ingress-regels, voeg daar
+op dezelfde manier een extra regel toe naast die voor Home Assistant.
+
+Zodra dat staat, is de app van buiten je netwerk bereikbaar over een echte
+HTTPS-verbinding — precies wat nodig is voor volledige PWA-installatie
+inclusief de service worker (die alleen in een secure context registreert).
+
+**Resources.** Node.js + SQLite is licht: op een Pi 4 (4 GB+) naast Home
+Assistant merk je er niets van. Op een Pi 3 of een al zwaarbelaste Pi 4 kan
+het samen met veel HA-integraties/add-ons krap worden — houd dat in de gaten
+via de Supervisor-systeemmonitor.
+
+**Bijwerken.** `git pull` in de gekloonde map, daarna `docker compose up -d
+--build` (of in Portainer: Stacks → jouw stack → Pull and redeploy).
+
 ## Installeren als app op iPhone/iPad
 
 De app is een Progressive Web App (PWA): eenmaal toegevoegd aan het beginscherm
