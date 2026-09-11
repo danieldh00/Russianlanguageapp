@@ -1,4 +1,5 @@
 const path = require('path');
+require('./loadAddonOptions').loadAddonOptions();
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 const express = require('express');
 const session = require('express-session');

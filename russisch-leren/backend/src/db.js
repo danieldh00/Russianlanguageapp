@@ -2,7 +2,10 @@ const path = require('path');
 const fs = require('fs');
 const Database = require('better-sqlite3');
 
-const DATA_DIR = path.join(__dirname, '..', '..', 'data');
+// DATA_DIR override lets this run as a Home Assistant Add-on, where Supervisor
+// always provides persistent per-app storage at /data (set via config.yaml's
+// `environment`); the plain-Docker/local-dev default is unchanged.
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', '..', 'data');
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
 const DB_PATH = path.join(DATA_DIR, 'russian.sqlite');

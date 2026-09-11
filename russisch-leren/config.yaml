@@ -1,0 +1,25 @@
+name: "Russisch Leren"
+version: "1.0.0"
+slug: russisch_leren
+description: >-
+  Russisch leren met voortgangsregistratie, spaced repetition, offline
+  ondersteuning en synchronisatie tussen toestellen. Werkt ook als
+  installeerbare PWA op iPhone/iPad.
+url: "https://github.com/danieldh00/Russianlanguageapp"
+arch:
+  - aarch64
+  - amd64
+startup: application
+boot: auto
+ports:
+  3000/tcp: 3000
+ports_description:
+  3000/tcp: "Webinterface"
+webui: "http://[HOST]:[PORT:3000]/"
+environment:
+  DATA_DIR: /data
+options:
+  session_secret: null
+schema:
+  session_secret: "password"
+  anthropic_api_key: "password?"

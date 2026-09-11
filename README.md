@@ -23,7 +23,7 @@ is en welke grammaticaregel erachter zit.
     juiste volgorde legt — in plaats van losse, willekeurige woordjes.
 - **Spaced repetition**: elk woord heeft per gebruiker een `ease_factor`,
   `interval_days` en `next_review_at` (SM-2-achtig algoritme, zie
-  `backend/src/srs.js`). Woorden die aan herhaling toe zijn, komen als eerste
+  `russisch-leren/backend/src/srs.js`). Woorden die aan herhaling toe zijn, komen als eerste
   terug in een les.
 - **Foutuitleg**: elke oefening bevat een `explanation`-veld dat na het
   antwoorden getoond wordt, en grammaticale oefeningen verwijzen daarnaast naar
@@ -46,7 +46,7 @@ is en welke grammaticaregel erachter zit.
 
 - **Backend**: Node.js + Express, SQLite via `better-sqlite3` (bestandsgebaseerd,
   geen aparte databaseserver nodig).
-- **Frontend**: losse HTML/CSS/vanilla JS single-page app (`frontend/`), wordt
+- **Frontend**: losse HTML/CSS/vanilla JS single-page app (`russisch-leren/frontend/`), wordt
   direct door Express geserveerd — geen build-stap nodig. Vormgeving met
   PT Serif (koppen/Russische tekst) en IBM Plex Sans (interface), een eigen
   kleurenpalet met lichte/donkere modus (volgt de systeeminstelling).
@@ -60,38 +60,49 @@ is en welke grammaticaregel erachter zit.
 
 ## Projectstructuur
 
+De hele app leeft in `russisch-leren/`, met daarnaast alleen wat nodig is om
+dezelfde map ook als Home Assistant Add-on te kunnen installeren
+(`repository.yaml` op de repo-root, `config.yaml`/`DOCS.md` in de map zelf) —
+zie de sectie daarover hieronder.
+
 ```
-backend/
-  src/
-    server.js          Express-app + sessies + static hosting van frontend/
-    db.js               SQLite-verbinding + schema-init + migraties
-    schema.sql          Databaseschema
-    srs.js               Spaced-repetition-planner (server)
-    gamification.js       XP/niveau-berekening, leer-reeks, badge-definities
-    recordAttempt.js      Gedeelde logica: antwoord verwerken + SRS bijwerken
-                           (gebruikt door zowel /exercises/:id/answer als /sync/attempts)
-    middleware.js          Auth-middleware
-    routes/
-      auth.js             Registreren/inloggen/uitloggen
-      lessons.js            Lessenoverzicht + voortgang per les
-      exercises.js           Oefeningen ophalen + antwoorden verwerken
-      progress.js             Statistieken + foutenoverzicht + per-woord SRS-status + gamification
-      content.js                Volledige lesinhoud voor offline gebruik
-      sync.js                    Offline-wachtrij van antwoorden verwerken
-      ai.js                       AI-uitleg via de Claude API (optioneel)
-  seed/
-    seed.js            Vult de database met lesinhoud
-    data/              Woordenschat, grammaticaregels, grammatica-oefeningen, praktische zinnen
-frontend/
-  index.html, css/            SPA-opmaak en vormgeving
-  js/
-    app.js                    Router + alle views (login, dashboard, quiz, voortgang, gamification, AI-uitleg)
-    storage.js                 Lokale opslag (localStorage), per gebruiker genamespaced
-    srs.js                      Spaced-repetition-planner (client, spiegelt backend/src/srs.js)
-  manifest.webmanifest        PWA-manifest (naam, iconen, themakleur)
-  sw.js                        Service worker (cachet de app-shell)
-  icons/                       App-iconen (192/512/maskable/apple-touch/favicon)
-data/                  SQLite-bestand (niet in git)
+repository.yaml          Herkenningsbestand: maakt deze repo een HA add-on-repository
+russisch-leren/
+  config.yaml             HA add-on-configuratie (poort, opties, architecturen)
+  DOCS.md                 Documentatie zoals getoond in de HA add-on-store
+  Dockerfile              Wordt gebruikt door zowel docker-compose als de HA add-on
+  backend/
+    src/
+      server.js          Express-app + sessies + static hosting van frontend/
+      db.js               SQLite-verbinding + schema-init + migraties
+      schema.sql          Databaseschema
+      srs.js               Spaced-repetition-planner (server)
+      gamification.js       XP/niveau-berekening, leer-reeks, badge-definities
+      recordAttempt.js      Gedeelde logica: antwoord verwerken + SRS bijwerken
+                             (gebruikt door zowel /exercises/:id/answer als /sync/attempts)
+      loadAddonOptions.js     Leest /data/options.json wanneer als HA add-on gedraaid
+      middleware.js            Auth-middleware
+      routes/
+        auth.js               Registreren/inloggen/uitloggen
+        lessons.js              Lessenoverzicht + voortgang per les
+        exercises.js             Oefeningen ophalen + antwoorden verwerken
+        progress.js               Statistieken + foutenoverzicht + per-woord SRS-status + gamification
+        content.js                  Volledige lesinhoud voor offline gebruik
+        sync.js                      Offline-wachtrij van antwoorden verwerken
+        ai.js                         AI-uitleg via de Claude API (optioneel)
+    seed/
+      seed.js            Vult de database met lesinhoud
+      data/              Woordenschat, grammaticaregels, grammatica-oefeningen, praktische zinnen
+  frontend/
+    index.html, css/            SPA-opmaak en vormgeving
+    js/
+      app.js                    Router + alle views (login, dashboard, quiz, voortgang, gamification, AI-uitleg)
+      storage.js                 Lokale opslag (localStorage), per gebruiker genamespaced
+      srs.js                      Spaced-repetition-planner (client, spiegelt de backend-versie hierboven)
+    manifest.webmanifest        PWA-manifest (naam, iconen, themakleur)
+    sw.js                        Service worker (cachet de app-shell)
+    icons/                       App-iconen (192/512/maskable/apple-touch/favicon)
+data/                  SQLite-bestand (niet in git; heet `/data` binnen de HA add-on)
 ```
 
 ## Installatie & lokaal draaien
@@ -99,7 +110,7 @@ data/                  SQLite-bestand (niet in git)
 Vereist: Node.js 18+.
 
 ```bash
-cd backend
+cd russisch-leren/backend
 npm install
 cp .env.example .env        # pas SESSION_SECRET aan
 npm run seed                 # vult de database met lessen (eenmalig, of na content-update)
@@ -133,48 +144,58 @@ behouden tussen herstarts en updates van de container.
 
 ## Draaien op een Raspberry Pi naast Home Assistant OS (HAOS)
 
-HAOS is een dichtgetimmerde appliance-OS: je hebt geen gewone Linux-shell met
-`apt`/`docker` beschikbaar zonder daarvoor bewust een uitzondering te maken.
-Twee bruikbare routes om deze app er toch naast te draaien:
+Deze repository is zelf een geldige **Home Assistant Add-on-repository**
+(`repository.yaml` op de root, de add-on zelf in `russisch-leren/` met een
+`config.yaml`) — dat is de eenvoudigste manier om 'm op HAOS te draaien, want
+het gaat via de normale Add-on Store en heeft geen SSH/Portainer nodig.
 
-**Optie 1 — Portainer-add-on (aanbevolen)**
+**Add-on installeren (aanbevolen)**
 
-1. Installeer de **Portainer** add-on via de Add-on Store (Instellingen →
-   Add-ons → Add-on Store; zoek op "Portainer", vaak onder de "Home Assistant
-   Community Add-ons"-repository).
-2. Open de Portainer-webinterface, ga naar **Stacks → Add stack**.
-3. Plak de inhoud van de `docker-compose.yml` uit dit project (of verwijs naar het
-   Git-repository — Portainer kan ook rechtstreeks van een Git-URL deployen).
-4. Zet als environment-variabelen minimaal `SESSION_SECRET` (een lange
-   willekeurige string) en eventueel `APP_PORT` als je niet op poort 3000 wilt
-   draaien (zie hieronder), en `ANTHROPIC_API_KEY` als je de AI-uitleg wilt
-   gebruiken. Deploy de stack.
-5. Draai eenmalig de seed vanuit de Portainer-consolefunctie van de container
-   (Containers → jouw app-container → Console): `node seed/seed.js`.
+1. Instellingen → Add-ons → Add-on Store → ⋮ (rechtsboven) → **Repositories**.
+2. Voeg toe: `https://github.com/danieldh00/Russianlanguageapp` (of het pad
+   naar jouw fork/branch). Vereist dat deze repository **publiek** leesbaar
+   is voor Supervisor — bij een privé-repository moet je 'm tijdelijk publiek
+   zetten, of de app zelf handmatig via Optie 2 hieronder draaien.
+3. De add-on "Russisch Leren" verschijnt in de store. Installeer 'm — de
+   eerste build (compileert `better-sqlite3` voor jouw Pi's architectuur) kan
+   een paar minuten duren.
+4. Ga naar het tabblad **Configuration** en vul `session_secret` in (een
+   lange, willekeurige string, bv. gegenereerd met `openssl rand -hex 32`).
+   `anthropic_api_key` is optioneel (voor de AI-uitleg-knop). Sla op.
+5. Start de add-on. Je voortgang staat in de persistente `/data`-opslag van
+   de add-on en overleeft dus herstarts en updates.
 
-**Optie 2 — SSH & Web Terminal (protection mode uit)**
+**Optie 2 — gewone Docker-container (als de repo privé moet blijven)**
 
-1. Installeer de **"Advanced SSH & Web Terminal"**-add-on en zet **Protection
-   mode** uit in de add-on-configuratie (hiermee krijg je toegang tot de
-   Docker-daemon van de host — alleen doen als je weet wat je doet).
-2. SSH naar de Pi, `git clone` dit repository ergens buiten de HA-config-map
-   (bv. `/root/russianlanguageapp` of een gedeelde map), en draai daar gewoon
-   `docker compose up -d --build` zoals hierboven beschreven.
+Installeer de **Portainer**-add-on (Add-on Store, vaak onder "Home Assistant
+Community Add-ons") of gebruik de **"Advanced SSH & Web Terminal"**-add-on
+met **Protection mode** uit (geeft toegang tot de Docker-daemon van de
+host — alleen doen als je weet wat je doet). Kloon dit repository, en draai
+vanuit de hoofdmap:
+
+```bash
+docker compose up -d --build
+docker compose exec app node seed/seed.js   # eenmalig, na de allereerste build
+```
+
+Dit gebruikt dezelfde `docker-compose.yml`/`Dockerfile` als de add-on, dus
+functioneel identiek — alleen buiten Supervisor's add-on-systeem om, wat wél
+werkt met een privé-repository.
 
 **Poortconflict controleren.** Deze app luistert standaard op poort 3000 —
-hetzelfde als de standaardpoort van Grafana, mocht je die ook als add-on
-draaien. Zet zo nodig een andere poort via een `.env`-bestand naast de
-`docker-compose.yml` (`APP_PORT=3300`) of als environment-variabele in
-Portainer.
+hetzelfde als de standaardpoort van Grafana, mocht je die ook draaien. Bij de
+add-on-route wijzig je dat via het tabblad **Network** van de add-on; bij
+Optie 2 via een `.env`-bestand naast de `docker-compose.yml` (`APP_PORT=3300`).
 
 **Cloudflare Tunnel koppelen.** Als je tunnel via het Cloudflare Zero
 Trust-dashboard wordt beheerd (de gebruikelijke opzet): ga naar **Networks →
 Tunnels → jouw tunnel → Public Hostname → Add a public hostname**, kies een
 subdomein (bv. `russisch.jouwdomein.nl`), Service type **HTTP**, en als URL
-`localhost:3000` (of `<pi-lan-ip>:3000` als de tunnel-daemon niet op dezelfde
-Docker-host draait, en de gekozen poort als je die aangepast hebt). Beheer je
-`cloudflared` zelf via een `config.yml` met eigen ingress-regels, voeg daar
-op dezelfde manier een extra regel toe naast die voor Home Assistant.
+`localhost:3000` (of het IP van je Home Assistant-instantie, en de gekozen
+poort als je die aangepast hebt). Beheer je `cloudflared` zelf via een
+`config.yml` met eigen ingress-regels (zoals de community "Cloudflared"
+add-on), voeg daar op dezelfde manier een extra regel toe naast die voor
+Home Assistant.
 
 Zodra dat staat, is de app van buiten je netwerk bereikbaar over een echte
 HTTPS-verbinding — precies wat nodig is voor volledige PWA-installatie
@@ -185,8 +206,9 @@ Assistant merk je er niets van. Op een Pi 3 of een al zwaarbelaste Pi 4 kan
 het samen met veel HA-integraties/add-ons krap worden — houd dat in de gaten
 via de Supervisor-systeemmonitor.
 
-**Bijwerken.** `git pull` in de gekloonde map, daarna `docker compose up -d
---build` (of in Portainer: Stacks → jouw stack → Pull and redeploy).
+**Bijwerken.** Add-on: Add-on Store → Russisch Leren → **Update** zodra er
+een nieuwe versie beschikbaar is (versie-nummer staat in `config.yaml`).
+Optie 2: `git pull`, daarna `docker compose up -d --build`.
 
 ## Installeren als app op iPhone/iPad
 
@@ -271,7 +293,7 @@ subtiele grammaticale fouten.
 Dit is volledig optioneel en de rest van de app werkt exact hetzelfde zonder:
 
 ```bash
-# in backend/.env
+# in russisch-leren/backend/.env
 ANTHROPIC_API_KEY=sk-ant-...   # verkrijgbaar via https://console.anthropic.com/
 ```
 
@@ -285,13 +307,13 @@ kostenpost zolang de sleutel actief is.
 Nieuwe woorden, categorieën of grammaticaregels toevoegen kan zonder de
 applicatiecode aan te passen:
 
-- `backend/seed/data/categories.js` — lessen/categorieën
-- `backend/seed/data/words.js` — woordenschat (per woord automatisch
+- `russisch-leren/backend/seed/data/categories.js` — lessen/categorieën
+- `russisch-leren/backend/seed/data/words.js` — woordenschat (per woord automatisch
   gegenereerde meerkeuzeoefeningen in beide richtingen)
-- `backend/seed/data/grammarRules.js` — grammaticaregels met uitleg
-- `backend/seed/data/grammarExercises.js` — losse grammatica-oefeningen met
+- `russisch-leren/backend/seed/data/grammarRules.js` — grammaticaregels met uitleg
+- `russisch-leren/backend/seed/data/grammarExercises.js` — losse grammatica-oefeningen met
   eigen foutuitleg, gekoppeld aan een regel uit `grammarRules.js`
-- `backend/seed/data/practicalSentences.js` — praktische zinnen voor de
+- `russisch-leren/backend/seed/data/practicalSentences.js` — praktische zinnen voor de
   woord-chipoefening (`sentence_build`): elke zin heeft `tokens` (de losse
   woorden, `tokens.join(' ')` moet exact de zin opleveren) en een `explanation`
 

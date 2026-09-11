@@ -1,6 +1,6 @@
 services:
   app:
-    build: .
+    build: ./russisch-leren
     restart: unless-stopped
     ports:
       - "${APP_PORT:-3000}:3000"

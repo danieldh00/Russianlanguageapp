@@ -16,4 +16,13 @@ ENV NODE_ENV=production
 VOLUME ["/app/data"]
 EXPOSE 3000
 
+# Supervisor passes these automatically when building a Home Assistant Add-on
+# locally from this Dockerfile; harmless (unset) for a plain `docker build`.
+ARG BUILD_VERSION
+ARG BUILD_ARCH
+LABEL \
+  io.hass.version="${BUILD_VERSION}" \
+  io.hass.type="app" \
+  io.hass.arch="${BUILD_ARCH}"
+
 CMD ["node", "src/server.js"]
