@@ -1,5 +1,5 @@
 name: "Russisch Leren"
-version: "1.1.1"
+version: "1.1.2"
 slug: russisch_leren
 description: >-
   Russisch leren met voortgangsregistratie, spaced repetition, offline
@@ -15,7 +15,7 @@ ports:
   3000/tcp: 3000
 ports_description:
   3000/tcp: "Webinterface"
-webui: "https://russisch.den-hollander.com/"
+webui: "http://[HOST]:[PORT:3000]/"
 environment:
   DATA_DIR: /data
 options:
