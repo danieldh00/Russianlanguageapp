@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#2F4B8F"/>
+  <text x="256" y="330" font-family="Georgia, 'PT Serif', 'Liberation Serif', 'DejaVu Serif', serif"
+        font-size="330" font-weight="700" fill="#FFFFFF" text-anchor="middle">Я</text>
+  <circle cx="384" cy="384" r="26" fill="#9C2B3E"/>
+</svg>

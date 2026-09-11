@@ -2,14 +2,33 @@
 <html lang="nl">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Russisch Leren</title>
+
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <meta name="theme-color" content="#EEF1F6" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#12141C" media="(prefers-color-scheme: dark)" />
+
+  <!-- iOS/iPadOS "Add to Home Screen" support -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Russisch" />
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+
+  <link rel="icon" href="/icons/favicon-32.png" sizes="32x32" type="image/png" />
+  <link rel="icon" href="/icons/favicon-16.png" sizes="16x16" type="image/png" />
+  <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=PT+Serif:wght@400;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" />
+
   <link rel="stylesheet" href="/css/style.css" />
 </head>
 <body>
   <header class="topbar">
     <div class="topbar-inner">
-      <a class="brand" href="#/dashboard">Russisch Leren</a>
+      <a class="brand serif" href="#/dashboard">Russisch Leren</a>
       <nav id="nav"></nav>
     </div>
   </header>

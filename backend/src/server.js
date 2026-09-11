@@ -27,7 +27,14 @@ app.use('/api/exercises', exerciseRoutes);
 app.use('/api/progress', progressRoutes);
 
 const FRONTEND_DIR = path.join(__dirname, '..', '..', 'frontend');
-app.use(express.static(FRONTEND_DIR));
+app.use(
+  express.static(FRONTEND_DIR, {
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith('.webmanifest')) res.setHeader('Content-Type', 'application/manifest+json');
+      if (filePath.endsWith('sw.js')) res.setHeader('Service-Worker-Allowed', '/');
+    }
+  })
+);
 app.get('*', (req, res, next) => {
   if (req.path.startsWith('/api/')) return next();
   res.sendFile(path.join(FRONTEND_DIR, 'index.html'));

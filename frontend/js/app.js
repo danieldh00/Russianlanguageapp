@@ -1,5 +1,13 @@
 const state = { user: null };
 
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {
+      /* offline app-shell caching is a nice-to-have, not required for the app to work */
+    });
+  });
+}
+
 async function api(path, options = {}) {
   const res = await fetch('/api' + path, {
     method: options.method || 'GET',
