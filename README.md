@@ -7,7 +7,7 @@ is en welke grammaticaregel erachter zit.
 ## Functionaliteit
 
 - **Accounts**: registratie/login (bcrypt-gehashte wachtwoorden, sessie-cookie).
-- **Lessen**: 23 categorieën, Nederlands ↔ Russisch, niveau A1 t/m B1.
+- **Lessen**: 24 categorieën, Nederlands ↔ Russisch, niveau A1 t/m B1.
   - *Woordenschat*: alfabet & uitspraak, begroetingen, getallen 1-10 en 11-100,
     kleuren, familie, eten & drinken, tijd & dagen van de week, lichaamsdelen,
     kleding, weer, huis & wonen, beroepen, reizen, bijvoeglijke naamwoorden,
@@ -18,16 +18,29 @@ is en welke grammaticaregel erachter zit.
     in de tegenwoordige tijd, verleden en toekomende tijd, het aspectonderscheid
     (voltooid/onvoltooid), ontkenning en vraagzinnen, zacht/hard teken, klemtoon
     (akanje).
+  - *Praktische zinnen*: complete, bruikbare zinnen voor echte situaties (de
+    weg vragen, bestellen, jezelf voorstellen) die je met woord-chips in de
+    juiste volgorde legt — in plaats van losse, willekeurige woordjes.
 - **Spaced repetition**: elk woord heeft per gebruiker een `ease_factor`,
   `interval_days` en `next_review_at` (SM-2-achtig algoritme, zie
   `backend/src/srs.js`). Woorden die aan herhaling toe zijn, komen als eerste
   terug in een les.
 - **Foutuitleg**: elke oefening bevat een `explanation`-veld dat na het
   antwoorden getoond wordt, en grammaticale oefeningen verwijzen daarnaast naar
-  een `grammar_rules`-record met de onderliggende regel en een voorbeeld.
+  een `grammar_rules`-record met de onderliggende regel en een voorbeeld. Bij
+  een fout antwoord kun je optioneel ook een AI om een diepere, op jouw
+  specifieke fout toegespitste uitleg vragen (zie hieronder).
+- **Gamification**: XP per goed antwoord, niveaus (van Beginner A1 tot
+  Zelfstandig gebruiker), een dagelijkse leer-reeks ("streak") en 8 te
+  ontgrendelen badges. Het dashboard toont je lessen als een pad: voltooide
+  lessen, je huidige les, en de rest — geen harde vergrendeling, je kunt altijd
+  zelf een les kiezen.
+- **Immersie**: een luisterknop op elke oefening spreekt de Russische tekst
+  hardop uit (via de ingebouwde spraaksynthese van de browser, werkt ook
+  offline) — handig om de uitspraak te oefenen, niet alleen het schrift.
 - **Voortgangsdashboard**: nauwkeurigheid, aantal geoefende/onder-de-knie
-  woorden per les, en overzichten van de vaakst gemaakte fouten en recente
-  fouten (met uitleg).
+  woorden per les, niveau/streak/badges, en overzichten van de vaakst gemaakte
+  fouten en recente fouten (met uitleg).
 
 ## Techniek
 
@@ -54,6 +67,7 @@ backend/
     db.js               SQLite-verbinding + schema-init + migraties
     schema.sql          Databaseschema
     srs.js               Spaced-repetition-planner (server)
+    gamification.js       XP/niveau-berekening, leer-reeks, badge-definities
     recordAttempt.js      Gedeelde logica: antwoord verwerken + SRS bijwerken
                            (gebruikt door zowel /exercises/:id/answer als /sync/attempts)
     middleware.js          Auth-middleware
@@ -61,16 +75,17 @@ backend/
       auth.js             Registreren/inloggen/uitloggen
       lessons.js            Lessenoverzicht + voortgang per les
       exercises.js           Oefeningen ophalen + antwoorden verwerken
-      progress.js             Statistieken + foutenoverzicht + per-woord SRS-status
+      progress.js             Statistieken + foutenoverzicht + per-woord SRS-status + gamification
       content.js                Volledige lesinhoud voor offline gebruik
       sync.js                    Offline-wachtrij van antwoorden verwerken
+      ai.js                       AI-uitleg via de Claude API (optioneel)
   seed/
     seed.js            Vult de database met lesinhoud
-    data/              Woordenschat, grammaticaregels, grammatica-oefeningen
+    data/              Woordenschat, grammaticaregels, grammatica-oefeningen, praktische zinnen
 frontend/
   index.html, css/            SPA-opmaak en vormgeving
   js/
-    app.js                    Router + alle views (login, dashboard, quiz, voortgang)
+    app.js                    Router + alle views (login, dashboard, quiz, voortgang, gamification, AI-uitleg)
     storage.js                 Lokale opslag (localStorage), per gebruiker genamespaced
     srs.js                      Spaced-repetition-planner (client, spiegelt backend/src/srs.js)
   manifest.webmanifest        PWA-manifest (naam, iconen, themakleur)
@@ -188,6 +203,26 @@ iPhone was gebleven).
   Voor een persoonlijke leerapp met één gebruiker per account is dat in de
   praktijk geen probleem.
 
+## AI-uitleg instellen (optioneel)
+
+De knop "Vraag AI om een diepere uitleg" (getoond bij een fout antwoord) stuurt
+de vraag, het juiste antwoord, jouw antwoord en de standaarduitleg naar de
+Claude API, en laat die in het Nederlands specifiek uitleggen waarom precies
+*jouw* antwoord fout was — nuttiger dan de statische uitleg alleen, vooral bij
+subtiele grammaticale fouten.
+
+Dit is volledig optioneel en de rest van de app werkt exact hetzelfde zonder:
+
+```bash
+# in backend/.env
+ANTHROPIC_API_KEY=sk-ant-...   # verkrijgbaar via https://console.anthropic.com/
+```
+
+Zonder deze variabele blijft de knop gewoon verborgen. Let op: elke klik op de
+knop is één API-aanroep (Claude Opus 5) op jouw eigen Anthropic-account —
+reken op een fractie van een cent per uitleg, maar het is wel een lopende
+kostenpost zolang de sleutel actief is.
+
 ## Uitbreiden met eigen content
 
 Nieuwe woorden, categorieën of grammaticaregels toevoegen kan zonder de
@@ -199,6 +234,9 @@ applicatiecode aan te passen:
 - `backend/seed/data/grammarRules.js` — grammaticaregels met uitleg
 - `backend/seed/data/grammarExercises.js` — losse grammatica-oefeningen met
   eigen foutuitleg, gekoppeld aan een regel uit `grammarRules.js`
+- `backend/seed/data/practicalSentences.js` — praktische zinnen voor de
+  woord-chipoefening (`sentence_build`): elke zin heeft `tokens` (de losse
+  woorden, `tokens.join(' ')` moet exact de zin opleveren) en een `explanation`
 
 Na het aanpassen van deze bestanden: `npm run seed` opnieuw draaien.
 
@@ -220,6 +258,8 @@ Alle routes onder `/api`, JSON in/uit, sessie-cookie voor authenticatie.
 | GET | `/progress/words` | Volledige per-woord SRS-status (voor het lokale voortgangs-mirror op een toestel) |
 | GET | `/content` | Volledige lesinhoud incl. juiste antwoorden/uitleg (voor offline gebruik op een toestel) |
 | POST | `/sync/attempts` | Batch van offline gegeven antwoorden verwerken (idempotent via `clientId`) |
+| GET | `/progress/stats` | XP, niveau, leer-reeks ("streak") en badges |
+| POST | `/ai/explain` | Diepere AI-uitleg bij één fout antwoord (503 als er geen `ANTHROPIC_API_KEY` is ingesteld) |
 
 ## Bekende beperkingen (bewuste keuzes voor deze versie)
 

@@ -21,5 +21,6 @@ module.exports = [
   { slug: 'grammar-adjectives', name: 'Grammatica: bijvoeglijke naamwoorden', description: 'Overeenkomst van bijvoeglijke naamwoorden met geslacht en getal.', level: 'A2', sort_order: 20 },
   { slug: 'grammar-verbs', name: 'Grammatica: werkwoorden (tegenwoordige tijd)', description: 'Vervoeging van werkwoorden in de tegenwoordige tijd.', level: 'A2', sort_order: 21 },
   { slug: 'grammar-tense', name: 'Grammatica: verleden & toekomende tijd', description: 'Werkwoorden vervoegen in het verleden en de toekomst, en het aspectonderscheid.', level: 'B1', sort_order: 22 },
-  { slug: 'grammar-questions-negation', name: 'Grammatica: vragen & ontkenning', description: 'Vragen stellen en zinnen ontkennen.', level: 'A2', sort_order: 23 }
+  { slug: 'grammar-questions-negation', name: 'Grammatica: vragen & ontkenning', description: 'Vragen stellen en zinnen ontkennen.', level: 'A2', sort_order: 23 },
+  { slug: 'praktische-zinnen', name: 'Praktische zinnen', description: 'Complete, bruikbare zinnen voor echte situaties: de weg vragen, bestellen, jezelf voorstellen.', level: 'A2', sort_order: 24 }
 ];

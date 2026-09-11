@@ -1,4 +1,4 @@
-const CACHE_NAME = 'russisch-leren-v2';
+const CACHE_NAME = 'russisch-leren-v3';
 const APP_SHELL = [
   '/',
   '/css/style.css',

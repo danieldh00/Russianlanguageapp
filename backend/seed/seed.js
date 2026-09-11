@@ -3,6 +3,7 @@ const categories = require('./data/categories');
 const grammarRules = require('./data/grammarRules');
 const words = require('./data/words');
 const grammarExercises = require('./data/grammarExercises');
+const practicalSentences = require('./data/practicalSentences');
 
 function shuffle(arr) {
   const a = [...arr];
@@ -132,6 +133,22 @@ const run = db.transaction(() => {
       correct_answer: ex.correctAnswer,
       options: JSON.stringify(ex.options),
       explanation: ex.explanation
+    });
+  }
+
+  // Practical sentence-building exercises
+  const practicalCategoryId = categoryIdBySlug['praktische-zinnen'];
+  if (!practicalCategoryId) throw new Error("Missing category 'praktische-zinnen' for practical sentences");
+  for (const sentence of practicalSentences) {
+    insertExercise.run({
+      category_id: practicalCategoryId,
+      word_id: null,
+      grammar_rule_id: null,
+      type: 'sentence_build',
+      prompt: sentence.prompt,
+      correct_answer: sentence.tokens.join(' '),
+      options: JSON.stringify(shuffle(sentence.tokens)),
+      explanation: sentence.explanation
     });
   }
 });

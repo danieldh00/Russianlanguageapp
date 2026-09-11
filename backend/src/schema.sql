@@ -70,6 +70,12 @@ CREATE TABLE IF NOT EXISTS attempts (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS study_days (
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  study_date TEXT NOT NULL,
+  PRIMARY KEY (user_id, study_date)
+);
+
 CREATE INDEX IF NOT EXISTS idx_words_category ON words(category_id);
 CREATE INDEX IF NOT EXISTS idx_exercises_category ON exercises(category_id);
 CREATE INDEX IF NOT EXISTS idx_uwp_user ON user_word_progress(user_id);

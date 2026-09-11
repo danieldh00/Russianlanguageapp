@@ -20,6 +20,9 @@ function recordAttempt(userId, exercise, givenAnswer, { clientId = null, clientT
   const given = (givenAnswer || '').toString();
   const isCorrect = given.trim().toLowerCase() === exercise.correct_answer.trim().toLowerCase() ? 1 : 0;
 
+  const studyDate = (clientTimestamp ? new Date(clientTimestamp) : new Date()).toISOString().slice(0, 10);
+  db.prepare('INSERT OR IGNORE INTO study_days (user_id, study_date) VALUES (?, ?)').run(userId, studyDate);
+
   if (clientTimestamp) {
     db.prepare(
       'INSERT INTO attempts (user_id, exercise_id, given_answer, is_correct, client_id, created_at) VALUES (?, ?, ?, ?, ?, ?)'

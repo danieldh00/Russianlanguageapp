@@ -51,6 +51,36 @@ function escapeHtml(str) {
   return String(str).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
+// ---------- immersion: listen to the Russian text ----------
+
+const CYRILLIC_RUN = /[Ѐ-ӿ][Ѐ-ӿ\s.,!?'"()-]*[Ѐ-ӿ]|[Ѐ-ӿ]/;
+
+function extractSpeakText(ex) {
+  if (CYRILLIC_RUN.test(ex.correctAnswer)) return ex.correctAnswer;
+  const match = ex.prompt.match(CYRILLIC_RUN);
+  return match ? match[0].trim() : null;
+}
+
+function speakRussian(text) {
+  if (!text || !('speechSynthesis' in window)) return;
+  try {
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'ru-RU';
+    utterance.rate = 0.9;
+    window.speechSynthesis.speak(utterance);
+  } catch (e) {
+    /* Web Speech API not available or blocked -- listening is a bonus, not required */
+  }
+}
+
+function renderSpeakButton(text) {
+  if (!text || !('speechSynthesis' in window)) return null;
+  const btn = el(`<button type="button" class="speak-btn" aria-label="Luister naar de Russische uitspraak">🔊 Luister</button>`);
+  btn.addEventListener('click', () => speakRussian(text));
+  return btn;
+}
+
 // ---------- auth ----------
 
 async function ensureUser() {
@@ -108,6 +138,11 @@ async function pullWordProgress() {
   Storage.saveWordProgress(username, map);
 }
 
+async function pullStats() {
+  const stats = await api('/progress/stats');
+  Storage.saveStats(state.user.username, stats);
+}
+
 async function syncAll({ force = false } = {}) {
   if (!state.user || syncInFlight || !navigator.onLine) {
     state.pendingCount = state.user ? Storage.loadOutbox(state.user.username).length : 0;
@@ -125,6 +160,7 @@ async function syncAll({ force = false } = {}) {
       await refreshContentIfStale();
     }
     await pullWordProgress();
+    await pullStats();
   } catch (e) {
     // best-effort: offline or a flaky connection, the local outbox keeps the data safe
   } finally {
@@ -150,6 +186,7 @@ async function ensureContentLoaded() {
       content = await api('/content');
       Storage.saveContent(username, content);
       await pullWordProgress().catch(() => {});
+      await pullStats().catch(() => {});
     } catch (e) {
       content = null;
     }
@@ -167,6 +204,8 @@ function renderNav() {
   if (state.user) {
     nav.appendChild(el(`<a href="#/dashboard">Lessen</a>`));
     nav.appendChild(el(`<a href="#/progress">Voortgang</a>`));
+    const gamBadge = renderGamificationBadge();
+    if (gamBadge) nav.appendChild(gamBadge);
     nav.appendChild(renderSyncBadge());
     nav.appendChild(el(`<span class="muted" style="margin-left:4px">${escapeHtml(state.user.username)}</span>`));
     const btn = el(`<button>Uitloggen</button>`);
@@ -181,6 +220,16 @@ function renderNav() {
     nav.appendChild(el(`<a href="#/login">Inloggen</a>`));
     nav.appendChild(el(`<a href="#/register">Registreren</a>`));
   }
+}
+
+function renderGamificationBadge() {
+  const stats = Storage.loadStats(state.user.username);
+  if (!stats) return null;
+  const span = el(`<span class="gam-badge"></span>`);
+  span.innerHTML =
+    `<span class="gam-streak" title="Dagen op rij geoefend">🔥 ${stats.currentStreak}</span>` +
+    `<span class="gam-xp" title="${escapeHtml(stats.title)}">⭐ ${stats.xp} XP</span>`;
+  return span;
 }
 
 function renderSyncBadge() {
@@ -353,26 +402,60 @@ async function renderDashboard() {
   if (!content) return renderNoContentMessage();
 
   const username = state.user.username;
-  const wrapper = el(`<div><h1>Lessen</h1><p class="muted">Kies een les om te oefenen. Alles werkt ook zonder internet; je voortgang wordt gesynchroniseerd zodra je weer online bent.</p><div class="grid" id="lesson-grid"></div></div>`);
+  const allStats = content.categories.map((cat) => ({ cat, stats: categoryStats(username, content, cat.slug) }));
+
+  // Grammar/sentence-only categories have no tracked vocabulary (no SRS
+  // signal), so they can't be "complete" or block the path -- they're always
+  // shown as freely available. The recommended path (current/upcoming/locked)
+  // is only computed over categories that do have trackable words.
+  const wordBearing = allStats.filter(({ stats }) => stats.totalWords > 0);
+  const wordBearingIndex = new Map(wordBearing.map(({ cat }, idx) => [cat.slug, idx]));
+  let frontier = wordBearing.findIndex(({ stats }) => stats.masteredWords < stats.totalWords);
+  if (frontier === -1) frontier = wordBearing.length; // everything mastered
+
+  const wrapper = el(`
+    <div>
+      <h1>Jouw pad door het Russisch</h1>
+      <p class="muted">Volg het pad van boven naar beneden, of kies zelf een les. Alles werkt ook zonder internet.</p>
+      <div class="lesson-path" id="lesson-path"></div>
+    </div>
+  `);
   app.innerHTML = '';
   app.appendChild(wrapper);
 
-  const grid = wrapper.querySelector('#lesson-grid');
-  for (const cat of content.categories) {
-    const stats = categoryStats(username, content, cat.slug);
-    const pct = stats.totalWords ? Math.round((stats.masteredWords / stats.totalWords) * 100) : 0;
-    const card = el(`
-      <div class="card lesson-card">
-        <span class="level-badge">${escapeHtml(cat.level)}</span>
-        <h2>${escapeHtml(cat.name)}</h2>
-        <p class="muted">${escapeHtml(cat.description || '')}</p>
-        <p class="muted">${stats.masteredWords}/${stats.totalWords} woorden onder de knie${stats.dueWords ? ` &middot; ${stats.dueWords} te herhalen` : ''}</p>
-        <div class="progress-bar"><div class="progress-bar-fill" style="width:${pct}%"></div></div>
+  const path = wrapper.querySelector('#lesson-path');
+  allStats.forEach(({ cat, stats }, i) => {
+    const hasWords = stats.totalWords > 0;
+    const complete = hasWords && stats.masteredWords === stats.totalWords;
+    const pct = hasWords ? Math.round((stats.masteredWords / stats.totalWords) * 100) : 0;
+
+    let nodeState = 'available';
+    if (complete) nodeState = 'complete';
+    else if (hasWords) {
+      const wi = wordBearingIndex.get(cat.slug);
+      if (wi === frontier) nodeState = 'current';
+      else if (wi > frontier + 1) nodeState = 'upcoming';
+    }
+
+    const marker = complete ? '✓' : nodeState === 'upcoming' ? '🔒' : String(i + 1);
+    const progressLine = hasWords
+      ? `${stats.masteredWords}/${stats.totalWords} woorden onder de knie${stats.dueWords ? ` &middot; ${stats.dueWords} te herhalen` : ''}`
+      : `${stats.totalExercises} oefeningen`;
+
+    const node = el(`
+      <div class="path-node ${nodeState}">
+        <div class="path-marker">${marker}</div>
+        <button class="card lesson-card" type="button">
+          <div class="row1"><h2>${escapeHtml(cat.name)}</h2><span class="level-badge">${escapeHtml(cat.level)}</span></div>
+          <p class="muted">${escapeHtml(cat.description || '')}</p>
+          <p class="muted">${progressLine}</p>
+          ${hasWords ? `<div class="progress-bar"><div class="progress-bar-fill" style="width:${pct}%"></div></div>` : ''}
+        </button>
       </div>
     `);
-    card.addEventListener('click', () => { location.hash = `#/lesson/${cat.slug}`; });
-    grid.appendChild(card);
-  }
+    node.querySelector('.lesson-card').addEventListener('click', () => { location.hash = `#/lesson/${cat.slug}`; });
+    path.appendChild(node);
+  });
 }
 
 // ---------- lesson / quiz (fully local: grading, SRS update, outbox) ----------
@@ -444,18 +527,66 @@ function gradeAndRecord(ex) {
   };
 }
 
+function renderSentenceBuild(ex, container, onSubmit) {
+  let pool = shuffle(ex.options);
+  let selected = [];
+  let submitted = false;
+
+  function paint() {
+    container.innerHTML = '';
+
+    const answerRow = el(`<div class="chip-row chip-answer"></div>`);
+    if (!selected.length) answerRow.appendChild(el(`<span class="muted chip-placeholder">Tik hieronder de woorden in de juiste volgorde</span>`));
+    selected.forEach((tok, i) => {
+      const chip = el(`<button type="button" class="chip filled">${escapeHtml(tok)}</button>`);
+      if (!submitted) chip.addEventListener('click', () => { selected.splice(i, 1); pool.push(tok); paint(); });
+      else chip.disabled = true;
+      answerRow.appendChild(chip);
+    });
+    container.appendChild(answerRow);
+
+    const poolRow = el(`<div class="chip-row chip-pool"></div>`);
+    pool.forEach((tok, i) => {
+      const chip = el(`<button type="button" class="chip">${escapeHtml(tok)}</button>`);
+      if (!submitted) chip.addEventListener('click', () => { pool.splice(i, 1); selected.push(tok); paint(); });
+      else chip.disabled = true;
+      poolRow.appendChild(chip);
+    });
+    container.appendChild(poolRow);
+
+    if (!submitted) {
+      const submitBtn = el(`<button type="button" class="primary" style="margin-top:14px">Controleren</button>`);
+      submitBtn.disabled = selected.length === 0;
+      submitBtn.addEventListener('click', () => {
+        submitted = true;
+        const value = selected.join(' ');
+        paint();
+        onSubmit(value);
+      });
+      container.appendChild(submitBtn);
+    }
+  }
+
+  paint();
+}
+
 function renderExercise(session) {
   const ex = session.items[session.index];
   app.innerHTML = '';
+  const speakText = extractSpeakText(ex);
   const wrapper = el(`
     <div class="card">
       <div class="exercise-progress">${escapeHtml(session.category.name)} &middot; vraag ${session.index + 1} van ${session.items.length}</div>
-      <h2>${escapeHtml(ex.prompt)}</h2>
+      <div class="prompt-row"><h2>${escapeHtml(ex.prompt)}</h2></div>
       <div id="options"></div>
       <div id="feedback"></div>
     </div>
   `);
   app.appendChild(wrapper);
+
+  const promptRow = wrapper.querySelector('.prompt-row');
+  const speakBtn = renderSpeakButton(speakText);
+  if (speakBtn) promptRow.appendChild(speakBtn);
 
   const optionsDiv = wrapper.querySelector('#options');
   const feedbackDiv = wrapper.querySelector('#feedback');
@@ -477,9 +608,29 @@ function renderExercise(session) {
         ${isCorrect ? '' : `<div>Het juiste antwoord is: <strong>${escapeHtml(ex.correctAnswer)}</strong></div>`}
         <div class="explanation">${escapeHtml(ex.explanation)}</div>
         ${ex.grammarRule ? `<div class="grammar-rule"><strong>${escapeHtml(ex.grammarRule.title)}:</strong> ${escapeHtml(ex.grammarRule.explanation)}</div>` : ''}
+        <div id="ai-explain-slot"></div>
       </div>
     `);
     feedbackDiv.appendChild(fb);
+
+    if (!isCorrect && navigator.onLine) {
+      const aiSlot = fb.querySelector('#ai-explain-slot');
+      const aiBtn = el(`<button type="button" class="ai-btn">🤖 Vraag AI om een diepere uitleg</button>`);
+      aiBtn.addEventListener('click', async () => {
+        aiBtn.disabled = true;
+        aiBtn.textContent = '🤖 Even denken…';
+        try {
+          const data = await api('/ai/explain', { method: 'POST', body: { exerciseId: ex.id, givenAnswer: chosenAnswer } });
+          aiSlot.appendChild(el(`<div class="ai-explanation"><strong>🤖 AI-uitleg</strong><p>${escapeHtml(data.explanation)}</p></div>`));
+          aiBtn.remove();
+        } catch (err) {
+          aiBtn.disabled = false;
+          aiBtn.textContent = '🤖 Vraag AI om een diepere uitleg';
+          aiSlot.appendChild(el(`<p class="error-message">${escapeHtml(err.message)}</p>`));
+        }
+      });
+      aiSlot.appendChild(aiBtn);
+    }
 
     const nextBtn = el(`<button class="primary" style="margin-top:14px">${session.index + 1 < session.items.length ? 'Volgende' : 'Klaar'}</button>`);
     nextBtn.addEventListener('click', () => {
@@ -490,7 +641,9 @@ function renderExercise(session) {
     feedbackDiv.appendChild(nextBtn);
   }
 
-  if (ex.options && ex.options.length) {
+  if (ex.type === 'sentence_build' && ex.options && ex.options.length) {
+    renderSentenceBuild(ex, optionsDiv, (value) => afterAnswer(record(value), value));
+  } else if (ex.options && ex.options.length) {
     for (const opt of ex.options) {
       const btn = el(`<button class="option-btn" data-value="${escapeHtml(opt)}">${escapeHtml(opt)}</button>`);
       btn.addEventListener('click', () => afterAnswer(record(opt), opt));
@@ -564,6 +717,40 @@ async function renderProgress() {
       </div>
     </div>
   `));
+
+  const stats = Storage.loadStats(username);
+  if (stats) {
+    const pctIntoLevel = stats.xpForNextLevel ? Math.round((stats.xpIntoLevel / stats.xpForNextLevel) * 100) : 100;
+    const levelCard = el(`
+      <div class="card">
+        <h2>Niveau &amp; reeks</h2>
+        <div class="level-row">
+          <div class="level-info">
+            <div class="level-title">Niveau ${stats.level} &middot; ${escapeHtml(stats.title)}</div>
+            <div class="progress-bar"><div class="progress-bar-fill" style="width:${pctIntoLevel}%"></div></div>
+            <div class="muted" style="font-size:0.8rem;margin-top:4px">${stats.xp} XP${stats.xpForNextLevel ? ` &middot; nog ${stats.xpForNextLevel - stats.xpIntoLevel} XP tot ${escapeHtml(stats.nextTitle)}` : ' &middot; hoogste niveau bereikt'}</div>
+          </div>
+          <div class="streak-info">
+            <div class="streak-value">🔥 ${stats.currentStreak}</div>
+            <div class="muted" style="font-size:0.78rem">dagen op rij${stats.longestStreak > stats.currentStreak ? ` (langste: ${stats.longestStreak})` : ''}</div>
+          </div>
+        </div>
+      </div>
+    `);
+    app.appendChild(levelCard);
+
+    const achCard = el(`<div class="card"><h2>Badges</h2><div class="badge-grid" id="badge-grid"></div></div>`);
+    const badgeGrid = achCard.querySelector('#badge-grid');
+    for (const a of stats.achievements) {
+      badgeGrid.appendChild(el(`
+        <div class="badge ${a.unlocked ? 'unlocked' : 'locked'}" title="${escapeHtml(a.description)}">
+          <div class="badge-icon">${a.icon}</div>
+          <div class="badge-title">${escapeHtml(a.title)}</div>
+        </div>
+      `));
+    }
+    app.appendChild(achCard);
+  }
 
   const catCard = el(`<div class="card"><h2>Voortgang per les</h2><table><thead><tr><th>Les</th><th>Gestart</th><th>Onder de knie</th></tr></thead><tbody id="cat-body"></tbody></table></div>`);
   app.appendChild(catCard);

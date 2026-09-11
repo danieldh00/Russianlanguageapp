@@ -1,6 +1,7 @@
 const express = require('express');
 const db = require('../db');
 const { requireAuth } = require('../middleware');
+const { XP_PER_CORRECT, levelForXp, computeStreak, computeAchievements } = require('../gamification');
 
 const router = express.Router();
 
@@ -49,6 +50,52 @@ router.get('/words', requireAuth, (req, res) => {
     )
     .all(userId);
   res.json({ words: rows });
+});
+
+// GET /api/progress/stats -> gamification: XP, level, study streak, achievements
+router.get('/stats', requireAuth, (req, res) => {
+  const userId = req.session.userId;
+
+  const correctCount = db.prepare("SELECT COUNT(*) c FROM attempts WHERE user_id = ? AND is_correct = 1").get(userId).c;
+  const totalAttempts = db.prepare('SELECT COUNT(*) c FROM attempts WHERE user_id = ?').get(userId).c;
+  const xp = correctCount * XP_PER_CORRECT;
+  const level = levelForXp(xp);
+
+  const studyDates = db.prepare('SELECT study_date FROM study_days WHERE user_id = ?').all(userId).map((r) => r.study_date);
+  const { currentStreak, longestStreak } = computeStreak(studyDates);
+
+  const wordsMastered = db
+    .prepare('SELECT COUNT(*) c FROM user_word_progress WHERE user_id = ? AND interval_days >= 6')
+    .get(userId).c;
+
+  const perCategory = db
+    .prepare(
+      `SELECT c.slug,
+         COUNT(DISTINCT w.id) as totalWords,
+         COUNT(DISTINCT CASE WHEN uwp.interval_days >= 6 THEN w.id END) as masteredWords
+       FROM categories c
+       LEFT JOIN words w ON w.category_id = c.id
+       LEFT JOIN user_word_progress uwp ON uwp.word_id = w.id AND uwp.user_id = ?
+       GROUP BY c.id`
+    )
+    .all(userId);
+
+  const grammarCategories = perCategory.filter((c) => c.slug.startsWith('grammar-') && c.totalWords > 0);
+  const allGrammarMastered = grammarCategories.length > 0 && grammarCategories.every((c) => c.masteredWords === c.totalWords);
+  const greetings = perCategory.find((c) => c.slug === 'greetings');
+  const greetingsMastered = !!greetings && greetings.totalWords > 0 && greetings.masteredWords === greetings.totalWords;
+
+  const achievements = computeAchievements({
+    totalAttempts,
+    wordsMastered,
+    currentStreak,
+    longestStreak,
+    xp,
+    allGrammarMastered,
+    greetingsMastered
+  });
+
+  res.json({ xp, ...level, currentStreak, longestStreak, achievements });
 });
 
 router.get('/mistakes', requireAuth, (req, res) => {

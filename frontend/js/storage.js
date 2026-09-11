@@ -66,5 +66,9 @@ const Storage = {
     log.unshift(entry);
     Storage.saveAttemptsLog(username, log.slice(0, 200));
   },
-  saveAttemptsLog(username, log) { writeJSON(`ru:${username}:attemptsLog`, log); }
+  saveAttemptsLog(username, log) { writeJSON(`ru:${username}:attemptsLog`, log); },
+
+  // gamification snapshot (xp/level/streak/achievements), refreshed on every sync
+  loadStats(username) { return readJSON(`ru:${username}:stats`, null); },
+  saveStats(username, stats) { writeJSON(`ru:${username}:stats`, stats); }
 };
