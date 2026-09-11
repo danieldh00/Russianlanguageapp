@@ -147,5 +147,161 @@ module.exports = [
     options: ['он', 'его', 'ему'],
     explanation:
       "Als lijdend voorwerp wordt 'он' onregelmatig 'его'. Persoonlijke voornaamwoorden volgen geen vaste naamvalsuitgang zoals zelfstandige naamwoorden en moeten apart geleerd worden."
+  },
+
+  // CASE-GEN
+  {
+    category: 'grammar-cases', grammarRule: 'CASE-GEN', type: 'mc',
+    prompt: "Vul aan: У меня нет ___. (ik heb geen boek — книга)",
+    correctAnswer: 'книги',
+    options: ['книга', 'книгу', 'книги'],
+    explanation:
+      "Na 'нет' (er is geen) gebruik je altijd de genitief, nooit de nominatief of accusatief. 'книга' is vrouwelijk op -а, dus wordt dat in de genitief -и: книги. De fout 'книгу' komt vaak voort uit verwarring met de accusatief, maar 'нет' vraagt specifiek om de genitief."
+  },
+  {
+    category: 'grammar-cases', grammarRule: 'CASE-GEN', type: 'mc',
+    prompt: "Vul aan: Это дом ___. (dit is het huis van vader — папа)",
+    correctAnswer: 'папы',
+    options: ['папа', 'папы', 'папе'],
+    explanation:
+      "Om bezit uit te drukken ('van iemand') gebruik je de genitief. Mannelijke woorden op -а (zoals папа, die als een 'vrouwelijk' woord verbuigt ondanks het mannelijke geslacht) krijgen in de genitief de uitgang -ы: папа → папы."
+  },
+
+  // CASE-DAT
+  {
+    category: 'grammar-cases', grammarRule: 'CASE-DAT', type: 'mc',
+    prompt: "Vul aan: Я дарю подарок ___. (ik geef een cadeau aan een vriend — друг)",
+    correctAnswer: 'другу',
+    options: ['друг', 'друга', 'другу'],
+    explanation:
+      "'друг' is hier het meewerkend voorwerp (aan wie geef je het cadeau?), dus gebruik je de datief. Mannelijke woorden op een medeklinker krijgen in de datief de uitgang -у: друг → другу."
+  },
+  {
+    category: 'grammar-cases', grammarRule: 'CASE-DAT', type: 'mc',
+    prompt: "Vul aan: ___ 25 лет. (moeder is 25 — мама, bij leeftijd gebruik je de datief van de persoon)",
+    correctAnswer: 'Маме',
+    options: ['Мама', 'Маму', 'Маме'],
+    explanation:
+      "Bij leeftijd gebruikt het Russisch een vaste constructie met de datief: 'Мне 30 лет' (ik ben 30, letterlijk 'aan mij 30 jaar'). 'мама' krijgt daarom de datiefuitgang -е: маме."
+  },
+
+  // CASE-INST
+  {
+    category: 'grammar-cases', grammarRule: 'CASE-INST', type: 'mc',
+    prompt: "Vul aan: Я пишу ___. (ik schrijf met een pen — ручка)",
+    correctAnswer: 'ручкой',
+    options: ['ручка', 'ручку', 'ручкой'],
+    explanation:
+      "Om aan te geven waarmee iets gebeurt ('met'), gebruik je de instrumentalis. Vrouwelijke woorden op -а krijgen in de instrumentalis de uitgang -ой: ручка → ручкой."
+  },
+  {
+    category: 'grammar-cases', grammarRule: 'CASE-INST', type: 'mc',
+    prompt: "Vul aan: Он был ___. (hij was arts — врач)",
+    correctAnswer: 'врачом',
+    options: ['врач', 'врача', 'врачом'],
+    explanation:
+      "Na een vorm van быть (zijn) in de verleden of toekomende tijd gebruik je voor het beroep de instrumentalis, niet de nominatief. Mannelijke woorden op een medeklinker krijgen -ом: врач → врачом."
+  },
+
+  // CASE-PREP
+  {
+    category: 'grammar-cases', grammarRule: 'CASE-PREP', type: 'mc',
+    prompt: "Vul aan: Я живу в ___. (ik woon in de stad — город)",
+    correctAnswer: 'городе',
+    options: ['город', 'города', 'городе'],
+    explanation:
+      "Na het voorzetsel 'в' (in, plaats) gebruik je de prepositief. Deze naamval komt nooit zelfstandig voor, alleen samen met een voorzetsel als в of на. Mannelijke woorden krijgen in de prepositief de uitgang -е: город → городе."
+  },
+
+  // ADJ-AGREEMENT
+  {
+    category: 'grammar-adjectives', grammarRule: 'ADJ-AGREEMENT', type: 'mc',
+    prompt: "Vul aan: ___ книга (een nieuw boek — новый)",
+    correctAnswer: 'новая',
+    options: ['новый', 'новая', 'новое'],
+    explanation:
+      "'книга' is vrouwelijk, dus moet het bijvoeglijk naamwoord ook de vrouwelijke uitgang krijgen: -ая. 'новый' is de mannelijke vorm en hoort dus niet bij 'книга'. Een bijvoeglijk naamwoord moet altijd in geslacht overeenkomen met het zelfstandig naamwoord dat het beschrijft."
+  },
+  {
+    category: 'grammar-adjectives', grammarRule: 'ADJ-AGREEMENT', type: 'mc',
+    prompt: "Vul aan: ___ окно (een groot raam — большой)",
+    correctAnswer: 'большое',
+    options: ['большой', 'большая', 'большое'],
+    explanation:
+      "'окно' is onzijdig, dus krijgt het bijvoeglijk naamwoord de onzijdige uitgang -ое: большое. De mannelijke vorm 'большой' zou hier fout zijn, ook al lijkt die qua uitgang op wat je zou verwachten."
+  },
+  {
+    category: 'grammar-adjectives', grammarRule: 'ADJ-AGREEMENT', type: 'mc',
+    prompt: "Vul aan: ___ столы (nieuwe tafels — новый, meervoud)",
+    correctAnswer: 'новые',
+    options: ['новый', 'новая', 'новые'],
+    explanation:
+      "In het meervoud krijgen bijvoeglijke naamwoorden voor alle geslachten dezelfde uitgang: -ые (of -ие na г,к,х,ж,ч,ш,щ). 'столы' is meervoud, dus wordt het 'новые столы', ongeacht dat 'стол' oorspronkelijk mannelijk is."
+  },
+
+  // VERB-PAST
+  {
+    category: 'grammar-tense', grammarRule: 'VERB-PAST', type: 'mc',
+    prompt: "Vul aan (vrouwelijke spreker): Вчера я ___ телевизор. (gisteren keek ik tv — смотреть)",
+    correctAnswer: 'смотрела',
+    options: ['смотрел', 'смотрела', 'смотрю'],
+    explanation:
+      "In de verleden tijd bepaalt het geslacht van het onderwerp de uitgang, niet de persoon. Bij een vrouwelijke spreker ('я' = een vrouw) hoort de uitgang -ла: смотрела. 'смотрел' is de mannelijke vorm en 'смотрю' is de tegenwoordige tijd, die hier niet past bij 'вчера' (gisteren)."
+  },
+  {
+    category: 'grammar-tense', grammarRule: 'VERB-PAST', type: 'mc',
+    prompt: "Vul aan: Мы ___ фильм. (wij keken een film — смотреть, meervoud)",
+    correctAnswer: 'смотрели',
+    options: ['смотрел', 'смотрели', 'смотрит'],
+    explanation:
+      "Bij een meervoudig onderwerp ('мы') krijgt de verleden tijd altijd de uitgang -ли, ongeacht het geslacht van de personen: смотрели."
+  },
+
+  // VERB-FUTURE
+  {
+    category: 'grammar-tense', grammarRule: 'VERB-FUTURE', type: 'mc',
+    prompt: "Vul aan: Завтра я ___ фильм. (morgen ga ik een film kijken — смотреть, onvoltooid)",
+    correctAnswer: 'буду смотреть',
+    options: ['буду смотреть', 'смотрел', 'смотрю'],
+    explanation:
+      "Voor de toekomende tijd van een onvoltooid werkwoord gebruik je de vervoegde vorm van быть (hier: буду bij 'я') plus de infinitief: буду смотреть. 'смотрю' is tegenwoordige tijd en past niet bij 'завтра' (morgen)."
+  },
+
+  // ASPECT-INTRO
+  {
+    category: 'grammar-tense', grammarRule: 'ASPECT-INTRO', type: 'mc',
+    prompt: "Welke zin benadrukt dat het boek helemaal uit is (een afgerond resultaat)?",
+    correctAnswer: 'Я прочитал книгу.',
+    options: ['Я читал книгу.', 'Я прочитал книгу.', 'Я читаю книгу.'],
+    explanation:
+      "'прочитать' is het voltooide aspect van 'читать' en benadrukt dat de handeling is afgerond met een resultaat: het boek is uitgelezen. 'Я читал книгу' (onvoltooid) beschrijft alleen dat je bezig was met lezen, zonder te zeggen of je klaar bent."
+  },
+
+  // NEGATION-NE
+  {
+    category: 'grammar-questions-negation', grammarRule: 'NEGATION-NE', type: 'mc',
+    prompt: "Hoe zeg je 'ik weet niets' correct in het Russisch?",
+    correctAnswer: 'Я ничего не знаю.',
+    options: ['Я ничего знаю.', 'Я ничего не знаю.', 'Я не ничего знаю.'],
+    explanation:
+      "In het Russisch is dubbele ontkenning verplicht: naast het ontkennende woord 'ничего' (niets) moet er ook 'не' vóór het werkwoord staan. 'Я ничего знаю' mist het 'не' bij het werkwoord en is daarom fout, ook al zou je vanuit het Nederlands verwachten dat één ontkennend woord genoeg is."
+  },
+  {
+    category: 'grammar-questions-negation', grammarRule: 'NEGATION-NE', type: 'mc',
+    prompt: "Hoe ontken je: Я говорю по-русски. (ik spreek Russisch)?",
+    correctAnswer: 'Я не говорю по-русски.',
+    options: ['Я не говорю по-русски.', 'Я говорю не по-русски.', 'Не я говорю по-русски.'],
+    explanation:
+      "Om de hele zin te ontkennen (ik spreek geen Russisch) plaats je 'не' direct vóór het werkwoord: Я не говорю по-русски. Zou je 'не' voor 'по-русски' zetten, dan ontken je alleen dat woord specifiek ('ik spreek, maar niet in het Russisch'), wat een andere betekenis geeft."
+  },
+
+  // QUESTION-INTONATION
+  {
+    category: 'grammar-questions-negation', grammarRule: 'QUESTION-INTONATION', type: 'mc',
+    prompt: "Hoe maak je van 'Ты говоришь по-русски.' een ja/nee-vraag?",
+    correctAnswer: 'Ты говоришь по-русски?',
+    options: ['Говоришь ты по-русски?', 'Ты говоришь по-русски?', 'До ты говоришь по-русски?'],
+    explanation:
+      "In het Russisch verandert de woordvolgorde niet bij een ja/nee-vraag zoals in het Nederlands ('spreek je...?'). Je gebruikt exact dezelfde woordvolgorde als de mededeling en maakt er met stijgende intonatie (en een vraagteken in geschreven tekst) een vraag van: Ты говоришь по-русски?"
   }
 ];

@@ -54,5 +54,75 @@ module.exports = [
     explanation:
       "Persoonlijke voornaamwoorden veranderen sterk per naamval en volgen geen regelmatig patroon, dus die moet je uit je hoofd leren. In de accusatief/genitief wordt я → меня, ты → тебя, он → его, она → её, мы → нас, вы → вас, они → их.",
     example: 'Я вижу тебя. (ik zie jou) — ты wordt тебя als lijdend voorwerp'
+  },
+  {
+    code: 'CASE-GEN',
+    title: 'Naamval: genitief',
+    explanation:
+      "De genitief gebruik je om bezit aan te geven ('van'), na de ontkenning 'нет' (er is geen), na hoeveelheden/telwoorden, en na voorzetsels als без (zonder), для (voor), из (uit) en у (bij). Vrouwelijke woorden op -а/-я krijgen -ы/-и, mannelijke woorden op een medeklinker krijgen -а, en onzijdige woorden op -о krijgen -а (let op: dat is dezelfde uitgang als het onzijdige meervoud in de nominatief — de context maakt het verschil duidelijk).",
+    example: 'У меня нет книги. (ik heb geen boek — книга → книги, na нет)'
+  },
+  {
+    code: 'CASE-DAT',
+    title: 'Naamval: datief',
+    explanation:
+      "De datief gebruik je voor het meewerkend voorwerp ('aan/voor iemand'), bij leeftijd (Мне 25 лет — ik ben 25) en bij werkwoorden als нравиться (bevallen/leuk vinden). Mannelijke en onzijdige woorden krijgen de uitgang -у/-ю, vrouwelijke woorden op -а/-я krijgen -е.",
+    example: 'Я дарю подарок маме. (ik geef een cadeau aan moeder — мама → маме)'
+  },
+  {
+    code: 'CASE-INST',
+    title: 'Naamval: instrumentalis',
+    explanation:
+      "De instrumentalis gebruik je om aan te geven waarmee of met wie iets gebeurt ('met'), en na een vorm van быть (zijn) in verleden of toekomst om een beroep of rol te noemen. Mannelijke en onzijdige woorden krijgen de uitgang -ом/-ем, vrouwelijke woorden op -а/-я krijgen -ой/-ей.",
+    example: 'Он был врачом. (hij was arts — врач → врачом)'
+  },
+  {
+    code: 'CASE-PREP',
+    title: 'Naamval: prepositief',
+    explanation:
+      "De prepositief (ook wel de zesde naamval genoemd) bestaat nooit zonder voorzetsel: hij komt alleen voor na в/на (in/op, plaats) en о/об (over, onderwerp van gesprek). Zowel mannelijke, onzijdige als vrouwelijke woorden op -а/-я krijgen meestal de uitgang -е.",
+    example: 'Я живу в Москве. (ik woon in Moskou — Москва → Москве)'
+  },
+  {
+    code: 'ADJ-AGREEMENT',
+    title: 'Overeenkomst van bijvoeglijke naamwoorden',
+    explanation:
+      "Een bijvoeglijk naamwoord stemt in geslacht, getal en naamval overeen met het zelfstandig naamwoord waar het bij hoort. In de nominatief enkelvoud krijgt het bij een mannelijk woord de uitgang -ый/-ий, bij een vrouwelijk woord -ая/-яя, bij een onzijdig woord -ое/-ее, en in het meervoud (voor alle geslachten samen) -ые/-ие.",
+    example: 'новый стол (m), новая книга (v), новое окно (o), новые столы (mv)'
+  },
+  {
+    code: 'VERB-PAST',
+    title: 'Verleden tijd',
+    explanation:
+      "De verleden tijd vorm je door de infinitiefuitgang -ть te vervangen door -л (bij een mannelijk onderwerp), -ла (vrouwelijk), -ло (onzijdig) of -ли (meervoud). Er bestaat geen aparte uitgang per persoon zoals bij de tegenwoordige tijd — alleen het geslacht en getal van het onderwerp bepalen de uitgang, niet of het 'ik', 'jij' of 'hij' is.",
+    example: 'читать → я читал (mannelijke spreker) / я читала (vrouwelijke spreker), они читали'
+  },
+  {
+    code: 'VERB-FUTURE',
+    title: 'Toekomende tijd',
+    explanation:
+      "De toekomende tijd van onvoltooide werkwoorden (een doorlopende of herhaalde handeling) vorm je met een vervoegde vorm van быть (буду, будешь, будет, будем, будете, будут) plus de infinitief. Voltooide werkwoorden (een eenmalige, afgeronde handeling) hebben hun eigen vervoegde toekomstvorm, zonder быть erbij.",
+    example: 'Я буду читать. (ik ga lezen, onvoltooid) vs. Я прочитаю. (ik lees het uit, voltooid)'
+  },
+  {
+    code: 'ASPECT-INTRO',
+    title: 'Aspect: onvoltooid vs. voltooid',
+    explanation:
+      "De meeste Russische werkwoorden bestaan in twee versies: onvoltooid (nadruk op het proces, de duur of herhaling) en voltooid (nadruk op een eenmalige, afgeronde handeling met een resultaat). Het voltooide werkwoord wordt vaak gevormd met een voorvoegsel: читать (lezen, onvoltooid) → прочитать (uitlezen, voltooid). Dit onderscheid bestaat niet in het Nederlands en is een van de lastigste onderdelen van het Russisch.",
+    example: 'Я читал книгу весь день. (ik was de hele dag een boek aan het lezen) vs. Я прочитал книгу. (ik heb het boek uitgelezen)'
+  },
+  {
+    code: 'NEGATION-NE',
+    title: 'Ontkenning met не',
+    explanation:
+      "Je ontkent een zin door 'не' vlak vóór het werkwoord (of het woord dat ontkend wordt) te plaatsen. Let op: in het Russisch is dubbele ontkenning normaal en zelfs verplicht, anders dan in het Nederlands: 'Я ничего не знаю' betekent letterlijk 'ik niets niet weet', oftewel 'ik weet niets'.",
+    example: 'Я не знаю. (ik weet het niet) — Я ничего не знаю. (ik weet niets)'
+  },
+  {
+    code: 'QUESTION-INTONATION',
+    title: 'Ja/nee-vragen met intonatie',
+    explanation:
+      "Een ja/nee-vraag vorm je in het Russisch niet door de woordvolgorde om te draaien (zoals in het Nederlands 'ga je?'), maar met stijgende intonatie op het belangrijkste woord — de woordvolgorde blijft hetzelfde als in de mededeling. Vragen mét een vraagwoord (что, где, когда, почему) beginnen meestal met dat vraagwoord, net als in het Nederlands.",
+    example: 'Ты говоришь по-русски? heeft dezelfde volgorde als: Ты говоришь по-русски. — alleen de intonatie (en het vraagteken) maakt het een vraag.'
   }
 ];

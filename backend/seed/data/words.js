@@ -73,5 +73,141 @@ module.exports = [
   { category: 'grammar-nouns', russian: 'книга', transliteration: 'kniga', translation_nl: 'boek', gender: 'v', grammarRule: 'CASE-NOM-ACC' },
   { category: 'grammar-nouns', russian: 'стол', transliteration: 'stol', translation_nl: 'tafel', gender: 'm', grammarRule: 'PLURAL-NOUN' },
   { category: 'grammar-nouns', russian: 'окно', transliteration: 'okno', translation_nl: 'raam', gender: 'o', grammarRule: 'PLURAL-NOUN' },
-  { category: 'grammar-nouns', russian: 'дверь', transliteration: 'dver', translation_nl: 'deur', gender: 'v', grammarRule: 'SOFT-HARD-SIGN' }
+  { category: 'grammar-nouns', russian: 'дверь', transliteration: 'dver', translation_nl: 'deur', gender: 'v', grammarRule: 'SOFT-HARD-SIGN' },
+
+  // --- numbers-large ---
+  { category: 'numbers-large', russian: 'одиннадцать', transliteration: 'odinnadtsat', translation_nl: 'elf (11)' },
+  { category: 'numbers-large', russian: 'двенадцать', transliteration: 'dvenadtsat', translation_nl: 'twaalf (12)' },
+  { category: 'numbers-large', russian: 'пятнадцать', transliteration: 'pyatnadtsat', translation_nl: 'vijftien (15)' },
+  { category: 'numbers-large', russian: 'двадцать', transliteration: 'dvadtsat', translation_nl: 'twintig (20)' },
+  { category: 'numbers-large', russian: 'тридцать', transliteration: 'tridtsat', translation_nl: 'dertig (30)' },
+  { category: 'numbers-large', russian: 'сорок', transliteration: 'sorok', translation_nl: 'veertig (40)' },
+  { category: 'numbers-large', russian: 'пятьдесят', transliteration: 'pyatdesyat', translation_nl: 'vijftig (50)' },
+  { category: 'numbers-large', russian: 'семьдесят', transliteration: 'semdesyat', translation_nl: 'zeventig (70)' },
+  { category: 'numbers-large', russian: 'девяносто', transliteration: 'devyanosto', translation_nl: 'negentig (90)' },
+  { category: 'numbers-large', russian: 'сто', transliteration: 'sto', translation_nl: 'honderd (100)' },
+
+  // --- time ---
+  { category: 'time', russian: 'сегодня', transliteration: 'segodnya', translation_nl: 'vandaag' },
+  { category: 'time', russian: 'завтра', transliteration: 'zavtra', translation_nl: 'morgen' },
+  { category: 'time', russian: 'вчера', transliteration: 'vchera', translation_nl: 'gisteren' },
+  { category: 'time', russian: 'утро', transliteration: 'utro', translation_nl: 'ochtend', gender: 'o' },
+  { category: 'time', russian: 'вечер', transliteration: 'vecher', translation_nl: 'avond', gender: 'm' },
+  { category: 'time', russian: 'ночь', transliteration: 'noch', translation_nl: 'nacht', gender: 'v', grammarRule: 'SOFT-HARD-SIGN' },
+  { category: 'time', russian: 'неделя', transliteration: 'nedelya', translation_nl: 'week', gender: 'v' },
+  { category: 'time', russian: 'понедельник', transliteration: 'ponedelnik', translation_nl: 'maandag', gender: 'm' },
+  { category: 'time', russian: 'вторник', transliteration: 'vtornik', translation_nl: 'dinsdag', gender: 'm' },
+  { category: 'time', russian: 'среда', transliteration: 'sreda', translation_nl: 'woensdag', gender: 'v' },
+  { category: 'time', russian: 'четверг', transliteration: 'chetverg', translation_nl: 'donderdag', gender: 'm' },
+  { category: 'time', russian: 'пятница', transliteration: 'pyatnitsa', translation_nl: 'vrijdag', gender: 'v' },
+  { category: 'time', russian: 'суббота', transliteration: 'subbota', translation_nl: 'zaterdag', gender: 'v' },
+  { category: 'time', russian: 'воскресенье', transliteration: 'voskresenye', translation_nl: 'zondag', gender: 'o' },
+
+  // --- body ---
+  { category: 'body', russian: 'голова', transliteration: 'golova', translation_nl: 'hoofd', gender: 'v' },
+  { category: 'body', russian: 'рука', transliteration: 'ruka', translation_nl: 'hand / arm', gender: 'v' },
+  { category: 'body', russian: 'нога', transliteration: 'noga', translation_nl: 'been / voet', gender: 'v' },
+  { category: 'body', russian: 'глаз', transliteration: 'glaz', translation_nl: 'oog', gender: 'm' },
+  { category: 'body', russian: 'рот', transliteration: 'rot', translation_nl: 'mond', gender: 'm' },
+  { category: 'body', russian: 'ухо', transliteration: 'ukho', translation_nl: 'oor', gender: 'o' },
+  { category: 'body', russian: 'живот', transliteration: 'zhivot', translation_nl: 'buik', gender: 'm' },
+  { category: 'body', russian: 'сердце', transliteration: 'serdtse', translation_nl: 'hart', gender: 'o' },
+  { category: 'body', russian: 'спина', transliteration: 'spina', translation_nl: 'rug', gender: 'v' },
+  { category: 'body', russian: 'палец', transliteration: 'palets', translation_nl: 'vinger', gender: 'm' },
+
+  // --- clothing ---
+  { category: 'clothing', russian: 'рубашка', transliteration: 'rubashka', translation_nl: 'overhemd', gender: 'v' },
+  { category: 'clothing', russian: 'брюки', transliteration: 'bryuki', translation_nl: 'broek', gender: 'mv' },
+  { category: 'clothing', russian: 'платье', transliteration: 'plate', translation_nl: 'jurk', gender: 'o' },
+  { category: 'clothing', russian: 'туфли', transliteration: 'tufli', translation_nl: 'schoenen', gender: 'mv' },
+  { category: 'clothing', russian: 'куртка', transliteration: 'kurtka', translation_nl: 'jas', gender: 'v' },
+  { category: 'clothing', russian: 'шапка', transliteration: 'shapka', translation_nl: 'muts', gender: 'v' },
+  { category: 'clothing', russian: 'носки', transliteration: 'noski', translation_nl: 'sokken', gender: 'mv' },
+  { category: 'clothing', russian: 'пальто', transliteration: 'palto', translation_nl: 'winterjas', gender: 'o', notes: "Onverbuigbaar leenwoord: 'пальто' verandert nooit van vorm, in geen enkele naamval of getal." },
+
+  // --- weather ---
+  { category: 'weather', russian: 'погода', transliteration: 'pogoda', translation_nl: 'weer', gender: 'v' },
+  { category: 'weather', russian: 'солнце', transliteration: 'solntse', translation_nl: 'zon', gender: 'o' },
+  { category: 'weather', russian: 'дождь', transliteration: 'dozhd', translation_nl: 'regen', gender: 'm' },
+  { category: 'weather', russian: 'снег', transliteration: 'sneg', translation_nl: 'sneeuw', gender: 'm' },
+  { category: 'weather', russian: 'ветер', transliteration: 'veter', translation_nl: 'wind', gender: 'm' },
+  { category: 'weather', russian: 'облако', transliteration: 'oblako', translation_nl: 'wolk', gender: 'o' },
+  { category: 'weather', russian: 'жарко', transliteration: 'zharko', translation_nl: 'heet (bijwoord)' },
+  { category: 'weather', russian: 'холодно', transliteration: 'kholodno', translation_nl: 'koud (bijwoord)' },
+
+  // --- house ---
+  { category: 'house', russian: 'дом', transliteration: 'dom', translation_nl: 'huis', gender: 'm' },
+  { category: 'house', russian: 'квартира', transliteration: 'kvartira', translation_nl: 'appartement', gender: 'v' },
+  { category: 'house', russian: 'комната', transliteration: 'komnata', translation_nl: 'kamer', gender: 'v' },
+  { category: 'house', russian: 'кухня', transliteration: 'kukhnya', translation_nl: 'keuken', gender: 'v' },
+  { category: 'house', russian: 'ванная', transliteration: 'vannaya', translation_nl: 'badkamer', gender: 'v' },
+  { category: 'house', russian: 'спальня', transliteration: 'spalnya', translation_nl: 'slaapkamer', gender: 'v' },
+  { category: 'house', russian: 'гостиная', transliteration: 'gostinaya', translation_nl: 'woonkamer', gender: 'v' },
+  { category: 'house', russian: 'сад', transliteration: 'sad', translation_nl: 'tuin', gender: 'm' },
+
+  // --- professions ---
+  { category: 'professions', russian: 'врач', transliteration: 'vrach', translation_nl: 'arts', gender: 'm', grammarRule: 'CASE-INST' },
+  { category: 'professions', russian: 'учитель', transliteration: 'uchitel', translation_nl: 'leraar', gender: 'm' },
+  { category: 'professions', russian: 'инженер', transliteration: 'inzhener', translation_nl: 'ingenieur', gender: 'm' },
+  { category: 'professions', russian: 'студент', transliteration: 'student', translation_nl: 'student', gender: 'm' },
+  { category: 'professions', russian: 'продавец', transliteration: 'prodavets', translation_nl: 'verkoper', gender: 'm' },
+  { category: 'professions', russian: 'водитель', transliteration: 'voditel', translation_nl: 'chauffeur', gender: 'm' },
+  { category: 'professions', russian: 'повар', transliteration: 'povar', translation_nl: 'kok', gender: 'm' },
+  { category: 'professions', russian: 'полицейский', transliteration: 'politseyskiy', translation_nl: 'politieagent', gender: 'm' },
+
+  // --- travel ---
+  { category: 'travel', russian: 'вокзал', transliteration: 'vokzal', translation_nl: 'station', gender: 'm' },
+  { category: 'travel', russian: 'аэропорт', transliteration: 'aeroport', translation_nl: 'luchthaven', gender: 'm' },
+  { category: 'travel', russian: 'поезд', transliteration: 'poyezd', translation_nl: 'trein', gender: 'm' },
+  { category: 'travel', russian: 'самолёт', transliteration: 'samolyot', translation_nl: 'vliegtuig', gender: 'm' },
+  { category: 'travel', russian: 'билет', transliteration: 'bilet', translation_nl: 'kaartje', gender: 'm' },
+  { category: 'travel', russian: 'паспорт', transliteration: 'pasport', translation_nl: 'paspoort', gender: 'm' },
+  { category: 'travel', russian: 'багаж', transliteration: 'bagazh', translation_nl: 'bagage', gender: 'm' },
+  { category: 'travel', russian: 'гостиница', transliteration: 'gostinitsa', translation_nl: 'hotel', gender: 'v' },
+
+  // --- adjectives ---
+  { category: 'adjectives', russian: 'большой', transliteration: 'bolshoy', translation_nl: 'groot', grammarRule: 'ADJ-AGREEMENT' },
+  { category: 'adjectives', russian: 'маленький', transliteration: 'malenkiy', translation_nl: 'klein', grammarRule: 'ADJ-AGREEMENT' },
+  { category: 'adjectives', russian: 'хороший', transliteration: 'khoroshiy', translation_nl: 'goed' },
+  { category: 'adjectives', russian: 'плохой', transliteration: 'plokhoy', translation_nl: 'slecht' },
+  { category: 'adjectives', russian: 'новый', transliteration: 'novyy', translation_nl: 'nieuw', grammarRule: 'ADJ-AGREEMENT' },
+  { category: 'adjectives', russian: 'старый', transliteration: 'staryy', translation_nl: 'oud' },
+  { category: 'adjectives', russian: 'красивый', transliteration: 'krasivyy', translation_nl: 'mooi' },
+  { category: 'adjectives', russian: 'интересный', transliteration: 'interesnyy', translation_nl: 'interessant' },
+  { category: 'adjectives', russian: 'быстрый', transliteration: 'bystryy', translation_nl: 'snel' },
+  { category: 'adjectives', russian: 'медленный', transliteration: 'medlennyy', translation_nl: 'langzaam' },
+
+  // --- questions ---
+  { category: 'questions', russian: 'что', transliteration: 'chto', translation_nl: 'wat' },
+  { category: 'questions', russian: 'кто', transliteration: 'kto', translation_nl: 'wie' },
+  { category: 'questions', russian: 'где', transliteration: 'gde', translation_nl: 'waar' },
+  { category: 'questions', russian: 'когда', transliteration: 'kogda', translation_nl: 'wanneer' },
+  { category: 'questions', russian: 'почему', transliteration: 'pochemu', translation_nl: 'waarom' },
+  { category: 'questions', russian: 'как', transliteration: 'kak', translation_nl: 'hoe' },
+  { category: 'questions', russian: 'сколько', transliteration: 'skolko', translation_nl: 'hoeveel' },
+  { category: 'questions', russian: 'какой', transliteration: 'kakoy', translation_nl: 'welke / wat voor een' },
+
+  // --- verbs-common ---
+  { category: 'verbs-common', russian: 'идти', transliteration: 'idti', translation_nl: 'lopen / gaan (te voet)' },
+  { category: 'verbs-common', russian: 'есть', transliteration: 'yest', translation_nl: 'eten' },
+  { category: 'verbs-common', russian: 'пить', transliteration: 'pit', translation_nl: 'drinken' },
+  { category: 'verbs-common', russian: 'любить', transliteration: 'lyubit', translation_nl: 'houden van', grammarRule: 'VERB-PRES-2' },
+  { category: 'verbs-common', russian: 'хотеть', transliteration: 'khotet', translation_nl: 'willen', notes: "Onregelmatig werkwoord: я хочу, ты хочешь, он хочет, мы хотим, вы хотите, они хотят." },
+  { category: 'verbs-common', russian: 'мочь', transliteration: 'moch', translation_nl: 'kunnen', notes: "Onregelmatig werkwoord: я могу, ты можешь, он может, мы можем, вы можете, они могут." },
+  { category: 'verbs-common', russian: 'видеть', transliteration: 'videt', translation_nl: 'zien', grammarRule: 'VERB-PRES-2' },
+  { category: 'verbs-common', russian: 'слышать', transliteration: 'slyshat', translation_nl: 'horen', grammarRule: 'VERB-PRES-2' },
+  { category: 'verbs-common', russian: 'давать', transliteration: 'davat', translation_nl: 'geven' },
+
+  // --- grammar-cases vocabulary ---
+  { category: 'grammar-cases', russian: 'ручка', transliteration: 'ruchka', translation_nl: 'pen', gender: 'v', grammarRule: 'CASE-INST' },
+  { category: 'grammar-cases', russian: 'друг', transliteration: 'drug', translation_nl: 'vriend', gender: 'm', grammarRule: 'CASE-DAT' },
+  { category: 'grammar-cases', russian: 'город', transliteration: 'gorod', translation_nl: 'stad', gender: 'm', grammarRule: 'CASE-PREP' },
+
+  // --- grammar-tense vocabulary ---
+  { category: 'grammar-tense', russian: 'смотреть', transliteration: 'smotret', translation_nl: 'kijken', grammarRule: 'VERB-PAST' },
+  { category: 'grammar-tense', russian: 'прочитать', transliteration: 'prochitat', translation_nl: 'uitlezen (voltooid)', grammarRule: 'ASPECT-INTRO' },
+
+  // --- grammar-questions-negation vocabulary ---
+  { category: 'grammar-questions-negation', russian: 'ничего', transliteration: 'nichego', translation_nl: 'niets', grammarRule: 'NEGATION-NE' },
+  { category: 'grammar-questions-negation', russian: 'никто', transliteration: 'nikto', translation_nl: 'niemand', grammarRule: 'NEGATION-NE' }
 ];

@@ -7,9 +7,17 @@ is en welke grammaticaregel erachter zit.
 ## Functionaliteit
 
 - **Accounts**: registratie/login (bcrypt-gehashte wachtwoorden, sessie-cookie).
-- **Lessen**: woordenschat (alfabet, begroetingen, getallen, kleuren, familie,
-  eten) en grammatica (geslacht, naamvallen, werkwoordvervoeging, meervoud,
-  zacht/hard teken, klemtoon) — Nederlands ↔ Russisch.
+- **Lessen**: 23 categorieën, Nederlands ↔ Russisch, niveau A1 t/m B1.
+  - *Woordenschat*: alfabet & uitspraak, begroetingen, getallen 1-10 en 11-100,
+    kleuren, familie, eten & drinken, tijd & dagen van de week, lichaamsdelen,
+    kleding, weer, huis & wonen, beroepen, reizen, bijvoeglijke naamwoorden,
+    vraagwoorden, veelgebruikte werkwoorden.
+  - *Grammatica*: geslacht en meervoud van zelfstandige naamwoorden, alle zes
+    naamvallen (nominatief, genitief, datief, accusatief, instrumentalis,
+    prepositief), overeenkomst van bijvoeglijke naamwoorden, werkwoordvervoeging
+    in de tegenwoordige tijd, verleden en toekomende tijd, het aspectonderscheid
+    (voltooid/onvoltooid), ontkenning en vraagzinnen, zacht/hard teken, klemtoon
+    (akanje).
 - **Spaced repetition**: elk woord heeft per gebruiker een `ease_factor`,
   `interval_days` en `next_review_at` (SM-2-achtig algoritme, zie
   `backend/src/srs.js`). Woorden die aan herhaling toe zijn, komen als eerste
