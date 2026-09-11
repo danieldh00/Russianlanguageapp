@@ -113,9 +113,12 @@ Vereist: Node.js 18+.
 cd russisch-leren/backend
 npm install
 cp .env.example .env        # pas SESSION_SECRET aan
-npm run seed                 # vult de database met lessen (eenmalig, of na content-update)
 npm start                    # start op http://localhost:3000
 ```
+
+De database vult zichzelf automatisch met lesinhoud zodra `categories` leeg
+blijkt te zijn (dus bij een eerste start op een nieuwe database) — geen
+losse seed-stap nodig, bij geen enkele installatiemethode.
 
 Open daarna `http://localhost:3000` in de browser, registreer een account en
 begin met een les.
@@ -126,19 +129,25 @@ Voor ontwikkeling met automatisch herladen bij bestandswijzigingen:
 npm run dev
 ```
 
-> **Let op**: `npm run seed` verwijdert en herbouwt alle lesinhoud
+Heb je de content in `seed/data/` aangepast en wil je die bewust opnieuw
+inladen op een database die al gevuld is? Draai dan handmatig:
+
+```bash
+npm run seed
+```
+
+> **Let op**: dit commando verwijdert en herbouwt alle lesinhoud
 > (categorieën, woorden, oefeningen) én de bijbehorende voortgangsgegevens
-> (`attempts`, `user_word_progress`). Gebruikersaccounts blijven behouden. Draai
-> dit dus alleen bij het eerste opzetten of bewust bij een contentupdate, niet
-> als onderdeel van een automatische opstart-/deploy-routine.
+> (`attempts`, `user_word_progress`). Gebruikersaccounts blijven behouden.
+> Nodig na een contentupdate; niet nodig bij een gewone (her)start.
 
 ## Draaien met Docker
 
 ```bash
 docker compose up -d --build
-docker compose exec app node seed/seed.js   # eenmalig, na de allereerste build
 ```
 
+De database vult zichzelf automatisch bij de eerste start (zie hierboven).
 De SQLite-data staat in een named volume (`russian-data`) en blijft dus
 behouden tussen herstarts en updates van de container.
 
@@ -162,8 +171,10 @@ het gaat via de normale Add-on Store en heeft geen SSH/Portainer nodig.
 4. Ga naar het tabblad **Configuration** en vul `session_secret` in (een
    lange, willekeurige string, bv. gegenereerd met `openssl rand -hex 32`).
    `anthropic_api_key` is optioneel (voor de AI-uitleg-knop). Sla op.
-5. Start de add-on. Je voortgang staat in de persistente `/data`-opslag van
-   de add-on en overleeft dus herstarts en updates.
+5. Start de add-on. De 24 lessen worden bij deze allereerste start automatisch
+   ingeladen (geen aparte seed-stap nodig). Je voortgang staat in de
+   persistente `/data`-opslag van de add-on en overleeft dus herstarts en
+   updates.
 
 **Optie 2 — gewone Docker-container (als de repo privé moet blijven)**
 
@@ -175,7 +186,6 @@ vanuit de hoofdmap:
 
 ```bash
 docker compose up -d --build
-docker compose exec app node seed/seed.js   # eenmalig, na de allereerste build
 ```
 
 Dit gebruikt dezelfde `docker-compose.yml`/`Dockerfile` als de add-on, dus
