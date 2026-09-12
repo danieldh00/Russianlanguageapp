@@ -3,8 +3,43 @@ let syncInFlight = false;
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {
-      /* offline app-shell caching is a nice-to-have, not required for the app to work */
+    navigator.serviceWorker
+      .register('/sw.js')
+      .then((registration) => {
+        // The browser only checks for a new service worker on its own
+        // schedule (up to ~24h), which is why a deploy could sit unnoticed
+        // in an already-open tab. Ask more often, so updates land quickly.
+        setInterval(() => registration.update(), 5 * 60 * 1000);
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') registration.update();
+        });
+      })
+      .catch(() => {
+        /* offline app-shell caching is a nice-to-have, not required for the app to work */
+      });
+
+    // 'controllerchange' fires both for a genuine update (a new SW version
+    // replacing one that already controlled this page) AND the very first
+    // time a freshly-registered SW claims a previously-uncontrolled page
+    // (clients.claim() on first install). Only the former should force a
+    // reload -- reloading on every first-time visit would be an unwanted
+    // surprise refresh right after someone's page loads. Track whether a
+    // controller already existed *at the time of each event* (not just once
+    // at page load) so this stays correct across repeated updates too.
+    let lastKnownController = navigator.serviceWorker.controller;
+    let reloadedForUpdate = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      const isGenuineUpdate = lastKnownController != null;
+      lastKnownController = navigator.serviceWorker.controller;
+      if (!isGenuineUpdate || reloadedForUpdate) return;
+      // A new service worker activates immediately (skipWaiting +
+      // clients.claim on the server side) once installed, but the
+      // already-running tab keeps executing the old JS/CSS until it
+      // reloads. Reload once so a deployed update is never stuck behind a
+      // stale cache -- progress is saved continuously (outbox + local
+      // mirror), so this can't lose data.
+      reloadedForUpdate = true;
+      window.location.reload();
     });
   });
 }

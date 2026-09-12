@@ -1,4 +1,9 @@
-const CACHE_NAME = 'russisch-leren-v3';
+// __CACHE_VERSION__ is substituted by the server (see server.js) with a hash
+// of the app-shell files, so the cache name -- and therefore this whole
+// service worker's identity as far as the browser is concerned -- changes
+// automatically on any deploy that changes the app, without anyone needing
+// to remember to bump a version string by hand.
+const CACHE_NAME = 'russisch-leren-__CACHE_VERSION__';
 const APP_SHELL = [
   '/',
   '/css/style.css',
@@ -31,6 +36,7 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(request.url);
   if (url.pathname.startsWith('/api/')) return; // always go to the network for API calls
+  if (url.pathname === '/sw.js') return; // never intercept the service worker script itself
 
   if (request.mode === 'navigate') {
     // network-first for page loads, so a logged-in session always sees fresh HTML when online
@@ -46,15 +52,23 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // cache-first for static app-shell assets (css/js/icons/manifest)
+  // stale-while-revalidate for static app-shell assets (css/js/icons/manifest):
+  // answer instantly from cache so the app stays fast and fully offline-capable,
+  // but also refetch in the background and update the cache for next time.
+  // Together with the auto-bumped CACHE_NAME above, this is what keeps an
+  // already-installed PWA from getting stuck on stale CSS/JS after a deploy,
+  // without anyone needing to clear their browser cache by hand.
   event.respondWith(
-    caches.match(request).then((cached) => {
-      if (cached) return cached;
-      return fetch(request).then((response) => {
-        const copy = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-        return response;
-      });
-    })
+    caches.open(CACHE_NAME).then((cache) =>
+      cache.match(request).then((cached) => {
+        const network = fetch(request)
+          .then((response) => {
+            cache.put(request, response.clone());
+            return response;
+          })
+          .catch(() => cached);
+        return cached || network;
+      })
+    )
   );
 });

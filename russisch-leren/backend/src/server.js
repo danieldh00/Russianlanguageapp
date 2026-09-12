@@ -1,4 +1,6 @@
 const path = require('path');
+const fs = require('fs');
+const crypto = require('crypto');
 require('./loadAddonOptions').loadAddonOptions();
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 const express = require('express');
@@ -47,11 +49,36 @@ app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/ai', aiRoutes);
 
 const FRONTEND_DIR = path.join(__dirname, '..', '..', 'frontend');
+
+// Hashing the app-shell files at boot gives the service worker an automatic,
+// content-derived cache-busting version -- so a deploy that changes the app
+// always forces installed PWAs to fetch fresh assets, without depending on
+// remembering to bump a version string in sw.js by hand (the bug that left
+// users stuck seeing an old version until they manually cleared their cache).
+const APP_SHELL_FILES = ['index.html', 'css/style.css', 'js/app.js', 'js/storage.js', 'js/srs.js', 'manifest.webmanifest'];
+function computeAppVersion() {
+  const hash = crypto.createHash('sha256');
+  for (const file of APP_SHELL_FILES) hash.update(fs.readFileSync(path.join(FRONTEND_DIR, file)));
+  return hash.digest('hex').slice(0, 12);
+}
+const APP_VERSION = computeAppVersion();
+
+// Served dynamically (ahead of express.static below) so the cache name inside
+// can be substituted per-deploy, and so the script itself is never cached by
+// the browser's HTTP cache -- both are required for the browser to reliably
+// notice a new version and swap it in.
+app.get('/sw.js', (req, res) => {
+  const template = fs.readFileSync(path.join(FRONTEND_DIR, 'sw.js'), 'utf8');
+  res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.setHeader('Service-Worker-Allowed', '/');
+  res.send(template.replaceAll('__CACHE_VERSION__', APP_VERSION));
+});
+
 app.use(
   express.static(FRONTEND_DIR, {
     setHeaders: (res, filePath) => {
       if (filePath.endsWith('.webmanifest')) res.setHeader('Content-Type', 'application/manifest+json');
-      if (filePath.endsWith('sw.js')) res.setHeader('Service-Worker-Allowed', '/');
     }
   })
 );
