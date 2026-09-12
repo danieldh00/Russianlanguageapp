@@ -226,6 +226,14 @@ via de Supervisor-systeemmonitor.
 een nieuwe versie beschikbaar is (versie-nummer staat in `config.yaml`).
 Optie 2: `git pull`, daarna `docker compose up -d --build`.
 
+**Bij elke release: versie + changelog samen bijwerken.** Elke wijziging die
+naar de add-on gepusht wordt, hoort twee dingen te bevatten: een opgehoogd
+`version`-veld in `russisch-leren/config.yaml` (anders ziet Supervisor geen
+update) én een nieuw kopje bovenaan `russisch-leren/CHANGELOG.md` met wat er
+veranderd is voor dat versienummer. Supervisor toont dat bestand automatisch
+onder de "Changelog"-knop van de add-on — zonder dat kopje zie je in Home
+Assistant alleen "er is een update" zonder te weten waaróm.
+
 ## Installeren als app op iPhone/iPad
 
 De app is een Progressive Web App (PWA): eenmaal toegevoegd aan het beginscherm
