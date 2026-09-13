@@ -4,6 +4,14 @@ Alle merkbare wijzigingen aan de "Russisch Leren" add-on staan hier, nieuwste
 versie bovenaan. Dit bestand wordt door Home Assistant Supervisor automatisch
 getoond onder de "Changelog"-knop van de add-on.
 
+## 1.7.1
+
+- Russische tekst staat nu overal in het normale (schreefloze) lettertype —
+  in oefeningen, antwoordknoppen, chips, voorbeeldzinnen, het zakboekje,
+  de chat en de toetsenbordtrainer — zodat de lettervormen overeenkomen
+  met die van het toetsenbord op je telefoon. Alleen de paginakoppen
+  blijven in het sierlettertype.
+
 ## 1.7.0
 
 - Nieuw: **Home Assistant-integratie** (Instellingen → Home Assistant).

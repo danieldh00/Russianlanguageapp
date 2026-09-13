@@ -166,6 +166,10 @@ body::after {
 }
 
 h1, h2, .serif { font-family: "PT Serif", Georgia, "Times New Roman", serif; text-wrap: balance; }
+/* Russian text is set in the sans face everywhere it has to be read or typed:
+   the sans letterforms match the phone keyboard, while serif (and italic)
+   Cyrillic has different shapes (т, д, г) that confuse a beginner. */
+.prompt-row h2, .review-prompt, .kb-target, [lang="ru"] { font-family: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
 
 .topbar {
   background: var(--glass-bg);
@@ -383,7 +387,7 @@ button.secondary:hover { background: var(--glass-bg-strong); }
 .option-btn {
   display: block; width: 100%; text-align: left; padding: 14px 18px; margin-bottom: 10px;
   border: 1.5px solid var(--glass-border); border-radius: 16px; background: var(--glass-bg-strong); color: var(--ink);
-  font-size: 1.05rem; font-family: "PT Serif", Georgia, serif; cursor: pointer;
+  font-size: 1.05rem; font-family: inherit; cursor: pointer;
   -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
   box-shadow: inset 0 1px 0 var(--glass-highlight);
   transition: border-color .12s ease, transform .12s ease;
@@ -415,7 +419,7 @@ button.secondary:hover { background: var(--glass-bg-strong); }
 .pb-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--glass-border); }
 .pb-row:last-child { border-bottom: none; }
 .pb-text { min-width: 0; flex: 1; }
-.pb-ru { margin: 0 0 2px; font-family: "PT Serif", Georgia, serif; font-size: 1.25rem; line-height: 1.4; }
+.pb-ru { margin: 0 0 2px; font-family: inherit; font-size: 1.25rem; line-height: 1.4; }
 .pb-nl { margin: 0; font-size: 0.92rem; }
 
 /* ---- match pairs ---- */
@@ -426,7 +430,7 @@ button.secondary:hover { background: var(--glass-bg-strong); }
   border: 1.5px solid var(--glass-border); background: var(--glass-bg-strong); color: var(--ink);
   transition: transform .12s ease, border-color .12s ease, opacity .3s ease;
 }
-.match-tile.ru { font-family: "PT Serif", Georgia, serif; font-size: 1.1rem; }
+.match-tile.ru { font-family: inherit; font-size: 1.1rem; }
 .match-tile.selected { border-color: var(--accent); background: var(--accent-soft); transform: scale(1.03); }
 .match-tile.wrong { border-color: var(--error); background: var(--error-bg); }
 .match-tile.done { opacity: 0.25; border-color: var(--success); background: var(--success-bg); cursor: default; }
@@ -444,7 +448,7 @@ label.check input { accent-color: var(--accent); width: 18px; height: 18px; }
 .chip-answer { min-height: 44px; padding: 8px; border: 1.5px dashed var(--glass-border); border-radius: 14px; margin-bottom: 14px; align-items: flex-start; }
 .chip-placeholder { font-size: 0.85rem; padding: 6px 2px; }
 .chip {
-  font-family: "PT Serif", Georgia, serif; font-size: 1rem; padding: 8px 14px; border-radius: 999px;
+  font-family: inherit; font-size: 1rem; padding: 8px 14px; border-radius: 999px;
   border: 1.5px solid var(--glass-border); background: var(--glass-bg-strong); color: var(--ink); cursor: pointer;
   -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
 }
@@ -583,19 +587,19 @@ th { color: var(--muted); font-weight: 600; font-size: 0.75rem; text-transform: 
   -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
 }
 .reading-passage p {
-  margin: 0 0 10px; font-family: "PT Serif", Georgia, serif; font-size: 1.08rem; line-height: 1.65; white-space: pre-line;
+  margin: 0 0 10px; font-family: inherit; font-size: 1.08rem; line-height: 1.65; white-space: pre-line;
 }
 .listen-box {
   padding: 16px 18px; margin-bottom: 16px; border-radius: 16px; text-align: center;
   background: var(--accent-soft); border: 1px solid var(--glass-border);
 }
 .listen-box .reading-label { color: var(--accent-ink); }
-.listen-text { margin: 12px 0 0; font-family: "PT Serif", Georgia, serif; font-size: 1.1rem; }
+.listen-text { margin: 12px 0 0; font-family: inherit; font-size: 1.1rem; }
 .listen-reveal { margin-top: 8px; font-size: 0.95rem; }
-.listen-reveal strong { font-family: "PT Serif", Georgia, serif; }
+.listen-reveal strong { font-family: inherit; }
 
 .typing-form { max-width: none; gap: 0; }
-.typing-answer { font-family: "PT Serif", Georgia, serif; font-size: 1.15rem; width: 100%; max-width: 480px; }
+.typing-answer { font-family: inherit; font-size: 1.15rem; width: 100%; max-width: 480px; }
 .typing-answer:disabled { opacity: 0.7; }
 
 .option-btn.selected { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-ink); font-weight: 700; }
@@ -653,11 +657,11 @@ th { color: var(--muted); font-weight: 600; font-size: 0.75rem; text-transform: 
 .review-item.correct .review-meta > .muted { color: var(--success); font-weight: 700; }
 .review-context {
   margin: 0 0 8px; padding: 10px 12px; border-radius: 10px; background: var(--accent-soft);
-  font-family: "PT Serif", Georgia, serif; font-size: 0.98rem; line-height: 1.55; white-space: pre-line;
+  font-family: inherit; font-size: 0.98rem; line-height: 1.55; white-space: pre-line;
 }
 .review-prompt { margin: 0 0 8px; font-weight: 700; font-size: 1rem; line-height: 1.45; }
 .review-answers { display: flex; flex-direction: column; gap: 3px; font-size: 0.94rem; margin-bottom: 8px; }
-.review-answers strong { font-family: "PT Serif", Georgia, serif; }
+.review-answers strong { font-family: inherit; }
 .review-item.incorrect .given { color: var(--error); }
 .review-answers .correct-answer { color: var(--success); }
 .review-item .explanation { font-size: 0.92rem; line-height: 1.55; }
@@ -674,7 +678,7 @@ th { color: var(--muted); font-weight: 600; font-size: 0.75rem; text-transform: 
   box-shadow: inset 0 1px 0 var(--glass-highlight);
 }
 .example-box .reading-label { margin-bottom: 4px; }
-.example-ru { margin: 0 0 2px; font-family: "PT Serif", Georgia, serif; font-size: 1.08rem; line-height: 1.5; }
+.example-ru { margin: 0 0 2px; font-family: inherit; font-size: 1.08rem; line-height: 1.5; }
 .example-nl { margin: 0 0 8px; font-size: 0.9rem; }
 
 /* ---- "oefen je fouten" card on the dashboard ---- */
@@ -725,7 +729,7 @@ th { color: var(--muted); font-weight: 600; font-size: 0.75rem; text-transform: 
 .forms-box { margin-top: 4px; padding: 12px 14px; border-radius: 14px; background: var(--glass-bg-strong); border: 1px solid var(--glass-border); }
 .forms-meta { margin: 0 0 8px; font-size: 0.85rem; }
 .forms-table { font-size: 0.88rem; margin-bottom: 8px; }
-.forms-table td[lang="ru"] { font-family: "PT Serif", Georgia, serif; font-size: 0.98rem; }
+.forms-table td[lang="ru"] { font-family: inherit; font-size: 0.98rem; }
 .forms-source { margin: 4px 0 0; font-size: 0.72rem; }
 
 /* ---- dialogues ---- */
@@ -739,7 +743,7 @@ th { color: var(--muted); font-weight: 600; font-size: 0.75rem; text-transform: 
 .bubble p { margin: 0; line-height: 1.5; }
 .bubble.me { align-self: flex-end; background: var(--accent-soft); border-bottom-right-radius: 6px; }
 .bubble.them { align-self: flex-start; border-bottom-left-radius: 6px; }
-.bubble .ru { font-family: "PT Serif", Georgia, serif; font-size: 1.05rem; }
+.bubble .ru { font-family: inherit; font-size: 1.05rem; }
 .bubble .nl { font-size: 0.88rem; margin-top: 4px; }
 .link-btn { background: none; border: none; padding: 0; margin-top: 4px; font-family: inherit; font-size: 0.78rem; color: var(--accent); cursor: pointer; text-decoration: underline; }
 .bubble .correction { margin-top: 8px; padding: 8px 10px; border-radius: 10px; background: var(--accent2-soft); font-size: 0.86rem; line-height: 1.5; }
@@ -749,13 +753,13 @@ th { color: var(--muted); font-weight: 600; font-size: 0.75rem; text-transform: 
 .bubble .speak-btn { margin-top: 8px; }
 .chat-form { display: flex; flex-direction: column; gap: 8px; max-width: none; position: sticky; bottom: calc(96px + env(safe-area-inset-bottom)); }
 .chat-form .typing-row { max-width: none; }
-.chat-form #chat-input { flex: 1; font-family: "PT Serif", Georgia, serif; font-size: 1.05rem; }
+.chat-form #chat-input { flex: 1; font-family: inherit; font-size: 1.05rem; }
 .chat-form button.primary { width: fit-content; }
 select#dialogue-level { padding: 9px 12px; border: 1.5px solid var(--glass-border); border-radius: 12px; font-size: 1rem; background: var(--glass-bg-strong); color: var(--ink); font-family: inherit; }
 
 /* ---- keyboard trainer ---- */
 .keyboard-trainer .exercise-progress { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-.kb-target { font-family: "PT Serif", Georgia, serif; font-size: 1.35rem; line-height: 1.6; margin: 6px 0 12px; word-break: break-word; }
+.kb-target { font-family: inherit; font-size: 1.35rem; line-height: 1.6; margin: 6px 0 12px; word-break: break-word; }
 .kb-target .ok { color: var(--success); }
 .kb-target .bad { color: var(--error); text-decoration: underline; }
 .kb-target .cur { background: var(--accent-soft); border-radius: 4px; }
@@ -767,7 +771,7 @@ select#dialogue-level { padding: 9px 12px; border: 1.5px solid var(--glass-borde
   display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1;
   box-shadow: inset 0 1px 0 var(--glass-highlight), 0 2px 0 rgba(0,0,0,0.08); flex: 0 0 auto;
 }
-.kb-key .ru { font-family: "PT Serif", Georgia, serif; font-size: 1.05rem; }
+.kb-key .ru { font-family: inherit; font-size: 1.05rem; }
 .kb-key .qw { font-size: 0.6rem; color: var(--muted); margin-top: 2px; }
 .kb-key.space { width: 240px; }
 .kb-key.space .ru { font-family: inherit; font-size: 0.7rem; color: var(--muted); }
