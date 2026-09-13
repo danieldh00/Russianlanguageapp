@@ -4,6 +4,14 @@ Alle merkbare wijzigingen aan de "Russisch Leren" add-on staan hier, nieuwste
 versie bovenaan. Dit bestand wordt door Home Assistant Supervisor automatisch
 getoond onder de "Changelog"-knop van de add-on.
 
+## 1.2.3
+
+- Fix: "Recente fouten" en "Vaakst fout beantwoord" op de voortgangspagina
+  toonden de vraagtekst zoals die was op het moment van antwoorden — dus
+  ook na de correctie van de alfabetvragen bleef daar "Wat betekent 'Ы ы'
+  (Y y)?" staan. De historie toont nu altijd de actuele vraag, het actuele
+  antwoord en de actuele uitleg.
+
 ## 1.2.2
 
 - Fix: lessen met een slotje waren gewoon te openen. Het slot wordt nu

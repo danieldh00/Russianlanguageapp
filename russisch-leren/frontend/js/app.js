@@ -1324,7 +1324,17 @@ async function renderProgress() {
     catBody.appendChild(el(`<tr><td>${escapeHtml(cat.level)}</td><td>${escapeHtml(cat.name)}</td><td>${s.startedWords}/${s.totalWords}</td><td>${s.masteredWords}/${s.totalWords}</td></tr>`));
   }
 
-  const mistakes = attemptsLog.filter((a) => !a.isCorrect);
+  // The local attempt log stores the wording of an exercise as it was when
+  // it was answered. Show the *current* wording from the content bundle
+  // instead (falling back to the stored copy for exercises that no longer
+  // exist), so a corrected question doesn't keep haunting the history in
+  // its old form.
+  const exById = new Map(content.exercises.map((e) => [e.id, e]));
+  const current = (m) => {
+    const ex = exById.get(m.exerciseId);
+    return ex ? { ...m, prompt: ex.prompt, correctAnswer: ex.correctAnswer, explanation: ex.explanation } : m;
+  };
+  const mistakes = attemptsLog.filter((a) => !a.isCorrect).map(current);
   const missedCounts = {};
   mistakes.forEach((m) => { missedCounts[m.exerciseId] = (missedCounts[m.exerciseId] || { ...m, count: 0 }); missedCounts[m.exerciseId].count++; });
   const topMissed = Object.values(missedCounts).sort((a, b) => b.count - a.count).slice(0, 10);
