@@ -78,6 +78,7 @@ module.exports = {
   categories,
   grammarRules,
   examples,
+  pictures: require('./pictures'),
   words: concat('words'),
   grammarExercises: concat('grammarExercises'),
   practicalSentences: concat('practicalSentences'),

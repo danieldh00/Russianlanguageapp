@@ -516,6 +516,22 @@ th { color: var(--muted); font-weight: 600; font-size: 0.75rem; text-transform: 
 .exam-card .level-badge { color: var(--accent2); background: var(--accent2-soft); }
 .path-node.exam.complete .exam-card .level-badge { color: var(--success); background: var(--success-bg); }
 
+/* ---- picture exercises (emoji as illustrations) ---- */
+.picture-box {
+  display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; width: 160px; height: 160px; border-radius: 28px;
+  background: var(--glass-bg-strong); border: 1px solid var(--glass-border);
+  box-shadow: inset 0 1px 0 var(--glass-highlight), var(--glass-shadow);
+}
+.picture-box .picture-emoji { font-size: 5rem; line-height: 1; }
+.picture-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 10px; }
+.picture-option { margin: 0; text-align: center; padding: 18px 10px; aspect-ratio: 1 / 1; display: flex; align-items: center; justify-content: center; }
+.picture-option .picture-emoji { font-size: 3.4rem; line-height: 1; }
+@media (max-width: 480px) {
+  .picture-box { width: 130px; height: 130px; }
+  .picture-box .picture-emoji { font-size: 4rem; }
+  .picture-option .picture-emoji { font-size: 2.8rem; }
+}
+
 /* ---- exercise head: reading passages and listening ---- */
 .exercise-head { margin-bottom: 14px; }
 .reading-label {

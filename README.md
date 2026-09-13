@@ -31,7 +31,10 @@ is en welke grammaticaregel erachter zit.
   fout), **gatenzinnen** (de voorbeeldzin met het woord weggelaten — je typt
   de vorm die de zin vereist, bv. воду), **luisteren** (een zin wordt
   voorgelezen en jij bouwt 'm na) en **lezen** (korte tekst met
-  begripsvragen). Elk woord toont z'n klemtoon (спа́льня) en transliteratie.
+  begripsvragen) en **plaatjes** (bij ±330 concrete woorden: "Welk woord
+  hoort bij 🍎?" en omgekeerd "Welk plaatje hoort bij 'яблоко'?" — emoji als
+  illustratie, dus offline en licentievrij; `seed/data/pictures.js`). Elk
+  woord toont z'n klemtoon (спа́льня) en transliteratie.
 - **Vandaag herhalen**: één knop met alle woorden die aan herhaling toe zijn,
   over alle lessen heen (max. 20, meest achterstallige eerst, bij voorkeur
   als typ- of gatenzin).
@@ -163,6 +166,7 @@ russisch-leren/
         levels/b1.js .. c2.js           Per niveau: lessen, regels, oefeningen, zinnen, leesteksten, drills
         levels/vocab-b1.js .. vocab-c2.js   Frequentie-gebaseerde woordenschatpakketten per niveau
         examples/a.js .. c2.js          Voorbeeldzin per woord ({ 'вода': [ru, nl] })
+        pictures.js                     Emoji-plaatje per concreet woord ({ 'яблоко': '🍎' })
         generated/openrussian-forms.json   Klemtoon + woordvormen uit Open Russian (gegenereerd)
         translit.js      Transliteratie en klemtoon-hulpfuncties
         SOURCES.md       Bronvermelding en licenties van de open datasets

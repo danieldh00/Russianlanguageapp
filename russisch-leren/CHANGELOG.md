@@ -4,6 +4,16 @@ Alle merkbare wijzigingen aan de "Russisch Leren" add-on staan hier, nieuwste
 versie bovenaan. Dit bestand wordt door Home Assistant Supervisor automatisch
 getoond onder de "Changelog"-knop van de add-on.
 
+## 1.5.0
+
+- Nieuw: **plaatjesoefeningen** zoals bij Duolingo. Bij ±330 concrete
+  woorden (eten, dieren, kleding, vervoer, weer, gevoelens, beroepen,
+  lichaam, huis, werk, gezondheid, verkeer …) krijg je "Welk woord hoort bij
+  het plaatje? 🍎" met Russische woorden als keuze, en omgekeerd "Welk
+  plaatje hoort bij 'яблоко'?" met vier plaatjes. De plaatjes zijn emoji:
+  op iPhone/iPad Apple's eigen illustraties, offline en zonder licentie.
+  Ze doen ook mee in de toetsen.
+
 ## 1.4.0
 
 - Nieuw: **Vandaag herhalen** — één knop op het dashboard met alle woorden

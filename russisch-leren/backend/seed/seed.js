@@ -2,7 +2,7 @@ const db = require('../src/db');
 const data = require('./data');
 const { transliterate, stripStress } = require('./data/translit');
 
-const { categories, grammarRules, words, grammarExercises, practicalSentences, readings, forms, examples } = data;
+const { categories, grammarRules, words, grammarExercises, practicalSentences, readings, forms, examples, pictures } = data;
 
 function shuffle(arr) {
   const a = [...arr];
@@ -137,7 +137,7 @@ function seedDatabase() {
       const id = existing
         ? (updateWord.run({ ...params, id: existing.id }), existing.id)
         : insertWord.run(params).lastInsertRowid;
-      const record = { id, level, morph, ...params, category: w.category, grammarRule: w.grammarRule || null };
+      const record = { id, level, morph, ...params, category: w.category, grammarRule: w.grammarRule || null, picture: pictures[w.russian] || null };
       resolvedWords.push(record);
       wordsByCategory[w.category] = wordsByCategory[w.category] || [];
       wordsByCategory[w.category].push(record);
@@ -151,7 +151,7 @@ function seedDatabase() {
     // generated drills) have no such natural key, so they're deduped on their
     // (unique) prompt text + answer.
     const findWordExercise = db.prepare(
-      'SELECT id, grammar_rule_id, prompt, correct_answer, options, explanation FROM exercises WHERE word_id = ? AND type = ?'
+      'SELECT id, grammar_rule_id, prompt, correct_answer, options, explanation, context FROM exercises WHERE word_id = ? AND type = ?'
     );
     const findTextExercise = db.prepare('SELECT id FROM exercises WHERE word_id IS NULL AND type = ? AND prompt = ? AND correct_answer = ?');
     const insertExercise = db.prepare(`
@@ -160,7 +160,7 @@ function seedDatabase() {
     `);
     const updateExercise = db.prepare(`
       UPDATE exercises SET grammar_rule_id = @grammar_rule_id, prompt = @prompt, correct_answer = @correct_answer,
-        options = @options, explanation = @explanation
+        options = @options, explanation = @explanation, context = @context
       WHERE id = @id
     `);
     const sortedOptions = (json) => (json ? JSON.stringify([...JSON.parse(json)].sort()) : null);
@@ -187,6 +187,7 @@ function seedDatabase() {
         existing.correct_answer !== full.correct_answer ||
         existing.explanation !== full.explanation ||
         existing.grammar_rule_id !== full.grammar_rule_id ||
+        (existing.context || null) !== (full.context || null) ||
         sortedOptions(existing.options) !== sortedOptions(full.options);
       if (changed) updateExercise.run({ ...full, id: existing.id });
       return false;
@@ -256,6 +257,44 @@ function seedDatabase() {
           explanation: `'${w.translation_nl}' schrijf je als '${shown}'.` + (w.notes ? ` ${w.notes}` : '')
         });
       }
+      // Picture exercises (Duolingo-style): the emoji is stored in `context`
+      // and shown large above the prompt; the options are Russian words
+      // (or, reversed, pictures). Distractors come from the other pictured
+      // words in the same lesson, topped up from all pictured words.
+      if (w.picture) {
+        const sameLesson = siblings.filter((s) => s.picture && s.picture !== w.picture);
+        const anyPictured = resolvedWords.filter((s) => s.id !== w.id && s.picture && s.picture !== w.picture && s.category !== w.category);
+        const pool = sameLesson.length >= 3 ? sameLesson : [...sameLesson, ...shuffle(anyPictured).slice(0, 3 - sameLesson.length)];
+        const wordDistractors = pickDistractors(pool.map((s) => s.russian), w.russian, 3);
+        const seenPics = new Set();
+        const picDistractors = pool.map((s) => s.picture).filter((p) => (seenPics.has(p) ? false : (seenPics.add(p), true))).slice(0, 3);
+        if (wordDistractors.length >= 2) {
+          addExerciseIfNew({
+            category_id: w.category_id,
+            word_id: w.id,
+            grammar_rule_id,
+            type: 'picture',
+            prompt: 'Welk woord hoort bij het plaatje?',
+            correct_answer: w.russian,
+            options: JSON.stringify(shuffle([w.russian, ...wordDistractors])),
+            explanation: `${w.picture} = '${shown}' (${w.translation_nl}).` + notes,
+            context: w.picture
+          });
+        }
+        if (picDistractors.length >= 2) {
+          addExerciseIfNew({
+            category_id: w.category_id,
+            word_id: w.id,
+            grammar_rule_id,
+            type: 'picture_choice',
+            prompt: `Welk plaatje hoort bij '${shown}'?`,
+            correct_answer: w.picture,
+            options: JSON.stringify(shuffle([w.picture, ...picDistractors])),
+            explanation: `'${shown}' betekent '${w.translation_nl}': ${w.picture}.` + notes
+          });
+        }
+      }
+
       const example = w.example_ru ? [w.example_ru, w.example_nl || ''] : null;
       const cloze = singleWord && example ? buildCloze(w.russian, example[0]) : null;
       if (cloze) {

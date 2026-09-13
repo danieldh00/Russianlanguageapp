@@ -887,6 +887,11 @@ function renderSentenceBuild(ex, container, onSubmit, { submitLabel = 'Controler
 // the prompt itself. Shared by lessons and exams.
 function renderExerciseHead(ex, { showContextText = true } = {}) {
   const head = el(`<div class="exercise-head"></div>`);
+  if (ex.type === 'picture' && ex.context) {
+    const pic = el(`<div class="picture-box" role="img" aria-label="plaatje"><span class="picture-emoji"></span></div>`);
+    pic.querySelector('.picture-emoji').textContent = ex.context;
+    head.appendChild(pic);
+  }
   if (ex.type === 'reading' && ex.context) {
     const passage = el(`<div class="reading-passage"><div class="reading-label">Lees de tekst</div><p></p></div>`);
     passage.querySelector('p').textContent = ex.context;
@@ -913,7 +918,9 @@ function renderExerciseHead(ex, { showContextText = true } = {}) {
   }
   const promptRow = el(`<div class="prompt-row"><h2></h2></div>`);
   promptRow.querySelector('h2').textContent = ex.prompt;
-  if (ex.type !== 'listen' && ex.type !== 'reading') {
+  // no listen button where hearing the Russian would give the answer away
+  // (the picture question's answer IS the Russian word)
+  if (ex.type !== 'listen' && ex.type !== 'reading' && ex.type !== 'picture') {
     const speakBtn = renderSpeakButton(extractSpeakText(ex));
     if (speakBtn) promptRow.appendChild(speakBtn);
   }
@@ -986,6 +993,16 @@ function renderExercise(session) {
 function renderAnswerControls(ex, container, onAnswer, { submitLabel = 'Controleren' } = {}) {
   if (ex.type === 'sentence_build' && ex.options && ex.options.length) {
     renderSentenceBuild(ex, container, onAnswer, { submitLabel });
+  } else if (ex.type === 'picture_choice' && ex.options && ex.options.length) {
+    // pick the picture: a grid of big emoji tiles
+    const grid = el(`<div class="picture-grid"></div>`);
+    for (const opt of ex.options) {
+      const btn = el(`<button class="option-btn picture-option" data-value="${escapeHtml(opt)}"><span class="picture-emoji"></span></button>`);
+      btn.querySelector('.picture-emoji').textContent = opt;
+      btn.addEventListener('click', () => onAnswer(opt));
+      grid.appendChild(btn);
+    }
+    container.appendChild(grid);
   } else if (ex.options && ex.options.length) {
     for (const opt of ex.options) {
       const btn = el(`<button class="option-btn" data-value="${escapeHtml(opt)}">${escapeHtml(opt)}</button>`);
@@ -1266,11 +1283,17 @@ function runExam(exam) {
 
     if (q.type !== 'sentence_build' && q.options && q.options.length) {
       // multiple choice: selecting is not final until "Volgende", so you can change your mind
+      const isPictures = q.type === 'picture_choice';
+      const holder = isPictures ? el(`<div class="picture-grid"></div>`) : optionsDiv;
       for (const opt of q.options) {
-        const btn = el(`<button class="option-btn" data-value="${escapeHtml(opt)}">${escapeHtml(opt)}</button>`);
+        const btn = isPictures
+          ? el(`<button class="option-btn picture-option" data-value="${escapeHtml(opt)}"><span class="picture-emoji"></span></button>`)
+          : el(`<button class="option-btn" data-value="${escapeHtml(opt)}">${escapeHtml(opt)}</button>`);
+        if (isPictures) btn.querySelector('.picture-emoji').textContent = opt;
         btn.addEventListener('click', () => commit(opt));
-        optionsDiv.appendChild(btn);
+        holder.appendChild(btn);
       }
+      if (isPictures) optionsDiv.appendChild(holder);
     } else {
       renderAnswerControls(q, optionsDiv, commit, { submitLabel: 'Antwoord vastleggen' });
     }
