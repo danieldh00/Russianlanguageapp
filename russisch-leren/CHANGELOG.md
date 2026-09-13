@@ -4,6 +4,26 @@ Alle merkbare wijzigingen aan de "Russisch Leren" add-on staan hier, nieuwste
 versie bovenaan. Dit bestand wordt door Home Assistant Supervisor automatisch
 getoond onder de "Changelog"-knop van de add-on.
 
+## 1.6.0
+
+- Nieuw: **⚙️ Instellingen** als vierde tab onderin (in plaats van
+  Uitloggen, dat daar nu in zit): uitspraak, dagelijkse herinnering en
+  account. De herinneringsinstellingen zijn van de voortgangspagina hierheen
+  verhuisd.
+- Nieuw: **uitspraak instelbaar**. Elke luisterknop heeft er een 🐢 naast
+  voor langzaam afspelen; in Instellingen kies je de normale en de langzame
+  snelheid (met testknoppen) en de Russische stem. Op iPhone/iPad kun je
+  een veel betere stem downloaden (Toegankelijkheid → Gesproken materiaal →
+  Stemmen → Russisch → Milena uitgebreid); die verschijnt dan in de lijst.
+- Nieuw: **Klemtoon** — tweede les van A1, direct na het alfabet: waar de
+  klemtoon ligt, hoe je hem hoort, en waarom hij de klank van de andere
+  klinkers verandert (молоко́ → malakó), met de houvasten (ё altijd
+  beklemtoond, leenwoorden, verleden tijd vrouwelijk, за́мок/замо́к).
+- Nieuw: **klemtoonoefening bij elk woord** ("Waar ligt de klemtoon in
+  'молоко'?" — kies moло́ко / молоко́ …), ruim 1.000 stuks, en na je
+  antwoord hoor je het woord langzaam. Alleen bij deze oefening telt het
+  accentteken zelf als antwoord.
+
 ## 1.5.0
 
 - Nieuw: **plaatjesoefeningen** zoals bij Duolingo. Bij ±330 concrete

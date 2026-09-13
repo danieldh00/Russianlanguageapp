@@ -80,4 +80,47 @@ const grammarExercises = [
   read('здравствуйте', 'zdravstvuyte', ['zdpabctbyute', 'zdravstvyte', 'sdravstvuyte'], 'goedendag', "З = z, В = v, С = s, Т = t, У = oe, Й = j. Lees je de в/с/у als Latijn, komt er onzin uit.")
 ];
 
-module.exports = { categories: [], grammarRules: [], words, grammarExercises, practicalSentences: [], readings: [] };
+// ---- Klemtoon: the second A1 lesson, right after the alphabet ----
+const categories = [
+  {
+    slug: 'klemtoon', name: 'Klemtoon', level: 'A1', sort_order: 1,
+    description: 'Waar ligt de klemtoon, hoe hoor je hem, en hoe verandert hij de klank van de andere klinkers. Daarna oefen je de klemtoon bij elk nieuw woord.'
+  }
+];
+
+const grammarRules = [
+  {
+    code: 'STRESS-PLACEMENT',
+    title: 'Klemtoon: waar hij ligt en hoe je hem hoort',
+    explanation:
+      "De Russische klemtoon is vrij (hij kan op elke lettergreep liggen) en beweeglijk (hij kan verschuiven bij verbuiging: рука́ → ру́ку, го́род → города́). In gewone teksten wordt hij niet geschreven; woordenboeken en deze app zetten er een accentteken op (вода́). Er is geen sluitende regel, dus je leert de klemtoon samen met het woord — maar er zijn houvasten. " +
+      "1) ё is altijd beklemtoond (мёд, ещё, всё). " +
+      "2) Alleen de beklemtoonde klinker spreek je vol en lang uit; de andere worden kort en dof: een onbeklemtoonde о klinkt als a (молоко́ → malakó, хорошо́ → xarashó) en een onbeklemtoonde е of я als een korte i (телефо́н → tilifón). Leg je de klemtoon verkeerd, dan veranderen dus ook die klanken en klinkt het woord onherkenbaar. " +
+      "3) Leenwoorden houden meestal de klemtoon van de brontaal: компью́тер, телефо́н, рестора́н, докуме́нт. " +
+      "4) Werkwoorden op -ова́ть/-ева́ть hebben de klemtoon op -ва́-; bij korte werkwoorden verschuift hij in de verleden tijd vrouwelijk naar het einde (был, была́, бы́ли; взял, взяла́). " +
+      "5) De klemtoon onderscheidt soms woorden: за́мок (kasteel) – замо́к (slot), мука́ (meel) – му́ка (kwelling), пла́чу (ik huil) – плачу́ (ik betaal). " +
+      "Praktisch: druk op de luisterknop (ook de langzame 🐢), luister welke lettergreep 'vol' klinkt, en zeg het na.",
+    example: 'молоко́ [malakó] · хорошо́ [xarashó] · за́мок (kasteel) ≠ замо́к (slot)'
+  }
+];
+
+const K = 'klemtoon';
+const R = 'STRESS-PLACEMENT';
+const stressLesson = [
+  { category: K, grammarRule: R, type: 'mc', prompt: 'Welke letter is in het Russisch áltijd beklemtoond?', correctAnswer: 'ё', options: ['о', 'ё', 'а', 'е'], explanation: 'ё draagt altijd de klemtoon: мёд, ещё, всё. Daarom wordt de stip in gewone tekst vaak weggelaten — een Rus weet waar hij hoort.' },
+  { category: K, grammarRule: R, type: 'mc', prompt: "Hoe klinkt 'молоко́' (klemtoon op de laatste о)?", correctAnswer: 'malakó', options: ['mólako', 'malakó', 'molokó', 'malóka'], explanation: "Alleen de beklemtoonde о klinkt als o; de twee onbeklemtoonde о's klinken als een korte a: malakó." },
+  { category: K, grammarRule: R, type: 'mc', prompt: "Wat gebeurt er met een onbeklemtoonde 'о'?", correctAnswer: "hij klinkt als een korte 'a'", options: ["hij klinkt als een korte 'a'", 'hij wordt langer', 'hij klinkt als oe', 'hij valt weg'], explanation: "Akanje: onbeklemtoonde о → a. Москва́ klinkt als Maskvá, хорошо́ als xarashó." },
+  { category: K, grammarRule: R, type: 'mc', prompt: "Wat gebeurt er met een onbeklemtoonde 'е' (bv. in телефо́н)?", correctAnswer: "hij klinkt als een korte 'i'", options: ["hij klinkt als een korte 'i'", "hij klinkt als 'je'", 'hij blijft een duidelijke e', "hij klinkt als 'o'"], explanation: 'Ikanje: onbeklemtoonde е/я → korte i. телефо́н klinkt als tilifón, семья́ als simjá.' },
+  { category: K, grammarRule: R, type: 'mc', prompt: 'Wordt de klemtoon in een gewone Russische tekst (krant, bericht) geschreven?', correctAnswer: 'nee, alleen in woordenboeken en leerboeken', options: ['nee, alleen in woordenboeken en leerboeken', 'ja, altijd met een accentteken', 'alleen bij namen', 'alleen in hoofdletters'], explanation: 'Het accentteken (вода́) zie je in woordenboeken, leerboeken en deze app. Russen lezen zonder — jij leert de klemtoon dus per woord.' },
+  { category: K, grammarRule: R, type: 'mc', prompt: "Wat betekent 'замо́к' (klemtoon op de о)?", correctAnswer: 'slot (om af te sluiten)', options: ['slot (om af te sluiten)', 'kasteel', 'sleutel', 'deur'], explanation: 'замо́к = slot; за́мок = kasteel. Alleen de klemtoon verschilt.' },
+  { category: K, grammarRule: R, type: 'mc', prompt: "Wat betekent 'мука́' (klemtoon op de а)?", correctAnswer: 'meel / bloem', options: ['meel / bloem', 'kwelling', 'vlieg', 'muis'], explanation: 'мука́ = meel; му́ка = kwelling. Bij de bakker wil je de eerste.' },
+  { category: K, grammarRule: R, type: 'stress', prompt: "Waar ligt de klemtoon in 'телефон' (leenwoord)?", correctAnswer: 'телефо́н', options: ['те́лефон', 'теле́фон', 'телефо́н'], explanation: 'Leenwoorden houden meestal de klemtoon van de brontaal: telefóón → телефо́н. Klinkt als tilifón.' },
+  { category: K, grammarRule: R, type: 'stress', prompt: "Waar ligt de klemtoon in 'компьютер'?", correctAnswer: 'компью́тер', options: ['ко́мпьютер', 'компью́тер', 'компьюте́р'], explanation: 'Uit het Engels compúter → компью́тер.' },
+  { category: K, grammarRule: R, type: 'stress', prompt: "Waar ligt de klemtoon in 'была' (zij was)?", correctAnswer: 'была́', options: ['бы́ла', 'была́'], explanation: 'Bij korte werkwoorden verschuift de klemtoon in de vrouwelijke verleden tijd naar het einde: был, была́, бы́ло, бы́ли.' },
+  { category: K, grammarRule: R, type: 'stress', prompt: "Waar ligt de klemtoon in 'хорошо'?", correctAnswer: 'хорошо́', options: ['хо́рошо', 'хоро́шо', 'хорошо́'], explanation: "хорошо́ — klinkt als xarashó: de twee eerste о's zijn onbeklemtoond en klinken als a." },
+  { category: K, grammarRule: R, type: 'stress', prompt: "Waar ligt de klemtoon in 'спасибо'?", correctAnswer: 'спаси́бо', options: ['спа́сибо', 'спаси́бо', 'спасибо́'], explanation: 'спаси́бо — de и is beklemtoond; de о aan het eind is dof.' },
+  { category: K, grammarRule: R, type: 'stress', prompt: "Waar ligt de klemtoon in 'ещё' (nog)?", correctAnswer: 'ещё', options: ['е́ще', 'ещё'], explanation: 'ё is altijd beklemtoond, dus bij een woord met ё hoef je niet te twijfelen: ещё [jisjó].' },
+  { category: K, grammarRule: R, type: 'mc', prompt: 'Hoe herken je bij het luisteren de beklemtoonde lettergreep?', correctAnswer: 'hij klinkt langer, luider en met een volle klinker', options: ['hij klinkt langer, luider en met een volle klinker', 'hij klinkt hoger', 'hij is altijd de eerste', 'hij is altijd de laatste'], explanation: 'De beklemtoonde lettergreep is de enige die je vol uitspreekt; de rest wordt kort en dof. Gebruik de langzame luisterknop 🐢 om het te horen.' }
+];
+
+module.exports = { categories, grammarRules, words, grammarExercises: [...grammarExercises, ...stressLesson], practicalSentences: [], readings: [] };

@@ -12,7 +12,12 @@ function normalizeAnswer(value) {
     .trim();
 }
 
+// Stress exercises are the one place where the stress mark IS the answer
+// (молоко́ vs моло́ко), so they're compared exactly.
 function isCorrectAnswer(exercise, givenAnswer) {
+  if (exercise.type === 'stress') {
+    return String(givenAnswer == null ? '' : givenAnswer).normalize('NFC').trim() === String(exercise.correct_answer).normalize('NFC').trim();
+  }
   return normalizeAnswer(givenAnswer) === normalizeAnswer(exercise.correct_answer);
 }
 

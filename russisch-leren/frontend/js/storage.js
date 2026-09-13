@@ -68,6 +68,10 @@ const Storage = {
   },
   saveAttemptsLog(username, log) { writeJSON(`ru:${username}:attemptsLog`, log); },
 
+  // device-level preferences (speech rate/voice, ...): not tied to an account
+  loadSettings() { return readJSON('ru:settings', {}) || {}; },
+  saveSettings(settings) { writeJSON('ru:settings', settings); },
+
   // gamification snapshot (xp/level/streak/achievements), refreshed on every sync
   loadStats(username) { return readJSON(`ru:${username}:stats`, null); },
   saveStats(username, stats) { writeJSON(`ru:${username}:stats`, stats); }

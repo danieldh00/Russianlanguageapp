@@ -117,24 +117,56 @@ function extractSpeakText(ex) {
   return match ? match[0].trim() : null;
 }
 
-function speakRussian(text) {
+// Speech settings live on the device (Instellingen): normal rate, slow rate
+// (for hearing each sound and the stressed syllable) and a preferred voice.
+const SPEECH_DEFAULTS = { rate: 0.9, slowRate: 0.55, voiceURI: '' };
+function speechSettings() {
+  return { ...SPEECH_DEFAULTS, ...(Storage.loadSettings().speech || {}) };
+}
+function saveSpeechSettings(patch) {
+  const all = Storage.loadSettings();
+  all.speech = { ...speechSettings(), ...patch };
+  Storage.saveSettings(all);
+}
+function russianVoices() {
+  if (!('speechSynthesis' in window)) return [];
+  return window.speechSynthesis.getVoices().filter((v) => /^ru/i.test(v.lang));
+}
+function pickVoice() {
+  const voices = russianVoices();
+  if (!voices.length) return null;
+  const { voiceURI } = speechSettings();
+  return voices.find((v) => v.voiceURI === voiceURI) || voices.find((v) => v.localService) || voices[0];
+}
+
+function speakRussian(text, { slow = false } = {}) {
   if (!text || !('speechSynthesis' in window)) return;
   try {
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text.replace(/́/g, ''));
     utterance.lang = 'ru-RU';
-    utterance.rate = 0.9;
+    const s = speechSettings();
+    utterance.rate = slow ? s.slowRate : s.rate;
+    const voice = pickVoice();
+    if (voice) utterance.voice = voice;
     window.speechSynthesis.speak(utterance);
   } catch (e) {
     /* Web Speech API not available or blocked -- listening is a bonus, not required */
   }
 }
 
+// A listen control: normal speed plus a 🐢 button for slow speech, where
+// every sound and the stressed syllable are easy to pick out.
 function renderSpeakButton(text, label = '🔊 Luister') {
   if (!text || !('speechSynthesis' in window)) return null;
+  const group = el(`<span class="speak-group"></span>`);
   const btn = el(`<button type="button" class="speak-btn" aria-label="Luister naar de Russische uitspraak">${label}</button>`);
   btn.addEventListener('click', () => speakRussian(text));
-  return btn;
+  const slow = el(`<button type="button" class="speak-btn speak-slow" title="Langzaam" aria-label="Langzaam beluisteren">🐢</button>`);
+  slow.addEventListener('click', () => speakRussian(text, { slow: true }));
+  group.appendChild(btn);
+  group.appendChild(slow);
+  return group;
 }
 
 // ---------- auth ----------
@@ -300,7 +332,8 @@ const bottomNav = document.getElementById('bottom-nav');
 const NAV_ITEMS = [
   { route: 'dashboard', label: 'Lessen', icon: '📚' },
   { route: 'progress', label: 'Voortgang', icon: '📊' },
-  { route: 'leaderboard', label: 'Ranglijst', icon: '🏆' }
+  { route: 'leaderboard', label: 'Ranglijst', icon: '🏆' },
+  { route: 'settings', label: 'Instellingen', icon: '⚙️' }
 ];
 
 function currentRouteSection() {
@@ -330,19 +363,6 @@ function renderNav() {
       `);
       bottomNav.appendChild(tab);
     });
-    const logoutTab = el(`
-      <button type="button" class="bottom-nav-item">
-        <span class="bottom-nav-icon">🚪</span>
-        <span class="bottom-nav-label">Uitloggen</span>
-      </button>
-    `);
-    logoutTab.addEventListener('click', async () => {
-      api('/auth/logout', { method: 'POST' }).catch(() => {});
-      Storage.clearAuth();
-      state.user = null;
-      location.hash = '#/login';
-    });
-    bottomNav.appendChild(logoutTab);
   } else {
     nav.appendChild(el(`<a href="#/login">Inloggen</a>`));
     nav.appendChild(el(`<a href="#/register">Registreren</a>`));
@@ -408,6 +428,7 @@ async function router() {
   if (route === 'keyboard') return renderKeyboardTrainer();
   if (route === 'exam') return renderExam((param || '').toUpperCase());
   if (route === 'progress') return renderProgress();
+  if (route === 'settings') return renderSettings();
   if (route === 'leaderboard') return renderLeaderboard();
   return renderDashboard();
 }
@@ -812,7 +833,10 @@ async function renderLesson(slug) {
 
 function gradeAndRecord(ex) {
   return (chosenValue) => {
-    const isCorrect = normalizeAnswer(chosenValue) === normalizeAnswer(ex.correctAnswer);
+    // stress exercises are the one case where the accent mark is the answer
+    const isCorrect = ex.type === 'stress'
+      ? String(chosenValue).normalize('NFC').trim() === String(ex.correctAnswer).normalize('NFC').trim()
+      : normalizeAnswer(chosenValue) === normalizeAnswer(ex.correctAnswer);
     const username = state.user.username;
 
     if (ex.wordId != null) {
@@ -972,6 +996,8 @@ function renderExercise(session) {
     if (exampleBlock) fb.querySelector('#example-slot').replaceWith(exampleBlock);
     fb.appendChild(renderAfterAnswerTools(ex));
     feedbackDiv.appendChild(fb);
+    // hearing the stress is the whole point of a stress question: play it, slowly
+    if (ex.type === 'stress') speakRussian(ex.correctAnswer, { slow: true });
 
     if (!isCorrect && navigator.onLine) {
       fb.querySelector('#ai-explain-slot').appendChild(renderAiExplainButton(ex.id, chosenAnswer));
@@ -1437,8 +1463,6 @@ async function renderProgress() {
       </div>
     </div>
   `));
-
-  app.appendChild(renderReminderCard());
 
   const stats = Storage.loadStats(username);
   if (stats) {
@@ -2010,6 +2034,106 @@ async function renderKeyboardTrainer() {
   });
   paintTarget();
   setTimeout(() => input.focus(), 0);
+}
+
+// ---------- settings: speech, reminder, account ----------
+
+const SPEECH_SAMPLE = 'Здравствуйте! Меня зовут Даниэль. Я учу русский язык.';
+
+function renderSpeechCard() {
+  const card = el(`
+    <div class="card">
+      <h2>🔊 Uitspraak</h2>
+      <p class="muted">Elke luisterknop heeft twee snelheden: normaal en 🐢 langzaam. Stel hier in hoe snel die zijn en welke stem je hoort. Langzaam is handig om elke klank en de beklemtoonde lettergreep te horen.</p>
+      <div id="speech-body"></div>
+    </div>
+  `);
+  const body = card.querySelector('#speech-body');
+  if (!('speechSynthesis' in window)) {
+    body.appendChild(el(`<p class="muted">Deze browser ondersteunt geen spraaksynthese.</p>`));
+    return card;
+  }
+  const s = speechSettings();
+  body.appendChild(el(`
+    <div>
+    <div class="setting-row">
+      <label for="rate">Normale snelheid <span class="muted" id="rate-val">${s.rate.toFixed(2)}×</span></label>
+      <input type="range" id="rate" min="0.5" max="1.3" step="0.05" value="${s.rate}" />
+    </div>
+    <div class="setting-row">
+      <label for="slow-rate">Langzame snelheid 🐢 <span class="muted" id="slow-val">${s.slowRate.toFixed(2)}×</span></label>
+      <input type="range" id="slow-rate" min="0.3" max="0.9" step="0.05" value="${s.slowRate}" />
+    </div>
+    <div class="setting-row">
+      <label for="voice">Stem</label>
+      <select id="voice"><option value="">Automatisch (beste Russische stem)</option></select>
+      <p class="muted setting-hint" id="voice-hint"></p>
+    </div>
+    <div class="reminder-row">
+      <button type="button" class="secondary" id="test-normal">▶︎ Test normaal</button>
+      <button type="button" class="secondary" id="test-slow">🐢 Test langzaam</button>
+    </div>
+    <p class="muted setting-hint">Op iPhone/iPad krijg je een veel betere stem via Instellingen → Toegankelijkheid → Gesproken materiaal → Stemmen → Russisch → Milena (uitgebreid) downloaden. Daarna staat hij hier in de lijst.</p>
+    </div>
+  `));
+  const rate = body.querySelector('#rate');
+  const slowRate = body.querySelector('#slow-rate');
+  const voiceSel = body.querySelector('#voice');
+  const hint = body.querySelector('#voice-hint');
+  rate.addEventListener('input', () => { body.querySelector('#rate-val').textContent = Number(rate.value).toFixed(2) + '×'; saveSpeechSettings({ rate: Number(rate.value) }); });
+  slowRate.addEventListener('input', () => { body.querySelector('#slow-val').textContent = Number(slowRate.value).toFixed(2) + '×'; saveSpeechSettings({ slowRate: Number(slowRate.value) }); });
+  function fillVoices() {
+    const voices = russianVoices();
+    [...voiceSel.querySelectorAll('option:not([value=""])')].forEach((o) => o.remove());
+    for (const v of voices) {
+      const opt = document.createElement('option');
+      opt.value = v.voiceURI;
+      opt.textContent = `${v.name} (${v.lang})${v.localService ? '' : ' · online'}`;
+      voiceSel.appendChild(opt);
+    }
+    voiceSel.value = voices.some((v) => v.voiceURI === s.voiceURI) ? s.voiceURI : '';
+    hint.textContent = voices.length ? `${voices.length} Russische ${voices.length === 1 ? 'stem' : 'stemmen'} beschikbaar op dit toestel.` : 'Geen Russische stem gevonden op dit toestel; installeer er een via de systeeminstellingen.';
+  }
+  fillVoices();
+  if (window.speechSynthesis.onvoiceschanged !== undefined) window.speechSynthesis.addEventListener('voiceschanged', fillVoices);
+  voiceSel.addEventListener('change', () => saveSpeechSettings({ voiceURI: voiceSel.value }));
+  body.querySelector('#test-normal').addEventListener('click', () => speakRussian(SPEECH_SAMPLE));
+  body.querySelector('#test-slow').addEventListener('click', () => speakRussian(SPEECH_SAMPLE, { slow: true }));
+  return card;
+}
+
+async function renderSettings() {
+  app.innerHTML = '';
+  app.appendChild(el(`<div><h1>⚙️ Instellingen</h1><p class="muted">Deze instellingen gelden voor dit toestel.</p></div>`));
+  app.appendChild(renderSpeechCard());
+  app.appendChild(renderReminderCard());
+
+  const account = el(`
+    <div class="card">
+      <h2>👤 Account</h2>
+      <p class="muted">Ingelogd als <strong>${escapeHtml(state.user.username)}</strong>. Je voortgang staat op de server en wordt op elk toestel waar je inlogt gesynchroniseerd.</p>
+      <button type="button" class="secondary" id="logout-btn">🚪 Uitloggen</button>
+    </div>
+  `);
+  account.querySelector('#logout-btn').addEventListener('click', async () => {
+    api('/auth/logout', { method: 'POST' }).catch(() => {});
+    Storage.clearAuth();
+    state.user = null;
+    location.hash = '#/login';
+  });
+  app.appendChild(account);
+
+  const content = Storage.loadContent(state.user.username);
+  if (content) {
+    const counts = {};
+    for (const e of content.exercises) counts[e.type] = (counts[e.type] || 0) + 1;
+    app.appendChild(el(`
+      <div class="card">
+        <h2>ℹ️ Lesinhoud op dit toestel</h2>
+        <p class="muted">${content.categories.length} lessen · ${content.exercises.length} oefeningen · ${Object.keys(content.words || {}).length} woorden · opgehaald ${escapeHtml(String(content.generatedAt || '').slice(0, 16).replace('T', ' '))}. Nieuwe inhoud wordt automatisch opgehaald zodra je online bent.</p>
+      </div>
+    `));
+  }
 }
 
 // ---------- daily reminder (Web Push) ----------

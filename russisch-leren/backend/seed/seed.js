@@ -49,6 +49,26 @@ function buildCloze(word, sentence) {
   return { token: best.core, blanked: rebuilt };
 }
 
+// "Where is the stress?" -- the word with the acute placed on each vowel in
+// turn; the real accented form is the answer. Russian stress is free and
+// unmarked in normal text, so it has to be learned per word; this drills
+// exactly that, and the feedback plays the word so you hear it.
+const VOWELS = 'аеёиоуыэюя';
+function buildStress(accented) {
+  const nfc = accented.normalize('NFC');
+  if ((nfc.match(/́/g) || []).length !== 1 || /[\s,\/]/.test(nfc)) return null;
+  const bare = nfc.replace(/́/g, '');
+  const chars = [...bare];
+  const vowelIdx = chars.map((c, i) => (VOWELS.includes(c.toLowerCase()) ? i : -1)).filter((i) => i >= 0);
+  if (vowelIdx.length < 2) return null;
+  const variants = vowelIdx.map((i) => chars.slice(0, i + 1).join('') + '́' + chars.slice(i + 1).join(''));
+  const correctIdx = variants.indexOf(nfc);
+  if (correctIdx === -1) return null;
+  // at most 4 options: the answer plus its nearest neighbours
+  let keep = variants.map((v, i) => ({ v, d: Math.abs(i - correctIdx) })).sort((a, b) => a.d - b.d).slice(0, 4).map((x) => x.v);
+  return { bare, correct: nfc, options: shuffle(keep), syllable: correctIdx + 1, syllables: vowelIdx.length, hasYo: bare.includes('ё'), unstressedO: chars.some((c, i) => c === 'о' && i !== vowelIdx[correctIdx]) };
+}
+
 // Adds lesson content (categories, words, grammar rules, exercises) that
 // doesn't exist yet, and refreshes the text of rows that do -- without ever
 // touching `attempts` or `user_word_progress`. That makes it safe to run on
@@ -293,6 +313,24 @@ function seedDatabase() {
             explanation: `'${shown}' betekent '${w.translation_nl}': ${w.picture}.` + notes
           });
         }
+      }
+
+      const stress = singleWord && w.accented ? buildStress(w.accented) : null;
+      if (stress && stress.options.length >= 2) {
+        addExerciseIfNew({
+          category_id: w.category_id,
+          word_id: w.id,
+          grammar_rule_id: ruleId('STRESS-PLACEMENT', `stress '${w.russian}'`),
+          type: 'stress',
+          prompt: `Waar ligt de klemtoon in '${stress.bare}' (${w.translation_nl})?`,
+          correct_answer: stress.correct,
+          options: JSON.stringify(stress.options),
+          explanation:
+            `${stress.correct}: klemtoon op lettergreep ${stress.syllable} van ${stress.syllables}.` +
+            (stress.hasYo ? ' Onthoud: ё is altijd beklemtoond.' : '') +
+            (stress.unstressedO ? " De onbeklemtoonde о klinkt als een korte 'a'." : '') +
+            ' Luister en zeg het na: alleen de beklemtoonde lettergreep spreek je vol uit.'
+        });
       }
 
       const example = w.example_ru ? [w.example_ru, w.example_nl || ''] : null;

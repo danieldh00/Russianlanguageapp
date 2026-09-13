@@ -1,5 +1,5 @@
 module.exports = [
-  { slug: 'alphabet', name: 'Alfabet & uitspraak', description: 'Alle 33 Cyrillische letters en hoe ze klinken, met extra aandacht voor letters die op Latijnse letters lijken maar anders klinken — en woorden lezen zonder in die val te trappen.', level: 'A1', sort_order: 1 },
+  { slug: 'alphabet', name: 'Alfabet & uitspraak', description: 'Alle 33 Cyrillische letters en hoe ze klinken, met extra aandacht voor letters die op Latijnse letters lijken maar anders klinken — en woorden lezen zonder in die val te trappen.', level: 'A1', sort_order: 0 },
   { slug: 'greetings', name: 'Begroetingen & basiszinnen', description: 'De eerste woorden en zinnen die je nodig hebt.', level: 'A1', sort_order: 2 },
   { slug: 'numbers', name: 'Getallen 1-10', description: 'Tellen in het Russisch.', level: 'A1', sort_order: 3 },
   { slug: 'numbers-large', name: 'Getallen 11-100', description: 'Tientallen en honderd.', level: 'A1', sort_order: 4 },

@@ -93,7 +93,13 @@ is en welke grammaticaregel erachter zit.
   Afgeronde lessen blijven altijd te herhalen.
 - **Immersie**: een luisterknop op elke oefening spreekt de Russische tekst
   hardop uit (via de ingebouwde spraaksynthese van de browser, werkt ook
-  offline) — handig om de uitspraak te oefenen, niet alleen het schrift.
+  offline), met een 🐢-knop voor langzaam; snelheid en stem stel je in onder
+  ⚙️ Instellingen (samen met de dagelijkse herinnering en uitloggen).
+- **Klemtoon**: A1-les "Klemtoon" (regel `STRESS-PLACEMENT`: vrij en
+  beweeglijk, ё altijd beklemtoond, klinkerreductie, leenwoorden,
+  betekenisverschil за́мок/замо́к) plus een gegenereerde klemtoonoefening
+  bij elk woord met bekende klemtoon (type `stress`: kies de juiste
+  accentpositie; de enige oefening waar het accentteken zelf telt).
 - **Voortgangsdashboard**: nauwkeurigheid, aantal geoefende/onder-de-knie
   woorden per les, niveau/streak/badges, en overzichten van de vaakst gemaakte
   fouten en recente fouten (met uitleg).

@@ -25,7 +25,7 @@ voortgang tussen toestellen (bv. iPhone en iPad).
 
 ## Dagelijkse herinnering (pushmelding)
 
-Op de voortgangspagina kun je per toestel een tijdstip instellen; je krijgt
+Onder ⚙️ Instellingen kun je per toestel een tijdstip instellen; je krijgt
 dan een melding op dagen dat je nog niet geoefend hebt. Vereist een
 `https://`-adres (zie hieronder). Op iPhone/iPad werkt dit alleen vanuit de
 geïnstalleerde app: Safari → Delen → "Zet op beginscherm", en de app vanaf
