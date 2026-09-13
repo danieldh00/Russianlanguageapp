@@ -20,6 +20,16 @@ router.get('/', requireAuth, (req, res) => {
     grammarRules[r.code] = { code: r.code, title: r.title, explanation: r.explanation, example: r.example };
   }
 
+  // One entry per word (looked up by exercise.wordId on the client): the
+  // headword with stress, its translation and an example sentence. Sent once
+  // per word rather than repeated inside its two or three exercises.
+  const words = {};
+  for (const w of db.prepare('SELECT id, russian, accented, translation_nl, example_ru, example_nl FROM words').all()) {
+    const entry = { ru: w.accented || w.russian, nl: w.translation_nl };
+    if (w.example_ru) entry.example = { ru: w.example_ru, nl: w.example_nl || '' };
+    words[w.id] = entry;
+  }
+
   const exercises = db
     .prepare(
       `SELECT e.id, e.type, e.prompt, e.correct_answer, e.options, e.explanation, e.context,
@@ -49,10 +59,11 @@ router.get('/', requireAuth, (req, res) => {
   res.json({
     // bumped whenever the shape of this bundle changes, so a device holding
     // an older cached copy refetches instead of trusting the 24h staleness window
-    schemaVersion: 2,
+    schemaVersion: 3,
     levels: LEVELS.map((l) => ({ level: l, title: LEVEL_TITLES[l], description: LEVEL_DESCRIPTIONS[l] })),
     categories,
     grammarRules,
+    words,
     exercises,
     generatedAt: new Date().toISOString()
   });

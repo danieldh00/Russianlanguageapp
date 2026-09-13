@@ -4,6 +4,24 @@ Alle merkbare wijzigingen aan de "Russisch Leren" add-on staan hier, nieuwste
 versie bovenaan. Dit bestand wordt door Home Assistant Supervisor automatisch
 getoond onder de "Changelog"-knop van de add-on.
 
+## 1.3.0
+
+- Nieuw: **dagelijkse herinnering** via pushmelding. Op de voortgangspagina
+  kies je een tijdstip; je krijgt op dat moment een melding op dit toestel,
+  maar alleen op dagen dat je nog niet geoefend hebt (met het aantal woorden
+  dat op herhaling wacht). Inclusief testknop. Op iPhone/iPad werkt dit
+  alleen in de geïnstalleerde app ("Zet op beginscherm", iOS 16.4+). De
+  sleutels hiervoor worden bij de eerste start aangemaakt en in de
+  persistente opslag van de add-on bewaard.
+- Nieuw: **elk woord in een voorbeeldzin**. Na elk antwoord zie je het woord
+  in een echte zin (Russisch + Nederlands) met een eigen luisterknop —
+  ±1.400 zinnen, geschreven per woord, zodat je context en naamvalsvormen
+  meekrijgt. Ook in de toetsreview.
+- Nieuw: **"Oefen je fouten"** — een ronde van maximaal tien vragen die je
+  op dit toestel fout had en nog niet hebt rechtgezet, de vaakst gemiste
+  eerst. Kaart op het dashboard en knop op de voortgangspagina; verdwijnt
+  vanzelf als alles is rechtgezet.
+
 ## 1.2.3
 
 - Fix: "Recente fouten" en "Vaakst fout beantwoord" op de voortgangspagina

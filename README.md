@@ -31,6 +31,18 @@ is en welke grammaticaregel erachter zit.
   fout), **luisteren** (een zin wordt voorgelezen en jij bouwt 'm na) en
   **lezen** (korte tekst met begripsvragen). Elk woord toont z'n klemtoon
   (спа́льня) en transliteratie.
+- **Voorbeeldzinnen**: elk woord heeft een eigen zin (Russisch + Nederlands,
+  met luisterknop) die na elk antwoord verschijnt — ±1.400 zinnen in
+  `seed/data/examples/`, per niveau, zodat je het woord in context en in
+  een verbogen vorm ziet.
+- **Oefen je fouten**: een ronde van maximaal tien vragen die je op dit
+  toestel fout had en nog niet hebt rechtgezet (vaakst gemiste eerst);
+  verdwijnt vanzelf zodra alles is rechtgezet.
+- **Dagelijkse herinnering** via Web Push: per toestel een tijdstip, alleen
+  op dagen dat je nog niet geoefend hebt, met het aantal woorden dat op
+  herhaling wacht. VAPID-sleutels worden bij de eerste start aangemaakt in
+  `DATA_DIR/vapid.json`; op iOS alleen vanuit de geïnstalleerde PWA
+  (16.4+).
 - **Niveautoetsen**: elk niveau sluit je af met een toets van 30 vragen,
   evenredig verdeeld over alle lessen van dat niveau en alle oefenvormen.
   Server-side nagekeken; geslaagd bij 80% of hoger. Dan is het niveau
@@ -103,6 +115,7 @@ russisch-leren/
       srs.js               Spaced-repetition-planner (server)
       gamification.js       XP/niveau-berekening, leer-reeks, badge-definities
       grading.js            Antwoorden normaliseren en vergelijken (ё/е, klemtoon, hoofdletters)
+      push.js               Web Push: VAPID-sleutels, dagelijkse herinneringsplanner
       levels.js             CEFR-niveaus A1..C2 met titels en omschrijvingen
       recordAttempt.js      Gedeelde logica: antwoord verwerken + SRS bijwerken
                              (gebruikt door zowel /exercises/:id/answer als /sync/attempts)
@@ -118,6 +131,7 @@ russisch-leren/
         ai.js                         AI-uitleg via de Claude API (optioneel)
         leaderboard.js                Ranglijst
         exams.js                      Niveautoetsen: samenstellen, nakijken, certificeringen
+        push.js                       Push-abonnementen en herinneringsinstellingen per toestel
     seed/
       seed.js            Vult/actualiseert de database met lesinhoud (toevoegend, bij elke start)
       data/
@@ -126,6 +140,7 @@ russisch-leren/
         grammarExercises.js, practicalSentences.js   Basisinhoud A1/A2
         levels/b1.js .. c2.js           Per niveau: lessen, regels, oefeningen, zinnen, leesteksten, drills
         levels/vocab-b1.js .. vocab-c2.js   Frequentie-gebaseerde woordenschatpakketten per niveau
+        examples/a.js .. c2.js          Voorbeeldzin per woord ({ 'вода': [ru, nl] })
         generated/openrussian-forms.json   Klemtoon + woordvormen uit Open Russian (gegenereerd)
         translit.js      Transliteratie en klemtoon-hulpfuncties
         SOURCES.md       Bronvermelding en licenties van de open datasets
@@ -367,6 +382,8 @@ applicatiecode aan te passen. Alles staat onder
 
 Formaten:
 
+- **Voorbeeldzin**: in `examples/<niveau>.js`, `{ 'вода': ['Можно воду без газа?', 'Mag ik water zonder koolzuur?'] }`
+  — gekoppeld op het Russische woord; een woord zonder zin werkt gewoon, alleen zonder het blok "In een zin".
 - **Woord**: `{ category, russian, translation_nl, notes?, grammarRule? }`.
   Transliteratie, klemtoon en geslacht worden automatisch aangevuld uit
   `generated/openrussian-forms.json` (zie `SOURCES.md`); per woord ontstaan
@@ -409,6 +426,11 @@ Alle routes onder `/api`, JSON in/uit, sessie-cookie voor authenticatie.
 | GET | `/exams/:level` | Nieuwe toets van 30 vragen voor een niveau (zonder antwoorden/uitleg) |
 | POST | `/exams/:level/submit` | Toets inleveren → score, geslaagd/niet, per-les-uitsplitsing en volledige review met uitleg |
 | GET | `/exams/history` | Eerdere toetspogingen van de ingelogde gebruiker |
+| GET | `/push/vapid-public-key` | Publieke VAPID-sleutel voor het push-abonnement |
+| GET | `/push/status?endpoint=` | Herinneringsinstelling van dit toestel |
+| POST | `/push/subscribe` | Abonnement + tijdstip + tijdzone opslaan (per toestel) |
+| POST | `/push/unsubscribe` | Herinnering op dit toestel uitzetten |
+| POST | `/push/test` | Direct een testmelding sturen |
 
 ## Bronnen & licenties van de lesinhoud
 

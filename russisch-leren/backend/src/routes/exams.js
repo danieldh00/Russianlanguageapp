@@ -154,9 +154,11 @@ router.post('/:level/submit', requireAuth, (req, res) => {
 
   const getExercise = db.prepare(
     `SELECT e.*, c.slug AS category_slug, c.name AS category_name, c.level AS category_level,
-            gr.code AS rule_code, gr.title AS rule_title, gr.explanation AS rule_explanation, gr.example AS rule_example
+            gr.code AS rule_code, gr.title AS rule_title, gr.explanation AS rule_explanation, gr.example AS rule_example,
+            w.example_ru, w.example_nl
      FROM exercises e JOIN categories c ON c.id = e.category_id
      LEFT JOIN grammar_rules gr ON gr.id = e.grammar_rule_id
+     LEFT JOIN words w ON w.id = e.word_id
      WHERE e.id = ?`
   );
 
@@ -178,6 +180,7 @@ router.post('/:level/submit', requireAuth, (req, res) => {
       correctAnswer: exercise.correct_answer,
       isCorrect,
       explanation: exercise.explanation,
+      example: exercise.example_ru ? { ru: exercise.example_ru, nl: exercise.example_nl } : null,
       grammarRule: exercise.rule_code
         ? { code: exercise.rule_code, title: exercise.rule_title, explanation: exercise.rule_explanation, example: exercise.rule_example }
         : null,

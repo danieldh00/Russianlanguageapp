@@ -27,6 +27,8 @@ function migrateLegacyColumns() {
   addColumnIfMissing('attempts', 'client_id', 'TEXT');
   addColumnIfMissing('exercises', 'context', 'TEXT'); // reading passage / text spoken aloud for listening
   addColumnIfMissing('words', 'accented', 'TEXT'); // stress-marked form, e.g. молоко́
+  addColumnIfMissing('words', 'example_ru', 'TEXT'); // example sentence showing the word in context
+  addColumnIfMissing('words', 'example_nl', 'TEXT');
 }
 
 migrateLegacyColumns();

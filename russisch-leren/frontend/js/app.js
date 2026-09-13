@@ -2,7 +2,7 @@ const state = { user: null, syncing: false, pendingCount: 0 };
 let syncInFlight = false;
 
 // the content bundle shape this client understands (see /api/content)
-const CONTENT_SCHEMA_VERSION = 2;
+const CONTENT_SCHEMA_VERSION = 3;
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
@@ -259,7 +259,26 @@ async function ensureContentLoaded() {
 // rule inline, so fall back to that.
 function withGrammarRule(content, ex) {
   const rule = ex.ruleCode && content.grammarRules ? content.grammarRules[ex.ruleCode] : ex.grammarRule || null;
-  return { ...ex, grammarRule: rule || null };
+  const word = ex.wordId != null && content.words ? content.words[ex.wordId] : null;
+  return { ...ex, grammarRule: rule || null, example: (word && word.example) || ex.example || null };
+}
+
+// "Я пью воду. — Ik drink water." with a listen button: the word in a real
+// sentence, shown after every answer so the context sticks, not just the word.
+function renderExampleBlock(example) {
+  if (!example || !example.ru) return null;
+  const block = el(`
+    <div class="example-box">
+      <div class="reading-label">In een zin</div>
+      <p class="example-ru"></p>
+      <p class="example-nl muted"></p>
+    </div>
+  `);
+  block.querySelector('.example-ru').textContent = example.ru;
+  block.querySelector('.example-nl').textContent = example.nl || '';
+  const speak = renderSpeakButton(example.ru, '🔊 Zin beluisteren');
+  if (speak) block.appendChild(speak);
+  return block;
 }
 
 function levelsOf(content) {
@@ -287,7 +306,7 @@ const NAV_ITEMS = [
 function currentRouteSection() {
   const route = (location.hash || '#/dashboard').split('/')[1] || 'dashboard';
   // a lesson or exam screen is reached from, and belongs to, the "Lessen" tab
-  return route === 'lesson' || route === 'exam' ? 'dashboard' : route;
+  return route === 'lesson' || route === 'exam' || route === 'practice' ? 'dashboard' : route;
 }
 
 function renderNav() {
@@ -383,6 +402,7 @@ async function router() {
 
   if (route === 'dashboard') return renderDashboard();
   if (route === 'lesson') return renderLesson(param);
+  if (route === 'practice') return renderMistakesPractice();
   if (route === 'exam') return renderExam((param || '').toUpperCase());
   if (route === 'progress') return renderProgress();
   if (route === 'leaderboard') return renderLeaderboard();
@@ -589,11 +609,24 @@ async function renderDashboard() {
       <h1>Jouw pad door het Russisch</h1>
       <p class="muted">Van A1 tot C2. Elke les opent zodra je de vorige helemaal hebt geoefend; een nieuw niveau opent na de toets (of na alle lessen) van het niveau ervoor. Alles werkt ook zonder internet, behalve de toetsen.</p>
       <div class="level-jump" id="level-jump"></div>
+      <div id="practice-slot"></div>
       <div id="levels"></div>
     </div>
   `);
   app.innerHTML = '';
   app.appendChild(wrapper);
+
+  const openMistakes = mistakeExercises(content, username).length;
+  if (openMistakes) {
+    const card = el(`
+      <button type="button" class="card practice-card">
+        <div class="row1"><h2>🎯 Oefen je fouten</h2><span class="level-badge">${openMistakes}</span></div>
+        <p class="muted">${openMistakes === 1 ? 'Eén vraag die je fout had' : `${openMistakes} vragen die je fout had`} en nog niet hebt rechtgezet. Een ronde van ${Math.min(10, openMistakes)}, de vaakst gemiste eerst.</p>
+      </button>
+    `);
+    card.addEventListener('click', () => { location.hash = '#/practice'; });
+    wrapper.querySelector('#practice-slot').appendChild(card);
+  }
 
   const jump = wrapper.querySelector('#level-jump');
   const levelsRoot = wrapper.querySelector('#levels');
@@ -905,10 +938,13 @@ function renderExercise(session) {
         ${isCorrect ? '' : `<div>Het juiste antwoord is: <strong>${escapeHtml(ex.correctAnswer)}</strong></div>`}
         ${ex.type === 'listen' && ex.context ? `<div class="listen-reveal">Je hoorde: <strong>${escapeHtml(ex.context)}</strong></div>` : ''}
         <div class="explanation">${escapeHtml(ex.explanation)}</div>
+        <div id="example-slot"></div>
         ${ex.grammarRule ? `<div class="grammar-rule"><strong>${escapeHtml(ex.grammarRule.title)}:</strong> ${escapeHtml(ex.grammarRule.explanation)}</div>` : ''}
         <div id="ai-explain-slot"></div>
       </div>
     `);
+    const exampleBlock = renderExampleBlock(ex.example);
+    if (exampleBlock) fb.querySelector('#example-slot').replaceWith(exampleBlock);
     feedbackDiv.appendChild(fb);
 
     if (!isCorrect && navigator.onLine) {
@@ -979,9 +1015,10 @@ function renderAiExplainButton(exerciseId, givenAnswer) {
 function renderLessonComplete(session) {
   app.innerHTML = '';
   const pct = Math.round((session.correctCount / session.items.length) * 100);
+  const isPractice = session.category.slug === '__mistakes__';
   app.appendChild(el(`
     <div class="card">
-      <h1>Les afgerond</h1>
+      <h1>${isPractice ? 'Foutenronde afgerond' : 'Les afgerond'}</h1>
       <p>Je had ${session.correctCount} van de ${session.items.length} vragen goed (${pct}%).</p>
       <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
         <button class="primary" id="again-btn">Nog een keer</button>
@@ -989,8 +1026,50 @@ function renderLessonComplete(session) {
       </div>
     </div>
   `));
-  document.getElementById('again-btn').addEventListener('click', () => renderLesson(session.category.slug));
+  document.getElementById('again-btn').addEventListener('click', () => (isPractice ? renderMistakesPractice() : renderLesson(session.category.slug)));
   document.getElementById('back-btn').addEventListener('click', () => { location.hash = '#/dashboard'; });
+}
+
+// ---------- "Oefen je fouten": a session built from this device's mistake log ----------
+
+// Exercises answered wrongly on this device, the ones missed most often (and
+// most recently) first. An exercise drops off the list once its last answer
+// here was correct -- so the list shrinks as you fix things.
+function mistakeExercises(content, username) {
+  const log = Storage.loadAttemptsLog(username); // newest first
+  const stats = new Map();
+  const lastOutcome = new Map();
+  for (const a of log) {
+    if (!lastOutcome.has(a.exerciseId)) lastOutcome.set(a.exerciseId, a.isCorrect);
+    if (a.isCorrect) continue;
+    const s = stats.get(a.exerciseId) || { count: 0, last: a.at };
+    s.count++;
+    stats.set(a.exerciseId, s);
+  }
+  const byId = new Map(content.exercises.map((e) => [e.id, e]));
+  return [...stats.entries()]
+    .filter(([id]) => byId.has(id) && lastOutcome.get(id) === false)
+    .sort((a, b) => b[1].count - a[1].count || (b[1].last > a[1].last ? 1 : -1))
+    .map(([id]) => byId.get(id));
+}
+
+async function renderMistakesPractice() {
+  const content = await ensureContentLoaded();
+  if (!content) return renderNoContentMessage();
+  const pool = mistakeExercises(content, state.user.username);
+  if (!pool.length) {
+    app.innerHTML = '';
+    app.appendChild(el(`
+      <div class="card">
+        <h1>Oefen je fouten</h1>
+        <p class="muted">Geen openstaande fouten op dit toestel: alles wat je fout had, heb je daarna goed beantwoord. Mooi zo.</p>
+        <a href="#/dashboard">Terug naar lessen</a>
+      </div>
+    `));
+    return;
+  }
+  const items = pool.slice(0, 10).map((ex) => withGrammarRule(content, ex));
+  renderExercise({ category: { slug: '__mistakes__', name: 'Oefen je fouten' }, items, index: 0, correctCount: 0 });
 }
 
 // ---------- level exams (online only: graded on the server) ----------
@@ -1204,6 +1283,7 @@ function renderExamResult(result) {
           ${r.isCorrect ? '' : `<div><span class="muted">Juist:</span> <strong class="correct-answer"></strong></div>`}
         </div>
         <div class="explanation"></div>
+        <div class="example-slot"></div>
         ${r.grammarRule ? `<div class="grammar-rule"><strong>${escapeHtml(r.grammarRule.title)}:</strong> ${escapeHtml(r.grammarRule.explanation)}${r.grammarRule.example ? `<div class="muted" style="margin-top:6px">Voorbeeld: ${escapeHtml(r.grammarRule.example)}</div>` : ''}</div>` : ''}
         <div class="ai-slot-holder"></div>
       </div>
@@ -1213,6 +1293,8 @@ function renderExamResult(result) {
     item.querySelector('.given').textContent = r.given || '(geen antwoord)';
     if (!r.isCorrect) item.querySelector('.correct-answer').textContent = r.correctAnswer;
     item.querySelector('.explanation').textContent = r.explanation;
+    const exampleBlock = renderExampleBlock(r.example);
+    if (exampleBlock) item.querySelector('.example-slot').replaceWith(exampleBlock);
     if (!r.isCorrect && navigator.onLine) item.querySelector('.ai-slot-holder').appendChild(renderAiExplainButton(r.exerciseId, r.given));
     return item;
   }
@@ -1262,6 +1344,8 @@ async function renderProgress() {
       </div>
     </div>
   `));
+
+  app.appendChild(renderReminderCard());
 
   const stats = Storage.loadStats(username);
   if (stats) {
@@ -1340,6 +1424,12 @@ async function renderProgress() {
   const topMissed = Object.values(missedCounts).sort((a, b) => b.count - a.count).slice(0, 10);
 
   const missedCard = el(`<div class="card"><h2>Vaakst fout beantwoord <span class="muted" style="font-weight:400;font-size:0.8rem">(dit toestel)</span></h2></div>`);
+  const openMistakes = mistakeExercises(content, username).length;
+  if (openMistakes) {
+    const btn = el(`<button type="button" class="primary" style="margin-bottom:14px">🎯 Oefen je fouten (${openMistakes})</button>`);
+    btn.addEventListener('click', () => { location.hash = '#/practice'; });
+    missedCard.appendChild(btn);
+  }
   if (!topMissed.length) {
     missedCard.appendChild(el(`<p class="muted">Nog geen fouten geregistreerd op dit toestel. Blijf zo doorgaan!</p>`));
   } else {
@@ -1368,6 +1458,126 @@ async function renderProgress() {
     recentCard.appendChild(scroll);
   }
   app.appendChild(recentCard);
+}
+
+// ---------- daily reminder (Web Push) ----------
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(base64);
+  return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)));
+}
+
+function pushSupported() {
+  return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+}
+
+// iOS only allows Web Push for a PWA opened from the home screen (16.4+);
+// in the Safari tab itself PushManager simply doesn't exist.
+function isIosBrowserTab() {
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  return ios && !standalone;
+}
+
+async function currentPushSubscription() {
+  const reg = await navigator.serviceWorker.ready;
+  return reg.pushManager.getSubscription();
+}
+
+function renderReminderCard() {
+  const card = el(`
+    <div class="card reminder-card">
+      <h2>🔔 Dagelijkse herinnering</h2>
+      <p class="muted">Een melding op dit toestel op een vast tijdstip — alleen op dagen dat je nog niet geoefend hebt, zodat je reeks niet breekt.</p>
+      <div id="reminder-body"></div>
+    </div>
+  `);
+  const body = card.querySelector('#reminder-body');
+
+  if (!pushSupported()) {
+    body.appendChild(el(`<p class="muted">${isIosBrowserTab()
+      ? 'Op iPhone/iPad werken meldingen alleen in de geïnstalleerde app: tik in Safari op Delen → "Zet op beginscherm" en open de app vanaf je beginscherm (iOS 16.4 of nieuwer).'
+      : 'Deze browser ondersteunt geen pushmeldingen.'}</p>`));
+    return card;
+  }
+  if (!navigator.onLine) {
+    body.appendChild(el(`<p class="muted">Je bent offline; de herinnering instellen kan alleen online.</p>`));
+    return card;
+  }
+
+  body.appendChild(el(`<p class="muted">Laden…</p>`));
+  (async () => {
+    let sub = null;
+    let status = { subscribed: false, settings: null };
+    try {
+      sub = await currentPushSubscription();
+      if (sub) status = await api(`/push/status?endpoint=${encodeURIComponent(sub.endpoint)}`);
+    } catch (err) {
+      /* fall through: show the form */
+    }
+    const active = !!(sub && status.subscribed && status.settings && status.settings.enabled);
+    const time = (status.settings && status.settings.reminderTime) || '19:00';
+    body.innerHTML = '';
+    body.appendChild(el(`
+      <div class="reminder-row">
+        <label for="reminder-time">Tijdstip</label>
+        <input type="time" id="reminder-time" value="${time}" />
+        <button type="button" class="${active ? 'secondary' : 'primary'}" id="reminder-toggle">${active ? 'Herinnering uitzetten' : 'Herinnering aanzetten'}</button>
+        ${active ? `<button type="button" class="secondary" id="reminder-save">Tijd opslaan</button><button type="button" class="secondary" id="reminder-test">Testmelding</button>` : ''}
+      </div>
+      <p class="muted reminder-status">${active ? `Aan — dagelijks om ${time} (${escapeHtml(status.settings.timeZone)}).` : Notification.permission === 'denied' ? 'Meldingen zijn voor deze site geblokkeerd; sta ze toe in de browser-/systeeminstellingen.' : 'Uit.'}</p>
+    `));
+    const statusLine = body.querySelector('.reminder-status');
+    const timeInput = body.querySelector('#reminder-time');
+    const tz = (Intl.DateTimeFormat().resolvedOptions().timeZone) || 'Europe/Amsterdam';
+
+    async function subscribeNow() {
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') throw new Error('Geen toestemming voor meldingen gegeven.');
+      const reg = await navigator.serviceWorker.ready;
+      let s = await reg.pushManager.getSubscription();
+      if (!s) {
+        const { publicKey } = await api('/push/vapid-public-key');
+        s = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(publicKey) });
+      }
+      await api('/push/subscribe', { method: 'POST', body: { subscription: s.toJSON(), reminderTime: timeInput.value || '19:00', timeZone: tz } });
+    }
+
+    body.querySelector('#reminder-toggle').addEventListener('click', async () => {
+      statusLine.textContent = 'Bezig…';
+      try {
+        if (active) {
+          const s = await currentPushSubscription();
+          if (s) {
+            await api('/push/unsubscribe', { method: 'POST', body: { endpoint: s.endpoint } });
+            await s.unsubscribe();
+          }
+        } else {
+          await subscribeNow();
+        }
+        card.replaceWith(renderReminderCard());
+      } catch (err) {
+        statusLine.textContent = err.message;
+      }
+    });
+    const saveBtn = body.querySelector('#reminder-save');
+    if (saveBtn) saveBtn.addEventListener('click', async () => {
+      statusLine.textContent = 'Opslaan…';
+      try { await subscribeNow(); card.replaceWith(renderReminderCard()); } catch (err) { statusLine.textContent = err.message; }
+    });
+    const testBtn = body.querySelector('#reminder-test');
+    if (testBtn) testBtn.addEventListener('click', async () => {
+      statusLine.textContent = 'Testmelding versturen…';
+      try {
+        const s = await currentPushSubscription();
+        await api('/push/test', { method: 'POST', body: { endpoint: s.endpoint } });
+        statusLine.textContent = 'Verstuurd — hij verschijnt binnen enkele seconden.';
+      } catch (err) { statusLine.textContent = err.message; }
+    });
+  })();
+  return card;
 }
 
 // ---------- leaderboard (live only: ranking across accounts needs the server) ----------

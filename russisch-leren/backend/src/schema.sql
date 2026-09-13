@@ -32,7 +32,24 @@ CREATE TABLE IF NOT EXISTS words (
   gender TEXT,
   notes TEXT,
   grammar_rule_id INTEGER REFERENCES grammar_rules(id),
-  accented TEXT
+  accented TEXT,
+  example_ru TEXT,
+  example_nl TEXT
+);
+
+-- Web Push subscriptions for the daily study reminder. One row per
+-- device/browser (endpoint); the reminder fires at `reminder_time` in the
+-- device's own time zone, and only on days the user hasn't studied yet.
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  endpoint TEXT UNIQUE NOT NULL,
+  subscription TEXT NOT NULL,
+  reminder_time TEXT NOT NULL DEFAULT '19:00',
+  time_zone TEXT NOT NULL DEFAULT 'Europe/Amsterdam',
+  enabled INTEGER NOT NULL DEFAULT 1,
+  last_sent_date TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE TABLE IF NOT EXISTS exercises (

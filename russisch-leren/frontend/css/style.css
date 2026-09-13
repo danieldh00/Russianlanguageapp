@@ -614,6 +614,37 @@ th { color: var(--muted); font-weight: 600; font-size: 0.75rem; text-transform: 
 }
 .review-item .grammar-rule strong { color: var(--accent2); font-family: "PT Serif", serif; }
 
+/* ---- example sentence after an answer ---- */
+.example-box {
+  margin-top: 12px; padding: 12px 14px; border-radius: 14px;
+  background: var(--glass-bg-strong); border: 1px solid var(--glass-border);
+  box-shadow: inset 0 1px 0 var(--glass-highlight);
+}
+.example-box .reading-label { margin-bottom: 4px; }
+.example-ru { margin: 0 0 2px; font-family: "PT Serif", Georgia, serif; font-size: 1.08rem; line-height: 1.5; }
+.example-nl { margin: 0 0 8px; font-size: 0.9rem; }
+
+/* ---- "oefen je fouten" card on the dashboard ---- */
+.practice-card {
+  display: block; width: 100%; text-align: left; font-family: inherit; cursor: pointer; margin-bottom: 26px;
+  border-color: var(--accent2); transition: transform .15s ease, box-shadow .15s ease;
+}
+.practice-card:hover { transform: translateY(-2px); box-shadow: inset 0 1px 0 var(--glass-highlight), var(--glass-shadow), 0 0 0 3px var(--accent2-soft); }
+.practice-card .row1 { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 4px; }
+.practice-card h2 { margin: 0; font-size: 1.05rem; }
+.practice-card .level-badge { color: var(--accent2); background: var(--accent2-soft); }
+.practice-card p { margin: 0; }
+
+/* ---- daily reminder settings ---- */
+.reminder-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 4px; }
+.reminder-row label { margin: 0; }
+.reminder-row input[type=time] {
+  padding: 9px 12px; border: 1.5px solid var(--glass-border); border-radius: 12px; font-size: 1rem;
+  background: var(--glass-bg-strong); color: var(--ink); font-family: inherit; font-variant-numeric: tabular-nums;
+}
+.reminder-row button { padding: 9px 16px; font-size: 0.88rem; }
+.reminder-status { margin: 10px 0 0; font-size: 0.85rem; }
+
 /* ---- progress: certification tiles ---- */
 .cert-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin-top: 14px; }
 .cert-tile {

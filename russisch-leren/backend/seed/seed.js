@@ -2,7 +2,7 @@ const db = require('../src/db');
 const data = require('./data');
 const { transliterate, stripStress } = require('./data/translit');
 
-const { categories, grammarRules, words, grammarExercises, practicalSentences, readings, forms } = data;
+const { categories, grammarRules, words, grammarExercises, practicalSentences, readings, forms, examples } = data;
 
 function shuffle(arr) {
   const a = [...arr];
@@ -70,12 +70,13 @@ function seedDatabase() {
 
     const findWord = db.prepare('SELECT id FROM words WHERE category_id = ? AND russian = ?');
     const insertWord = db.prepare(`
-      INSERT INTO words (category_id, russian, transliteration, translation_nl, gender, notes, grammar_rule_id, accented)
-      VALUES (@category_id, @russian, @transliteration, @translation_nl, @gender, @notes, @grammar_rule_id, @accented)
+      INSERT INTO words (category_id, russian, transliteration, translation_nl, gender, notes, grammar_rule_id, accented, example_ru, example_nl)
+      VALUES (@category_id, @russian, @transliteration, @translation_nl, @gender, @notes, @grammar_rule_id, @accented, @example_ru, @example_nl)
     `);
     const updateWord = db.prepare(`
       UPDATE words SET transliteration = @transliteration, translation_nl = @translation_nl,
-        gender = @gender, notes = @notes, grammar_rule_id = @grammar_rule_id, accented = @accented
+        gender = @gender, notes = @notes, grammar_rule_id = @grammar_rule_id, accented = @accented,
+        example_ru = @example_ru, example_nl = @example_nl
       WHERE id = @id
     `);
 
@@ -88,7 +89,12 @@ function seedDatabase() {
       const level = categoryLevelBySlug[w.category];
       const morph = forms[w.russian.trim().toLowerCase()] || null;
       const accented = w.accented || (morph && morph.accented && morph.accented !== w.russian ? morph.accented : null);
+      // example sentence: inline on the word entry, or from the per-level
+      // examples files keyed by the Russian word (see data/examples/)
+      const example = w.example || examples[w.russian] || null;
       const params = {
+        example_ru: example ? example[0] : null,
+        example_nl: example ? example[1] : null,
         category_id,
         russian: w.russian,
         transliteration: w.transliteration || transliterate(w.russian),

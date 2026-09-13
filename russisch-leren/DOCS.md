@@ -21,6 +21,14 @@ voortgang tussen toestellen (bv. iPhone en iPad).
    poort 3000 op het IP-adres van je Home Assistant-instantie.
 4. Maak een account aan en begin met een les.
 
+## Dagelijkse herinnering (pushmelding)
+
+Op de voortgangspagina kun je per toestel een tijdstip instellen; je krijgt
+dan een melding op dagen dat je nog niet geoefend hebt. Vereist een
+`https://`-adres (zie hieronder). Op iPhone/iPad werkt dit alleen vanuit de
+geïnstalleerde app: Safari → Delen → "Zet op beginscherm", en de app vanaf
+het beginscherm openen (iOS 16.4 of nieuwer).
+
 ## Bereikbaar maken van buiten je netwerk
 
 Deze add-on regelt zelf geen HTTPS. Als je 'm ook buiten je thuisnetwerk wilt

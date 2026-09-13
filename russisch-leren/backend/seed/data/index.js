@@ -62,9 +62,22 @@ for (const r of grammarRules) {
   seenRules.add(r.code);
 }
 
+// Example sentences, one per word, keyed by the Russian headword:
+//   { 'вода': ['Я пью воду.', 'Ik drink water.'], ... }
+// Split per level under examples/ purely to keep the files readable; a word
+// that appears in two categories shares one example.
+const examples = {};
+const examplesDir = path.join(__dirname, 'examples');
+if (fs.existsSync(examplesDir)) {
+  for (const file of fs.readdirSync(examplesDir).filter((f) => f.endsWith('.js')).sort()) {
+    Object.assign(examples, require(path.join(examplesDir, file)));
+  }
+}
+
 module.exports = {
   categories,
   grammarRules,
+  examples,
   words: concat('words'),
   grammarExercises: concat('grammarExercises'),
   practicalSentences: concat('practicalSentences'),

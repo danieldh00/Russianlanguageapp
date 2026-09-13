@@ -25,6 +25,8 @@ const syncRoutes = require('./routes/sync');
 const aiRoutes = require('./routes/ai');
 const leaderboardRoutes = require('./routes/leaderboard');
 const { router: examRoutes } = require('./routes/exams');
+const pushRoutes = require('./routes/push');
+const { startScheduler: startReminderScheduler } = require('./push');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -48,6 +50,7 @@ app.use('/api/content', contentRoutes);
 app.use('/api/sync', syncRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/exams', examRoutes);
+app.use('/api/push', pushRoutes);
 app.use('/api/ai', aiRoutes);
 
 const FRONTEND_DIR = path.join(__dirname, '..', '..', 'frontend');
@@ -96,4 +99,5 @@ app.use((err, req, res, next) => {
 
 app.listen(PORT, () => {
   console.log(`Russian learning app draait op http://localhost:${PORT}`);
+  startReminderScheduler();
 });
