@@ -4,6 +4,20 @@ Alle merkbare wijzigingen aan de "Russisch Leren" add-on staan hier, nieuwste
 versie bovenaan. Dit bestand wordt door Home Assistant Supervisor automatisch
 getoond onder de "Changelog"-knop van de add-on.
 
+## 1.2.1
+
+- Fix: de alfabetles verklapte het antwoord. Bij "Wat betekent 'В в (V v)'?"
+  stond de transliteratie al in de vraag, en de antwoordopties bevatten de
+  hint "(niet als 'b')". Lettervragen luiden nu "Hoe klinkt de letter 'В в'?"
+  en "Welke letter klinkt als 'v' in 'vis'?" — zonder transliteratie; de
+  uitleg over de valse vrienden (В lijkt op B) zie je pas ná je antwoord.
+- Nieuw: de alfabetles dekt nu alle 33 letters (was 8) en bevat 20
+  leesoefeningen ("Hoe schrijf je 'ресторан' in Latijnse letters?") waarbij
+  de foute opties precies de klassieke beginnersvallen zijn (pectopah).
+- Bestaande oefeningen worden bij een update nu ook inhoudelijk ververst
+  (vraagtekst, opties, uitleg) in plaats van bevroren te blijven op de
+  eerste versie; je voortgang op die oefeningen blijft gewoon staan.
+
 ## 1.2.0
 
 - Nieuw: **niveautoetsen A1 t/m C2**. Elk niveau sluit je af met een toets

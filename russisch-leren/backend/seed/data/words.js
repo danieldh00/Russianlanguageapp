@@ -1,14 +1,18 @@
 // grammarRule is optional and references a grammar_rules.code
 module.exports = [
   // --- alphabet: false-friend letters & pronunciation ---
-  { category: 'alphabet', russian: 'В в', transliteration: 'V v', translation_nl: "klinkt als 'v' (niet als 'b')", notes: "Lijkt op de Latijnse B, maar klinkt als 'v': вода = voda." },
-  { category: 'alphabet', russian: 'Р р', transliteration: 'R r', translation_nl: "klinkt als een rollende 'r' (niet als 'p')", notes: "Lijkt op de Latijnse P, maar is een rollende 'r': русский." },
-  { category: 'alphabet', russian: 'С с', transliteration: 'S s', translation_nl: "klinkt als 's' (niet als 'c')", notes: "Lijkt op de Latijnse C, maar klinkt als 's': спасибо." },
-  { category: 'alphabet', russian: 'Н н', transliteration: 'N n', translation_nl: "klinkt als 'n' (niet als 'h')", notes: "Lijkt op de Latijnse H, maar klinkt als 'n': нет." },
-  { category: 'alphabet', russian: 'У у', transliteration: 'U u', translation_nl: "klinkt als 'oe' (niet als 'y')", notes: "Lijkt op de Latijnse Y, maar klinkt als 'oe': улица." },
-  { category: 'alphabet', russian: 'Х х', transliteration: 'Kh kh', translation_nl: "klinkt als een schrapende 'ch' (niet als 'x')", notes: "Lijkt op de Latijnse X, maar klinkt als de 'ch' in 'lach': хорошо.", grammarRule: 'STRESS-VOWEL-REDUCTION' },
-  { category: 'alphabet', russian: 'Ё ё', transliteration: 'Yo yo', translation_nl: "klinkt als 'jo', altijd beklemtoond", notes: "De stip op de ё wordt vaak weggelaten in geschreven tekst, maar de klank blijft 'jo': мёд." },
-  { category: 'alphabet', russian: 'Ы ы', transliteration: 'Y y', translation_nl: "harde 'i'-klank, uniek voor het Russisch", notes: "Klinkt niet als de Nederlandse 'y', maar als een donkere 'i' achter in de mond: мы, ты." },
+  // Letter entries ("В в") get letter-specific prompts in the seed (no
+  // transliteration in the question, since the sound IS the answer). The
+  // translation always reads "als ..." so both prompt directions stay
+  // grammatical; the false-friend hint lives in `notes` (shown only after answering).
+  { category: 'alphabet', russian: 'В в', transliteration: 'V v', translation_nl: "als 'v' in 'vis'", notes: "Lijkt op de Latijnse B, maar klinkt als 'v' (niet 'b'): вода = voda." },
+  { category: 'alphabet', russian: 'Р р', transliteration: 'R r', translation_nl: "als een rollende 'r'", notes: "Lijkt op de Latijnse P, maar is een rollende 'r' (niet 'p'): русский." },
+  { category: 'alphabet', russian: 'С с', transliteration: 'S s', translation_nl: "als 's' in 'sok'", notes: "Lijkt op de Latijnse C, maar klinkt altijd als 's' (nooit 'k'): спасибо." },
+  { category: 'alphabet', russian: 'Н н', transliteration: 'N n', translation_nl: "als 'n' in 'neus'", notes: "Lijkt op de Latijnse H, maar klinkt als 'n': нет." },
+  { category: 'alphabet', russian: 'У у', transliteration: 'U u', translation_nl: "als 'oe' in 'boek'", notes: "Lijkt op de Latijnse Y, maar klinkt als 'oe': улица." },
+  { category: 'alphabet', russian: 'Х х', transliteration: 'Kh kh', translation_nl: "als de schrapende 'ch' in 'lach'", notes: "Lijkt op de Latijnse X, maar klinkt als de Nederlandse 'ch': хорошо." },
+  { category: 'alphabet', russian: 'Ё ё', transliteration: 'Yo yo', translation_nl: "als 'jo' in 'jojo', altijd beklemtoond", notes: "De stip op de ё wordt vaak weggelaten in geschreven tekst, maar de klank blijft 'jo': мёд." },
+  { category: 'alphabet', russian: 'Ы ы', transliteration: 'Y y', translation_nl: "als een harde, donkere 'i' (uniek Russisch)", notes: "Klinkt niet als de Nederlandse 'y', maar als een donkere 'i' achter in de mond: мы, ты." },
 
   // --- greetings ---
   { category: 'greetings', russian: 'Привет', transliteration: 'Privet', translation_nl: 'hoi / hallo (informeel)' },

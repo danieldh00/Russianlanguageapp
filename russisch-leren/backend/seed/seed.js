@@ -115,20 +115,52 @@ function seedDatabase() {
     // (hand-crafted grammar exercises, sentence_build, reading, listening,
     // generated drills) have no such natural key, so they're deduped on their
     // (unique) prompt text + answer.
-    const findWordExercise = db.prepare('SELECT id FROM exercises WHERE word_id = ? AND type = ?');
+    const findWordExercise = db.prepare(
+      'SELECT id, grammar_rule_id, prompt, correct_answer, options, explanation FROM exercises WHERE word_id = ? AND type = ?'
+    );
     const findTextExercise = db.prepare('SELECT id FROM exercises WHERE word_id IS NULL AND type = ? AND prompt = ? AND correct_answer = ?');
     const insertExercise = db.prepare(`
       INSERT INTO exercises (category_id, word_id, grammar_rule_id, type, prompt, correct_answer, options, explanation, context)
       VALUES (@category_id, @word_id, @grammar_rule_id, @type, @prompt, @correct_answer, @options, @explanation, @context)
     `);
+    const updateExercise = db.prepare(`
+      UPDATE exercises SET grammar_rule_id = @grammar_rule_id, prompt = @prompt, correct_answer = @correct_answer,
+        options = @options, explanation = @explanation
+      WHERE id = @id
+    `);
+    const sortedOptions = (json) => (json ? JSON.stringify([...JSON.parse(json)].sort()) : null);
     function addExerciseIfNew(ex) {
-      const exists = ex.word_id != null
-        ? findWordExercise.get(ex.word_id, ex.type)
-        : findTextExercise.get(ex.type, ex.prompt, ex.correct_answer);
-      if (exists) return false;
-      insertExercise.run({ word_id: null, grammar_rule_id: null, options: null, context: null, ...ex });
-      return true;
+      const full = { word_id: null, grammar_rule_id: null, options: null, context: null, ...ex };
+      if (full.word_id == null) {
+        if (findTextExercise.get(full.type, full.prompt, full.correct_answer)) return false;
+        insertExercise.run(full);
+        return true;
+      }
+      // Word-linked exercises keep their id (attempts reference it) but their
+      // wording follows the seed data: when a word's translation/notes or the
+      // prompt template changes, the live exercise is rewritten in place
+      // instead of staying frozen at whatever the first seed produced.
+      // Options are compared order-insensitively so the per-run shuffle
+      // doesn't count as a change.
+      const existing = findWordExercise.get(full.word_id, full.type);
+      if (!existing) {
+        insertExercise.run(full);
+        return true;
+      }
+      const changed =
+        existing.prompt !== full.prompt ||
+        existing.correct_answer !== full.correct_answer ||
+        existing.explanation !== full.explanation ||
+        existing.grammar_rule_id !== full.grammar_rule_id ||
+        sortedOptions(existing.options) !== sortedOptions(full.options);
+      if (changed) updateExercise.run({ ...full, id: existing.id });
+      return false;
     }
+
+    // Alphabet entries look like "В в": one letter, upper + lower case. They
+    // get their own prompt wording, and never show the transliteration in
+    // the question -- for a letter the transliteration *is* the answer.
+    const isLetter = (w) => /^\S \S$/u.test(w.russian.trim());
 
     // Auto-generate vocab exercises (RU->NL and NL->RU multiple choice, plus a
     // typed NL->RU exercise from B1 up) for every word. Existing words already
@@ -138,10 +170,14 @@ function seedDatabase() {
       const siblings = wordsByCategory[w.category].filter((s) => s.id !== w.id);
       if (siblings.length < 2) continue; // need enough distractors in this category
 
-      const shown = `${w.accented || w.russian}${w.transliteration ? ` (${w.transliteration})` : ''}`;
+      const letter = isLetter(w);
+      const shown = letter
+        ? w.russian
+        : `${w.accented || w.russian}${w.transliteration ? ` (${w.transliteration})` : ''}`;
       const nlDistractors = pickDistractors(siblings.map((s) => s.translation_nl), w.translation_nl, 3);
       const ruDistractors = pickDistractors(siblings.map((s) => s.russian), w.russian, 3);
       const grammar_rule_id = ruleId(w.grammarRule, `word '${w.russian}'`);
+      const notes = w.notes ? ` ${w.notes}` : '';
 
       if (nlDistractors.length >= 2) {
         addExerciseIfNew({
@@ -149,10 +185,10 @@ function seedDatabase() {
           word_id: w.id,
           grammar_rule_id,
           type: 'mc_ru_nl',
-          prompt: `Wat betekent '${shown}'?`,
+          prompt: letter ? `Hoe klinkt de letter '${shown}'?` : `Wat betekent '${shown}'?`,
           correct_answer: w.translation_nl,
           options: JSON.stringify(shuffle([w.translation_nl, ...nlDistractors])),
-          explanation: `'${shown}' betekent '${w.translation_nl}'.` + (w.notes ? ` ${w.notes}` : '')
+          explanation: (letter ? `'${shown}' klinkt ${w.translation_nl}.` : `'${shown}' betekent '${w.translation_nl}'.`) + notes
         });
       }
       if (ruDistractors.length >= 2) {
@@ -161,13 +197,13 @@ function seedDatabase() {
           word_id: w.id,
           grammar_rule_id,
           type: 'mc_nl_ru',
-          prompt: `Hoe zeg je '${w.translation_nl}' in het Russisch?`,
+          prompt: letter ? `Welke letter klinkt ${w.translation_nl}?` : `Hoe zeg je '${w.translation_nl}' in het Russisch?`,
           correct_answer: w.russian,
           options: JSON.stringify(shuffle([w.russian, ...ruDistractors])),
-          explanation: `'${w.translation_nl}' is in het Russisch '${shown}'.` + (w.notes ? ` ${w.notes}` : '')
+          explanation: (letter ? `De letter '${shown}' klinkt ${w.translation_nl}.` : `'${w.translation_nl}' is in het Russisch '${shown}'.`) + notes
         });
       }
-      if (LEVEL_RANK[w.level] >= LEVEL_RANK.B1 && !/\s/.test(w.russian.trim())) {
+      if (!letter && LEVEL_RANK[w.level] >= LEVEL_RANK.B1 && !/\s/.test(w.russian.trim())) {
         addExerciseIfNew({
           category_id: w.category_id,
           word_id: w.id,
