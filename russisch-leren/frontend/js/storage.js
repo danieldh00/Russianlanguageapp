@@ -68,6 +68,20 @@ const Storage = {
   },
   saveAttemptsLog(username, log) { writeJSON(`ru:${username}:attemptsLog`, log); },
 
+  // queued XP activities (keyboard rounds, dictation, dialogue turns) not yet
+  // confirmed by the server -- same idea as the answer outbox
+  loadActivities(username) { return readJSON(`ru:${username}:activities`, []); },
+  saveActivities(username, items) { writeJSON(`ru:${username}:activities`, items); },
+  enqueueActivity(username, item) {
+    const items = Storage.loadActivities(username);
+    items.push(item);
+    Storage.saveActivities(username, items.slice(-200));
+  },
+  removeActivities(username, clientIds) {
+    const idSet = new Set(clientIds);
+    Storage.saveActivities(username, Storage.loadActivities(username).filter((it) => !idSet.has(it.clientId)));
+  },
+
   // device-level preferences (speech rate/voice, ...): not tied to an account
   loadSettings() { return readJSON('ru:settings', {}) || {}; },
   saveSettings(settings) { writeJSON('ru:settings', settings); },

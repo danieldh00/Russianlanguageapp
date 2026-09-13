@@ -1,8 +1,8 @@
 const express = require('express');
 const db = require('../db');
 const { requireAuth } = require('../middleware');
-const { XP_PER_CORRECT, XP_PER_CERTIFICATION, levelForXp, computeStreak } = require('../gamification');
-const { certificationsFor } = require('./exams');
+const { levelForXp, computeStreak } = require('../gamification');
+const { computeXp } = require('../xp');
 const { levelRank } = require('../levels');
 
 const router = express.Router();
@@ -12,12 +12,8 @@ router.get('/', requireAuth, (req, res) => {
   const users = db.prepare('SELECT id, username FROM users').all();
 
   const leaderboard = users.map((u) => {
-    const correctCount = db
-      .prepare('SELECT COUNT(*) c FROM attempts WHERE user_id = ? AND is_correct = 1')
-      .get(u.id).c;
-    const certifications = certificationsFor(u.id);
+    const { xp, certifications } = computeXp(u.id);
     const highestLevel = certifications.map((c) => c.level).sort((a, b) => levelRank(b) - levelRank(a))[0] || null;
-    const xp = correctCount * XP_PER_CORRECT + certifications.length * XP_PER_CERTIFICATION;
     const level = levelForXp(xp);
 
     const studyDates = db

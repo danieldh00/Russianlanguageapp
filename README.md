@@ -467,6 +467,7 @@ Alle routes onder `/api`, JSON in/uit, sessie-cookie voor authenticatie.
 | GET | `/progress/words` | Volledige per-woord SRS-status (voor het lokale voortgangs-mirror op een toestel) |
 | GET | `/content` | Volledige lesinhoud incl. juiste antwoorden/uitleg (voor offline gebruik op een toestel) |
 | POST | `/sync/attempts` | Batch van offline gegeven antwoorden verwerken (idempotent via `clientId`) |
+| POST | `/sync/activities` | XP-activiteiten (toetsenbordronde, dictee, gespreksbeurt); server bepaalt de XP, dag telt als oefendag |
 | GET | `/progress/stats` | XP, niveau, leer-reeks ("streak") en badges |
 | POST | `/ai/explain` | Diepere AI-uitleg bij één fout antwoord (503 als er geen `ANTHROPIC_API_KEY` is ingesteld) |
 | GET | `/leaderboard` | Alle gebruikers gerangschikt op XP, met hoogst behaalde toetsniveau, streak en onder-de-knie woorden |

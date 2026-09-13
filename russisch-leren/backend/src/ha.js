@@ -14,7 +14,8 @@
 //    automations.
 const db = require('./db');
 const { localNow } = require('./localtime');
-const { XP_PER_CORRECT, XP_PER_CERTIFICATION, levelForXp, computeStreak } = require('./gamification');
+const { levelForXp, computeStreak } = require('./gamification');
+const { computeXp } = require('./xp');
 
 const SUPERVISOR = process.env.SUPERVISOR_URL || 'http://supervisor';
 const TOKEN = process.env.SUPERVISOR_TOKEN || '';
@@ -79,9 +80,7 @@ function learnerStats(userId) {
   const due = db
     .prepare("SELECT COUNT(*) c FROM user_word_progress WHERE user_id = ? AND next_review_at IS NOT NULL AND next_review_at <= datetime('now')")
     .get(userId).c;
-  const correct = db.prepare('SELECT COUNT(*) c FROM attempts WHERE user_id = ? AND is_correct = 1').get(userId).c;
-  const certs = db.prepare('SELECT COUNT(*) c FROM level_certifications WHERE user_id = ?').get(userId).c;
-  const xp = correct * XP_PER_CORRECT + certs * XP_PER_CERTIFICATION;
+  const { xp } = computeXp(userId);
   const studyDates = db.prepare('SELECT study_date FROM study_days WHERE user_id = ?').all(userId).map((r) => r.study_date);
   const { currentStreak, longestStreak } = computeStreak(studyDates);
   const mastered = db.prepare('SELECT COUNT(*) c FROM user_word_progress WHERE user_id = ? AND interval_days >= 6').get(userId).c;

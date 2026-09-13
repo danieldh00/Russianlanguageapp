@@ -245,6 +245,7 @@ async function syncAll({ force = false } = {}) {
   renderNav();
   try {
     await flushOutbox();
+    await flushActivities();
     if (force) {
       const fresh = await api('/content');
       Storage.saveContent(state.user.username, fresh);
@@ -268,6 +269,23 @@ async function syncAll({ force = false } = {}) {
     // storage fresh on every visit, so cross-device updates show up next
     // time the user navigates there.
   }
+}
+
+// XP-earning activities that aren't exercise answers. Queued locally (so a
+// keyboard round done offline still counts) and confirmed by the server,
+// which decides the XP and marks the study day.
+function recordActivity(kind, detail) {
+  if (!state.user) return;
+  Storage.enqueueActivity(state.user.username, { clientId: uuid(), kind, detail: detail || {}, clientTimestamp: new Date().toISOString() });
+  syncAll();
+}
+
+async function flushActivities() {
+  const username = state.user.username;
+  const items = Storage.loadActivities(username);
+  if (!items.length) return;
+  const res = await api('/sync/activities', { method: 'POST', body: { events: items } });
+  Storage.removeActivities(username, [...(res.accepted || []), ...(res.skipped || []), ...(res.failed || []).map((f) => f.clientId)]);
 }
 
 async function ensureContentLoaded() {
@@ -1904,6 +1922,7 @@ async function renderDialogue(scenarioId) {
       dialogueState.messages.push({ role: 'user', content: userText });
       dialogueState.turns.push({ role: 'user', content: userText });
       paint();
+      recordActivity('dialogue_turn', { scenario: s.id, level: dialogueState.level });
     }
     send.disabled = true;
     input.disabled = true;
@@ -2041,7 +2060,11 @@ async function renderKeyboardTrainer() {
       input.value = '';
       if (idx >= drill.length) {
         const minutes = (Date.now() - started) / 60000;
-        wrap.querySelector('.card').innerHTML = `<h2>Ronde klaar!</h2><p>${Math.round(typedChars / minutes)} tekens per minuut, ${Math.max(0, Math.round(((typedChars - errors) / typedChars) * 100))}% nauwkeurig.</p><div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px"><button class="primary" id="kb-again">Nog een ronde</button><a class="secondary-link" href="#/dashboard">Terug naar lessen</a></div>`;
+        const cpm = Math.round(typedChars / minutes);
+        const accuracy = Math.max(0, Math.round(((typedChars - errors) / typedChars) * 100));
+        const xp = 20 + (accuracy >= 95 ? 10 : 0) + (cpm >= 120 ? 10 : 0);
+        recordActivity('keyboard_round', { cpm, accuracy, chars: typedChars, items: drill.length });
+        wrap.querySelector('.card').innerHTML = `<h2>Ronde klaar! <span class="xp-gain">+${xp} XP</span></h2><p>${cpm} tekens per minuut, ${accuracy}% nauwkeurig.${accuracy >= 95 ? ' Bonus voor nauwkeurigheid.' : ''}${cpm >= 120 ? ' Bonus voor snelheid.' : ''} Elke ronde telt als oefendag voor je reeks.</p><div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px"><button class="primary" id="kb-again">Nog een ronde</button><a class="secondary-link" href="#/dashboard">Terug naar lessen</a></div>`;
         wrap.querySelector('#kb-again').addEventListener('click', () => renderKeyboardTrainer());
         keyEls.forEach((k) => k.classList.remove('next', 'shift'));
         return;
@@ -2249,12 +2272,12 @@ async function renderDictation() {
     const input = wrap.querySelector('#dict-input');
     const given = input.value.trim().replace(/\s+/g, '').replace(/[.,]/g, mode === 'tijd' ? ':' : mode === 'datum' ? '-' : '');
     const okAnswer = given === item.answer || (item.alt || []).includes(given);
-    if (okAnswer) score++;
+    if (okAnswer) { score++; recordActivity('dictation_correct', { mode }); }
     input.disabled = true;
     wrap.querySelector('#dict-form button').disabled = true;
     const fb = el(`
       <div class="feedback ${okAnswer ? 'correct' : 'incorrect'}">
-        <strong>${okAnswer ? 'Goed gehoord!' : 'Niet helemaal.'}</strong>
+        <strong>${okAnswer ? 'Goed gehoord! <span class="xp-gain">+5 XP</span>' : 'Niet helemaal.'}</strong>
         <div class="explanation">Je hoorde: <span lang="ru" class="serif">${escapeHtml(item.text)}</span> = <strong>${escapeHtml(item.show)}</strong>${okAnswer ? '' : ` — jij typte ${escapeHtml(input.value || '(niets)')}`}.</div>
         <button type="button" class="primary" style="margin-top:12px" id="dict-next">Volgende</button>
       </div>
@@ -2301,7 +2324,7 @@ async function renderMatchGame() {
   const wrap = el(`
     <div class="match">
       <h1>🃏 Koppelspel</h1>
-      <p class="muted">Tik een Russisch woord en daarna de Nederlandse vertaling. Goede paren verdwijnen; fouten kosten tijd. Elk goed paar telt als een goed antwoord voor je herhaling.</p>
+      <p class="muted">Tik een Russisch woord en daarna de Nederlandse vertaling. Goede paren verdwijnen; fouten kosten tijd. Elk goed paar telt als een goed antwoord (+10 XP) voor je herhaling.</p>
       <div class="card">
         <div class="exercise-progress"><span id="match-left">5 paren te gaan</span><span class="muted" id="match-timer">0,0 s</span></div>
         <div class="match-grid">

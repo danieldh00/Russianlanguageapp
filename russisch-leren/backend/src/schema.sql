@@ -131,6 +131,21 @@ CREATE TABLE IF NOT EXISTS attempts (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- XP for activities that aren't exercise answers: keyboard rounds, number
+-- dictation, dialogue turns. The server decides the XP per kind; the
+-- client only reports what happened (idempotent per client_id).
+CREATE TABLE IF NOT EXISTS activity_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  kind TEXT NOT NULL,
+  xp INTEGER NOT NULL,
+  detail TEXT,
+  client_id TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_activity_client ON activity_events(user_id, client_id) WHERE client_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_activity_user ON activity_events(user_id);
+
 CREATE TABLE IF NOT EXISTS study_days (
   user_id INTEGER NOT NULL REFERENCES users(id),
   study_date TEXT NOT NULL,

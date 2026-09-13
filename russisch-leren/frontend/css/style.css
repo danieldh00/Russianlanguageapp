@@ -757,6 +757,8 @@ th { color: var(--muted); font-weight: 600; font-size: 0.75rem; text-transform: 
 .chat-form button.primary { width: fit-content; }
 select#dialogue-level { padding: 9px 12px; border: 1.5px solid var(--glass-border); border-radius: 12px; font-size: 1rem; background: var(--glass-bg-strong); color: var(--ink); font-family: inherit; }
 
+.xp-gain { display: inline-block; font-family: inherit; font-size: 0.72rem; font-weight: 700; color: var(--success); background: var(--success-bg); border-radius: 999px; padding: 3px 9px; margin-left: 6px; vertical-align: middle; }
+
 /* ---- keyboard trainer ---- */
 .keyboard-trainer .exercise-progress { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .kb-target { font-family: inherit; font-size: 1.35rem; line-height: 1.6; margin: 6px 0 12px; word-break: break-word; }

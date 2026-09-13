@@ -1,8 +1,8 @@
 const express = require('express');
 const db = require('../db');
 const { requireAuth } = require('../middleware');
-const { XP_PER_CORRECT, XP_PER_CERTIFICATION, levelForXp, computeStreak, computeAchievements } = require('../gamification');
-const { certificationsFor } = require('./exams');
+const { levelForXp, computeStreak, computeAchievements } = require('../gamification');
+const { computeXp } = require('../xp');
 const { LEVELS, LEVEL_TITLES } = require('../levels');
 
 const router = express.Router();
@@ -58,11 +58,9 @@ router.get('/words', requireAuth, (req, res) => {
 router.get('/stats', requireAuth, (req, res) => {
   const userId = req.session.userId;
 
-  const correctCount = db.prepare("SELECT COUNT(*) c FROM attempts WHERE user_id = ? AND is_correct = 1").get(userId).c;
   const totalAttempts = db.prepare('SELECT COUNT(*) c FROM attempts WHERE user_id = ?').get(userId).c;
-  const certifications = certificationsFor(userId);
+  const { xp, certifications, activityXp } = computeXp(userId);
   const certifiedLevels = certifications.map((c) => c.level);
-  const xp = correctCount * XP_PER_CORRECT + certifications.length * XP_PER_CERTIFICATION;
   const level = levelForXp(xp);
 
   const studyDates = db.prepare('SELECT study_date FROM study_days WHERE user_id = ?').all(userId).map((r) => r.study_date);
@@ -102,6 +100,7 @@ router.get('/stats', requireAuth, (req, res) => {
 
   res.json({
     xp,
+    activityXp,
     ...level,
     currentStreak,
     longestStreak,

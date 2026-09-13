@@ -4,6 +4,15 @@ Alle merkbare wijzigingen aan de "Russisch Leren" add-on staan hier, nieuwste
 versie bovenaan. Dit bestand wordt door Home Assistant Supervisor automatisch
 getoond onder de "Changelog"-knop van de add-on.
 
+## 1.7.2
+
+- XP voor activiteiten die geen oefenvraag zijn: een ronde
+  toetsenbordtrainer levert 20 XP op (+10 bij ≥95% nauwkeurig, +10 bij
+  ≥120 tekens/min), elk goed dictee-antwoord 5 XP, elke beurt in een
+  gesprek 5 XP. Deze activiteiten tellen nu ook als oefendag voor je
+  reeks, en tellen mee in de ranglijst en de Home Assistant-sensor. Werkt
+  ook offline (wordt gesynchroniseerd zodra je online bent).
+
 ## 1.7.1
 
 - Russische tekst staat nu overal in het normale (schreefloze) lettertype —
