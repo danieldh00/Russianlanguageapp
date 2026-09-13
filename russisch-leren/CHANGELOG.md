@@ -4,6 +4,37 @@ Alle merkbare wijzigingen aan de "Russisch Leren" add-on staan hier, nieuwste
 versie bovenaan. Dit bestand wordt door Home Assistant Supervisor automatisch
 getoond onder de "Changelog"-knop van de add-on.
 
+## 1.4.0
+
+- Nieuw: **Vandaag herhalen** — één knop op het dashboard met alle woorden
+  die aan herhaling toe zijn, uit al je lessen samen (max. 20 per ronde,
+  meest achterstallige eerst, bij voorkeur als typ- of gatenzin). Dít is
+  wat spaced repetition laat werken.
+- Nieuw: **actieve productie vanaf A1**: bij elk woord nu ook een
+  typoefening én een **gatenzin** uit de voorbeeldzin (*Один билет, ___.*),
+  waarbij je de vorm intypt die de zin vereist (воду, читаю…). +1.238
+  gatenzinnen, +216 typoefeningen op A1/A2. Op iPhone heb je hiervoor het
+  Russische toetsenbord nodig (Instellingen → Algemeen → Toetsenbord).
+- Nieuw: **Gesprek oefenen** — twaalf AI-rollenspellen (apotheek, dokter,
+  hotel, restaurant, de weg vragen, politie-aangifte, huurbaas, bank,
+  sollicitatie, markt, kennismaken, simkaart). De AI speelt de andere kant
+  in het Russisch op jouw niveau, met vertaling op afroep, een correctie in
+  het Nederlands na elke beurt en een tip wat je kunt zeggen. Vereist de
+  add-on-optie `anthropic_api_key`.
+- Nieuw: **spreken** — microfoonknop bij elke typ-/gatenzinoefening en in
+  het gesprek (spraakherkenning van de browser, Russisch), en na elk
+  antwoord "🎤 Zeg het na": de app vergelijkt wat het verstond met het
+  juiste antwoord.
+- Nieuw: **📖 Vormen** na elk antwoord: de volledige verbuiging
+  (naamvallen enkel-/meervoud) of vervoeging (personen, verleden tijd,
+  gebiedende wijs, aspectpartner) van het woord, uit de Open Russian
+  dictionary. Alleen online.
+- Nieuw: **Toetsenbordtrainer ЙЦУКЕН** — de Russische indeling op het
+  scherm met de QWERTY-toets eronder; typ woorden en zinnen uit de lessen
+  na, de volgende toets licht op, met tekens/minuut en nauwkeurigheid.
+- Toetsen strenger: minstens 40% van de vragen is nu productie (typen,
+  gatenzin, zinnen bouwen) in plaats van meerkeuze. Slaaggrens blijft 80%.
+
 ## 1.3.0
 
 - Nieuw: **dagelijkse herinnering** via pushmelding. Op de voortgangspagina

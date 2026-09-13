@@ -13,6 +13,8 @@ const router = express.Router();
 // (what was wrong, why, which rule) only comes back after submitting.
 const QUESTIONS_PER_EXAM = 30;
 const PASS_PCT = 80;
+const PRODUCTION_TYPES = new Set(['typing', 'cloze', 'sentence_build']);
+const PRODUCTION_SHARE = 0.4;
 
 function shuffle(arr) {
   const a = [...arr];
@@ -102,28 +104,41 @@ router.get('/:level', requireAuth, (req, res) => {
 
   // round-robin over shuffled per-category buckets, so every lesson at the
   // level is represented before any lesson contributes a second question
-  const buckets = new Map();
-  for (const row of shuffle(rows)) {
-    if (!buckets.has(row.category_slug)) buckets.set(row.category_slug, []);
-    buckets.get(row.category_slug).push(row);
-  }
-  const order = shuffle([...buckets.keys()]);
-  const picked = [];
-  const target = Math.min(QUESTIONS_PER_EXAM, rows.length);
-  let round = 0;
-  while (picked.length < target) {
-    let added = false;
-    for (const slug of order) {
-      const bucket = buckets.get(slug);
-      if (round < bucket.length) {
-        picked.push(bucket[round]);
-        added = true;
-        if (picked.length >= target) break;
-      }
+  function roundRobin(pool, count, exclude) {
+    const buckets = new Map();
+    for (const row of shuffle(pool)) {
+      if (exclude.has(row.id)) continue;
+      if (!buckets.has(row.category_slug)) buckets.set(row.category_slug, []);
+      buckets.get(row.category_slug).push(row);
     }
-    if (!added) break;
-    round++;
+    const order = shuffle([...buckets.keys()]);
+    const out = [];
+    let round = 0;
+    while (out.length < count) {
+      let added = false;
+      for (const slug of order) {
+        const bucket = buckets.get(slug);
+        if (round < bucket.length) {
+          out.push(bucket[round]);
+          added = true;
+          if (out.length >= count) break;
+        }
+      }
+      if (!added) break;
+      round++;
+    }
+    return out;
   }
+
+  // At least PRODUCTION_SHARE of the exam must be produced, not recognised:
+  // typing, cloze and sentence building. Multiple choice alone lets you pass
+  // a level you can read but not use.
+  const target = Math.min(QUESTIONS_PER_EXAM, rows.length);
+  const production = rows.filter((r) => PRODUCTION_TYPES.has(r.type));
+  const productionTarget = Math.min(production.length, Math.ceil(target * PRODUCTION_SHARE));
+  const picked = roundRobin(production, productionTarget, new Set());
+  const taken = new Set(picked.map((r) => r.id));
+  picked.push(...roundRobin(rows.filter((r) => !taken.has(r.id)), target - picked.length, taken));
 
   res.json({
     level,

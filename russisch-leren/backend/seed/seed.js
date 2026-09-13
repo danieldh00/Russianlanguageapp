@@ -20,6 +20,35 @@ function pickDistractors(pool, excludeValue, count) {
 
 const LEVEL_RANK = { A1: 1, A2: 2, B1: 3, B2: 4, C1: 5, C2: 6 };
 
+// Finds the word inside its example sentence -- usually in a declined or
+// conjugated form (вода -> воду, читать -> читаю) -- and blanks it out.
+// Match on the longest shared prefix with the headword, which is how
+// Russian inflection works (the stem stays, the ending changes). Returns
+// null when no token is convincingly the same word.
+function buildCloze(word, sentence) {
+  const bare = (s) => stripStress(s).toLowerCase().replace(/ё/g, 'е');
+  const target = bare(word);
+  if (target.length < 3) return null;
+  const tokens = sentence.split(/(\s+)/); // keep separators so we can rebuild the sentence
+  let best = null;
+  tokens.forEach((raw, i) => {
+    if (/^\s*$/.test(raw)) return;
+    const core = raw.replace(/^[«"'(\[—–-]+|[»"'),.!?;:\]…—–-]+$/g, '');
+    if (!core) return;
+    const t = bare(core);
+    let common = 0;
+    while (common < t.length && common < target.length && t[common] === target[common]) common++;
+    const needed = Math.max(3, Math.min(t.length, target.length) - 3);
+    if (t === target || common >= needed) {
+      const score = t === target ? 1000 : common;
+      if (!best || score > best.score) best = { i, core, score };
+    }
+  });
+  if (!best) return null;
+  const rebuilt = tokens.map((raw, i) => (i === best.i ? raw.replace(best.core, '___') : raw)).join('');
+  return { token: best.core, blanked: rebuilt };
+}
+
 // Adds lesson content (categories, words, grammar rules, exercises) that
 // doesn't exist yet, and refreshes the text of rows that do -- without ever
 // touching `attempts` or `user_word_progress`. That makes it safe to run on
@@ -173,8 +202,9 @@ function seedDatabase() {
     // have theirs (matched per word), so this only adds exercises for words
     // that are new this run.
     for (const w of resolvedWords) {
+      // multiple choice needs distractors from the same lesson; typing and
+      // cloze don't, so a two-word lesson still gets its production exercises
       const siblings = wordsByCategory[w.category].filter((s) => s.id !== w.id);
-      if (siblings.length < 2) continue; // need enough distractors in this category
 
       const letter = isLetter(w);
       const shown = letter
@@ -209,7 +239,12 @@ function seedDatabase() {
           explanation: (letter ? `De letter '${shown}' klinkt ${w.translation_nl}.` : `'${w.translation_nl}' is in het Russisch '${shown}'.`) + notes
         });
       }
-      if (!letter && LEVEL_RANK[w.level] >= LEVEL_RANK.B1 && !/\s/.test(w.russian.trim())) {
+      // Production, from A1 up: type the word yourself, and fill it into its
+      // example sentence in the form the sentence needs (cloze). Recognising
+      // a word among four options is far easier than producing it; these two
+      // are what make the vocabulary stick.
+      const singleWord = !letter && !/\s/.test(w.russian.trim());
+      if (singleWord) {
         addExerciseIfNew({
           category_id: w.category_id,
           word_id: w.id,
@@ -219,6 +254,24 @@ function seedDatabase() {
           correct_answer: w.russian,
           options: null,
           explanation: `'${w.translation_nl}' schrijf je als '${shown}'.` + (w.notes ? ` ${w.notes}` : '')
+        });
+      }
+      const example = w.example_ru ? [w.example_ru, w.example_nl || ''] : null;
+      const cloze = singleWord && example ? buildCloze(w.russian, example[0]) : null;
+      if (cloze) {
+        addExerciseIfNew({
+          category_id: w.category_id,
+          word_id: w.id,
+          grammar_rule_id,
+          type: 'cloze',
+          prompt: `Vul het ontbrekende woord in (${w.translation_nl}): ${cloze.blanked}`,
+          correct_answer: cloze.token,
+          options: null,
+          explanation:
+            `${example[0]} — ${example[1]}` +
+            (cloze.token.toLowerCase() === w.russian.toLowerCase()
+              ? ''
+              : ` Hier staat '${cloze.token}': een vorm van '${w.russian}' die de zin vereist.`)
         });
       }
     }
@@ -460,4 +513,4 @@ if (require.main === module) {
   console.log('Seed complete:', seedDatabase());
 }
 
-module.exports = { seedDatabase };
+module.exports = { seedDatabase, buildCloze };

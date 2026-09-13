@@ -14,9 +14,11 @@ voortgang tussen toestellen (bv. iPhone en iPad).
    tekenreeks (bv. gegenereerd met `openssl rand -hex 32`). Dit beveiligt de
    inlogsessies van de app — bewaar 'm, wijzig hem niet zomaar achteraf zolang
    je ingelogd wilt blijven.
-2. `anthropic_api_key` is optioneel: vul die alleen in als je de knop "Vraag
-   AI om een diepere uitleg" bij foute antwoorden wilt gebruiken (vereist een
-   sleutel van [console.anthropic.com](https://console.anthropic.com/)).
+2. `anthropic_api_key` is optioneel: nodig voor de knop "Vraag AI om een
+   diepere uitleg" bij foute antwoorden én voor **Gesprek oefenen** (de
+   AI-rollenspellen). Vereist een sleutel van
+   [console.anthropic.com](https://console.anthropic.com/); zonder sleutel
+   werkt de rest van de app gewoon.
 3. Start de add-on. Open de webinterface via de **OPEN WEB UI**-knop, of via
    poort 3000 op het IP-adres van je Home Assistant-instantie.
 4. Maak een account aan en begin met een les.

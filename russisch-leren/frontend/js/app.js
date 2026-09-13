@@ -306,7 +306,7 @@ const NAV_ITEMS = [
 function currentRouteSection() {
   const route = (location.hash || '#/dashboard').split('/')[1] || 'dashboard';
   // a lesson or exam screen is reached from, and belongs to, the "Lessen" tab
-  return route === 'lesson' || route === 'exam' || route === 'practice' ? 'dashboard' : route;
+  return ['lesson', 'exam', 'practice', 'review', 'dialogue', 'keyboard'].includes(route) ? 'dashboard' : route;
 }
 
 function renderNav() {
@@ -403,6 +403,9 @@ async function router() {
   if (route === 'dashboard') return renderDashboard();
   if (route === 'lesson') return renderLesson(param);
   if (route === 'practice') return renderMistakesPractice();
+  if (route === 'review') return renderReviewSession();
+  if (route === 'dialogue') return param ? renderDialogue(param) : renderDialogueList();
+  if (route === 'keyboard') return renderKeyboardTrainer();
   if (route === 'exam') return renderExam((param || '').toUpperCase());
   if (route === 'progress') return renderProgress();
   if (route === 'leaderboard') return renderLeaderboard();
@@ -616,17 +619,32 @@ async function renderDashboard() {
   app.innerHTML = '';
   app.appendChild(wrapper);
 
+  // Daily tools above the path: today's reviews across all lessons, the
+  // mistakes round, role-play dialogues and the keyboard trainer.
   const openMistakes = mistakeExercises(content, username).length;
-  if (openMistakes) {
+  const dueCount = dueWordIds(content, username).length;
+  const tools = el(`<div class="tool-grid"></div>`);
+  const tool = (cls, icon, title, text, badge, hash) => {
     const card = el(`
-      <button type="button" class="card practice-card">
-        <div class="row1"><h2>🎯 Oefen je fouten</h2><span class="level-badge">${openMistakes}</span></div>
-        <p class="muted">${openMistakes === 1 ? 'Eén vraag die je fout had' : `${openMistakes} vragen die je fout had`} en nog niet hebt rechtgezet. Een ronde van ${Math.min(10, openMistakes)}, de vaakst gemiste eerst.</p>
+      <button type="button" class="card tool-card ${cls}">
+        <div class="row1"><h2>${icon} ${escapeHtml(title)}</h2>${badge != null ? `<span class="level-badge">${badge}</span>` : ''}</div>
+        <p class="muted">${text}</p>
       </button>
     `);
-    card.addEventListener('click', () => { location.hash = '#/practice'; });
-    wrapper.querySelector('#practice-slot').appendChild(card);
+    card.addEventListener('click', () => { location.hash = hash; });
+    tools.appendChild(card);
+  };
+  tool('review-card', '🔁', 'Vandaag herhalen',
+    dueCount ? `${dueCount === 1 ? 'Eén woord is' : `${dueCount} woorden zijn`} aan herhaling toe, uit al je lessen samen. Dít is wat het laat beklijven.` : 'Niets aan herhaling toe — alles zit nog vers. Kom morgen terug of ga verder op het pad.',
+    dueCount || null, dueCount ? '#/review' : '#/dashboard');
+  if (openMistakes) {
+    tool('practice-card', '🎯', 'Oefen je fouten',
+      `${openMistakes === 1 ? 'Eén vraag die je fout had' : `${openMistakes} vragen die je fout had`} en nog niet hebt rechtgezet, de vaakst gemiste eerst.`,
+      openMistakes, '#/practice');
   }
+  tool('dialogue-card', '🗣️', 'Gesprek oefenen', 'Rollenspel met de AI: apotheek, hotel, politie, huurbaas… Jij typt of spreekt Russisch, de AI antwoordt in zijn rol en corrigeert je.', null, '#/dialogue');
+  tool('keyboard-card', '⌨️', 'Toetsenbord ЙЦУКЕН', 'Leer blind typen op de Russische indeling: woorden en zinnen uit de lessen, met de toets die je zoekt uitgelicht.', null, '#/keyboard');
+  wrapper.querySelector('#practice-slot').appendChild(tools);
 
   const jump = wrapper.querySelector('#level-jump');
   const levelsRoot = wrapper.querySelector('#levels');
@@ -945,6 +963,7 @@ function renderExercise(session) {
     `);
     const exampleBlock = renderExampleBlock(ex.example);
     if (exampleBlock) fb.querySelector('#example-slot').replaceWith(exampleBlock);
+    fb.appendChild(renderAfterAnswerTools(ex));
     feedbackDiv.appendChild(fb);
 
     if (!isCorrect && navigator.onLine) {
@@ -976,12 +995,17 @@ function renderAnswerControls(ex, container, onAnswer, { submitLabel = 'Controle
   } else {
     const form = el(`
       <form class="typing-form">
-        <input type="text" class="typing-answer" autocomplete="off" autocapitalize="off" spellcheck="false" lang="ru" placeholder="Typ hier in het Russisch…" required />
+        <div class="typing-row">
+          <input type="text" class="typing-answer" autocomplete="off" autocapitalize="off" spellcheck="false" lang="ru" placeholder="Typ hier in het Russisch…" required />
+          <span class="mic-slot"></span>
+        </div>
         <button type="submit" class="primary" style="margin-top:10px;width:fit-content">${escapeHtml(submitLabel)}</button>
       </form>
     `);
     container.appendChild(form);
     const input = form.querySelector('input');
+    const mic = renderMicButton((text) => { input.value = text; input.focus(); });
+    if (mic) form.querySelector('.mic-slot').replaceWith(mic);
     setTimeout(() => input.focus(), 0);
     form.addEventListener('submit', (e) => {
       e.preventDefault();
@@ -1016,9 +1040,10 @@ function renderLessonComplete(session) {
   app.innerHTML = '';
   const pct = Math.round((session.correctCount / session.items.length) * 100);
   const isPractice = session.category.slug === '__mistakes__';
+  const isReview = session.category.slug === '__review__';
   app.appendChild(el(`
     <div class="card">
-      <h1>${isPractice ? 'Foutenronde afgerond' : 'Les afgerond'}</h1>
+      <h1>${isPractice ? 'Foutenronde afgerond' : isReview ? 'Herhaling afgerond' : 'Les afgerond'}</h1>
       <p>Je had ${session.correctCount} van de ${session.items.length} vragen goed (${pct}%).</p>
       <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
         <button class="primary" id="again-btn">Nog een keer</button>
@@ -1026,8 +1051,53 @@ function renderLessonComplete(session) {
       </div>
     </div>
   `));
-  document.getElementById('again-btn').addEventListener('click', () => (isPractice ? renderMistakesPractice() : renderLesson(session.category.slug)));
+  document.getElementById('again-btn').addEventListener('click', () => (isPractice ? renderMistakesPractice() : isReview ? renderReviewSession() : renderLesson(session.category.slug)));
   document.getElementById('back-btn').addEventListener('click', () => { location.hash = '#/dashboard'; });
+}
+
+// ---------- "Vandaag herhalen": every due word, across all lessons ----------
+
+function dueWordIds(content, username) {
+  const wordProgress = Storage.loadWordProgress(username);
+  const now = Date.now();
+  const known = new Set(content.exercises.filter((e) => e.wordId != null).map((e) => e.wordId));
+  return Object.keys(wordProgress)
+    .map(Number)
+    .filter((id) => known.has(id) && wordProgress[id].nextReviewAt && new Date(wordProgress[id].nextReviewAt).getTime() <= now)
+    .sort((a, b) => new Date(wordProgress[a].nextReviewAt) - new Date(wordProgress[b].nextReviewAt));
+}
+
+// One exercise per due word (the most overdue first), preferring the
+// production forms -- typing and cloze -- over recognition, since a word
+// you can still produce is the one that's really still known.
+async function renderReviewSession() {
+  const content = await ensureContentLoaded();
+  if (!content) return renderNoContentMessage();
+  const ids = dueWordIds(content, state.user.username).slice(0, 20);
+  if (!ids.length) {
+    app.innerHTML = '';
+    app.appendChild(el(`
+      <div class="card">
+        <h1>🔁 Vandaag herhalen</h1>
+        <p class="muted">Niets aan herhaling toe. De planner zet elk woord dat je goed had steeds verder in de toekomst; kom morgen terug of ga verder op het pad.</p>
+        <a href="#/dashboard">Terug naar lessen</a>
+      </div>
+    `));
+    return;
+  }
+  const byWord = new Map();
+  for (const ex of content.exercises) {
+    if (ex.wordId == null) continue;
+    if (!byWord.has(ex.wordId)) byWord.set(ex.wordId, []);
+    byWord.get(ex.wordId).push(ex);
+  }
+  const items = ids.map((id) => {
+    const pool = byWord.get(id) || [];
+    const production = pool.filter((e) => e.type === 'typing' || e.type === 'cloze');
+    const pick = shuffle((production.length && Math.random() < 0.6) ? production : pool)[0];
+    return withGrammarRule(content, pick);
+  }).filter(Boolean);
+  renderExercise({ category: { slug: '__review__', name: 'Herhaling van vandaag' }, items, index: 0, correctCount: 0 });
 }
 
 // ---------- "Oefen je fouten": a session built from this device's mistake log ----------
@@ -1458,6 +1528,465 @@ async function renderProgress() {
     recentCard.appendChild(scroll);
   }
   app.appendChild(recentCard);
+}
+
+// ---------- speech recognition: say it back, or dictate an answer ----------
+
+function speechRecognitionSupported() {
+  return !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+}
+
+// Listens once for Russian speech and resolves with the transcript.
+function listenOnce() {
+  return new Promise((resolve, reject) => {
+    const Ctor = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!Ctor) return reject(new Error('Spraakherkenning wordt niet ondersteund in deze browser.'));
+    const rec = new Ctor();
+    rec.lang = 'ru-RU';
+    rec.interimResults = false;
+    rec.maxAlternatives = 3;
+    let settled = false;
+    rec.onresult = (e) => {
+      settled = true;
+      const alts = [...e.results[0]].map((r) => r.transcript);
+      resolve(alts);
+    };
+    rec.onerror = (e) => {
+      if (settled) return;
+      settled = true;
+      const msg = e.error === 'not-allowed' ? 'Geen toegang tot de microfoon. Sta die toe in de browserinstellingen.'
+        : e.error === 'no-speech' ? 'Niets gehoord. Probeer het nog eens.'
+        : `Spraakherkenning mislukt (${e.error}).`;
+      reject(new Error(msg));
+    };
+    rec.onend = () => { if (!settled) { settled = true; reject(new Error('Niets gehoord. Probeer het nog eens.')); } };
+    try { rec.start(); } catch (err) { reject(err); }
+  });
+}
+
+function renderMicButton(onText) {
+  if (!speechRecognitionSupported()) return null;
+  const btn = el(`<button type="button" class="mic-btn" title="Spreek je antwoord in (Russisch)" aria-label="Spreek je antwoord in">🎤</button>`);
+  btn.addEventListener('click', async () => {
+    btn.classList.add('listening');
+    btn.textContent = '…';
+    try {
+      const alts = await listenOnce();
+      onText(alts[0] || '');
+    } catch (err) {
+      btn.title = err.message;
+    } finally {
+      btn.classList.remove('listening');
+      btn.textContent = '🎤';
+    }
+  });
+  return btn;
+}
+
+// The Russian a learner should be able to say after this exercise.
+function pronunciationTarget(ex) {
+  if (ex.type === 'listen' || ex.type === 'reading') return ex.context || null;
+  if (ex.example && ex.example.ru && (ex.type === 'cloze')) return ex.example.ru;
+  return extractSpeakText(ex);
+}
+
+// Buttons under the feedback: say it back (compared with what the
+// recogniser heard) and the inflection table of the word.
+function renderAfterAnswerTools(ex) {
+  const wrap = el(`<div class="after-tools"></div>`);
+  const target = pronunciationTarget(ex);
+  if (target && speechRecognitionSupported()) {
+    const btn = el(`<button type="button" class="tool-btn">🎤 Zeg het na</button>`);
+    const out = el(`<div class="shadow-result"></div>`);
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      out.textContent = 'Luisteren… zeg: ' + target.replace(/́/g, '');
+      try {
+        const alts = await listenOnce();
+        const want = normalizeAnswer(target);
+        const hit = alts.find((a) => normalizeAnswer(a) === want);
+        const close = alts.some((a) => similarity(normalizeAnswer(a), want) >= 0.8);
+        out.innerHTML = '';
+        out.appendChild(el(`<div><span class="muted">Verstaan:</span> <strong>${escapeHtml(alts[0] || '')}</strong></div>`));
+        out.appendChild(el(`<div class="${hit ? 'ok' : close ? 'meh' : 'bad'}">${hit ? '✓ Precies goed uitgesproken.' : close ? '≈ Bijna — de herkenner hoorde iets dat erg lijkt. Nog een keer, iets duidelijker.' : '✗ Dat werd anders verstaan. Luister nog eens en probeer opnieuw.'}</div>`));
+      } catch (err) {
+        out.textContent = err.message;
+      } finally {
+        btn.disabled = false;
+      }
+    });
+    wrap.appendChild(btn);
+    wrap.appendChild(out);
+  }
+  if (ex.wordId != null && navigator.onLine) {
+    const btn = el(`<button type="button" class="tool-btn">📖 Vormen</button>`);
+    const slot = el(`<div class="forms-slot"></div>`);
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      btn.textContent = '📖 Laden…';
+      try {
+        const data = await api(`/words/${ex.wordId}/forms`);
+        slot.innerHTML = '';
+        slot.appendChild(renderFormsTable(data));
+        btn.remove();
+      } catch (err) {
+        btn.textContent = '📖 Vormen';
+        btn.disabled = false;
+        slot.innerHTML = `<p class="muted">${escapeHtml(err.message)}</p>`;
+      }
+    });
+    wrap.appendChild(btn);
+    wrap.appendChild(slot);
+  }
+  return wrap;
+}
+
+// Levenshtein-based similarity in [0,1], for "almost right" pronunciation feedback.
+function similarity(a, b) {
+  if (!a.length && !b.length) return 1;
+  const m = a.length, n = b.length;
+  const dp = Array.from({ length: m + 1 }, (_, i) => [i, ...new Array(n).fill(0)]);
+  for (let j = 1; j <= n; j++) dp[0][j] = j;
+  for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++) {
+    dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+  }
+  return 1 - dp[m][n] / Math.max(m, n);
+}
+
+// ---------- inflection tables (Open Russian data via /api/words/:id/forms) ----------
+
+const CASE_LABELS = { nom: 'nominatief', gen: 'genitief', dat: 'datief', acc: 'accusatief', inst: 'instrumentalis', prep: 'prepositief' };
+const PERSON_LABELS = { sg1: 'я', sg2: 'ты', sg3: 'он / она', pl1: 'мы', pl2: 'вы', pl3: 'они' };
+
+function renderFormsTable(d) {
+  const f = d.forms || {};
+  const box = el(`<div class="forms-box"><div class="reading-label">Vormen van ${escapeHtml(d.accented || d.russian)}</div></div>`);
+  const meta = [];
+  if (d.pos === 'noun') meta.push(`zelfstandig naamwoord${d.gender ? `, ${{ m: 'mannelijk', f: 'vrouwelijk', n: 'onzijdig' }[d.gender] || d.gender}` : ''}${d.animate ? ', bezield' : ''}`);
+  if (d.pos === 'verb') meta.push(`werkwoord, ${d.aspect === 'perfective' ? 'voltooid' : 'onvoltooid'} aspect${d.partner ? ` · aspectpartner: ${d.partner}` : ''}`);
+  if (d.pos === 'adjective') meta.push(`bijvoeglijk naamwoord${d.comparative ? ` · vergrotende trap: ${d.comparative.split(';')[0]}` : ''}${d.superlative ? ` · overtreffende trap: ${d.superlative.split(';')[0]}` : ''}`);
+  if (meta.length) box.appendChild(el(`<p class="muted forms-meta">${escapeHtml(meta.join(' · '))}</p>`));
+
+  const table = (headers, rows) => {
+    const t = el(`<div class="table-scroll"><table class="forms-table"><thead><tr>${headers.map((h) => `<th>${escapeHtml(h)}</th>`).join('')}</tr></thead><tbody></tbody></table></div>`);
+    const tb = t.querySelector('tbody');
+    for (const r of rows) tb.appendChild(el(`<tr>${r.map((c, i) => `<td${i ? ' lang="ru"' : ''}>${escapeHtml(c || '—')}</td>`).join('')}</tr>`));
+    return t;
+  };
+
+  if (d.pos === 'noun') {
+    box.appendChild(table(['naamval', 'enkelvoud', 'meervoud'], Object.keys(CASE_LABELS).map((c) => [CASE_LABELS[c], f[`sg_${c}`], f[`pl_${c}`]])));
+  } else if (d.pos === 'verb') {
+    const tense = d.aspect === 'perfective' ? 'toekomende tijd' : 'tegenwoordige tijd';
+    box.appendChild(table(['persoon', tense], Object.keys(PERSON_LABELS).map((p) => [PERSON_LABELS[p], f[`presfut_${p}`]])));
+    box.appendChild(table(['verleden tijd', 'vorm'], [['hij', f.past_m], ['zij', f.past_f], ['het', f.past_n], ['zij (mv.)', f.past_pl]]));
+    if (f.imperative_sg || f.imperative_pl) box.appendChild(table(['gebiedende wijs', 'vorm'], [['jij', f.imperative_sg], ['u / jullie', f.imperative_pl]]));
+  } else if (d.pos === 'adjective') {
+    box.appendChild(table(['', 'mannelijk', 'vrouwelijk', 'onzijdig', 'meervoud'], [
+      ['nominatief', f.m_nom, f.f_nom, f.n_nom, f.pl_nom],
+      ['genitief', f.m_gen, f.f_gen, f.m_gen, f.pl_gen],
+      ['datief', f.m_dat, f.f_gen, f.m_dat, f.pl_dat],
+      ['instrumentalis', f.m_inst, f.f_gen, f.m_inst, f.pl_inst],
+      ['prepositief', f.m_prep, f.f_gen, f.m_prep, f.pl_prep],
+      ['korte vorm', f.short_m, f.short_f, f.short_n, f.short_pl]
+    ]));
+  } else {
+    const rows = Object.entries(f).map(([k, v]) => [k, v]);
+    if (rows.length) box.appendChild(table(['vorm', 'waarde'], rows));
+    else box.appendChild(el(`<p class="muted">Dit woord verandert niet van vorm.</p>`));
+  }
+  box.appendChild(el(`<p class="muted forms-source">Bron: Open Russian dictionary (CC-BY-SA 4.0)</p>`));
+  return box;
+}
+
+// ---------- role-play dialogues (online, needs the server's AI key) ----------
+
+const dialogueState = { scenario: null, level: 'B1', messages: [], turns: [] };
+
+function defaultDialogueLevel() {
+  const stats = Storage.loadStats(state.user.username);
+  const certified = (stats && stats.certifiedLevels) || [];
+  const highest = LEVEL_ORDER.filter((l) => certified.includes(l)).pop();
+  const next = highest ? LEVEL_ORDER[Math.min(LEVEL_ORDER.indexOf(highest) + 1, LEVEL_ORDER.length - 1)] : 'A1';
+  return next;
+}
+
+async function renderDialogueList() {
+  app.innerHTML = '';
+  const wrap = el(`
+    <div>
+      <h1>🗣️ Gesprek oefenen</h1>
+      <p class="muted">Kies een situatie. De AI speelt de andere kant in het Russisch op jouw niveau, antwoordt op wat jij typt of inspreekt, en geeft na elke beurt een korte correctie in het Nederlands.</p>
+      <div class="reminder-row" style="margin-bottom:16px">
+        <label for="dialogue-level">Niveau</label>
+        <select id="dialogue-level">${LEVEL_ORDER.map((l) => `<option value="${l}">${l}</option>`).join('')}</select>
+      </div>
+      <div id="scenario-grid" class="scenario-grid"><p class="muted">Laden…</p></div>
+    </div>
+  `);
+  app.appendChild(wrap);
+  const levelSel = wrap.querySelector('#dialogue-level');
+  levelSel.value = dialogueState.level || defaultDialogueLevel();
+  levelSel.addEventListener('change', () => { dialogueState.level = levelSel.value; });
+  dialogueState.level = levelSel.value;
+
+  const grid = wrap.querySelector('#scenario-grid');
+  if (!navigator.onLine) {
+    grid.innerHTML = `<p class="muted">Gesprekken oefenen kan alleen online.</p>`;
+    return;
+  }
+  try {
+    const data = await api('/ai/scenarios');
+    grid.innerHTML = '';
+    if (!data.configured) {
+      grid.appendChild(el(`<div class="card"><p class="muted">Voor rollenspellen heeft de server een Anthropic API-sleutel nodig: vul in Home Assistant bij de add-on-configuratie <code>anthropic_api_key</code> in en herstart de add-on. Zonder sleutel werkt de rest van de app gewoon.</p></div>`));
+    }
+    for (const s of data.scenarios) {
+      const card = el(`
+        <button type="button" class="card tool-card scenario-card" ${data.configured ? '' : 'disabled'}>
+          <div class="row1"><h2>${s.icon} ${escapeHtml(s.title)}</h2></div>
+          <p class="muted">Je gesprekspartner: ${escapeHtml(s.role)}.</p>
+        </button>
+      `);
+      card.addEventListener('click', () => {
+        dialogueState.scenario = s;
+        dialogueState.messages = [];
+        dialogueState.turns = [];
+        location.hash = `#/dialogue/${s.id}`;
+      });
+      grid.appendChild(card);
+    }
+  } catch (err) {
+    grid.innerHTML = `<p class="error-message">${escapeHtml(err.message)}</p>`;
+  }
+}
+
+async function renderDialogue(scenarioId) {
+  if (!dialogueState.scenario || dialogueState.scenario.id !== scenarioId) {
+    // deep link / reload: fetch the scenario meta first
+    try {
+      const data = await api('/ai/scenarios');
+      const s = data.scenarios.find((x) => x.id === scenarioId);
+      if (!s) { location.hash = '#/dialogue'; return; }
+      dialogueState.scenario = s;
+      dialogueState.messages = [];
+      dialogueState.turns = [];
+      if (!dialogueState.level) dialogueState.level = defaultDialogueLevel();
+    } catch (err) {
+      app.innerHTML = '';
+      app.appendChild(el(`<div class="card"><p class="error-message">${escapeHtml(err.message)}</p><a href="#/dialogue">Terug</a></div>`));
+      return;
+    }
+  }
+  const s = dialogueState.scenario;
+  app.innerHTML = '';
+  const wrap = el(`
+    <div class="dialogue">
+      <div class="dialogue-head">
+        <div><h1>${s.icon} ${escapeHtml(s.title)}</h1><p class="muted">${escapeHtml(s.role)} · niveau ${escapeHtml(dialogueState.level)}</p></div>
+        <a href="#/dialogue" class="secondary-link">Andere situatie</a>
+      </div>
+      <div class="chat" id="chat"></div>
+      <form class="chat-form" id="chat-form">
+        <div class="typing-row">
+          <input type="text" id="chat-input" autocomplete="off" autocapitalize="off" spellcheck="false" lang="ru" placeholder="Typ of spreek je antwoord in het Russisch…" />
+          <span class="mic-slot"></span>
+        </div>
+        <button type="submit" class="primary" id="chat-send">Versturen</button>
+      </form>
+    </div>
+  `);
+  app.appendChild(wrap);
+  const chat = wrap.querySelector('#chat');
+  const form = wrap.querySelector('#chat-form');
+  const input = wrap.querySelector('#chat-input');
+  const send = wrap.querySelector('#chat-send');
+  const mic = renderMicButton((t) => { input.value = t; input.focus(); });
+  if (mic) form.querySelector('.mic-slot').replaceWith(mic);
+
+  function bubble(turn) {
+    if (turn.role === 'user') {
+      const b = el(`<div class="bubble me"><p></p></div>`);
+      b.querySelector('p').textContent = turn.content;
+      return b;
+    }
+    const b = el(`
+      <div class="bubble them">
+        <p class="ru"></p>
+        <button type="button" class="link-btn toggle-nl">vertaling</button>
+        <p class="nl muted" hidden></p>
+        ${turn.correction ? `<div class="correction"><strong>Correctie:</strong> <span></span></div>` : ''}
+        ${turn.tip ? `<div class="tip"><strong>Tip:</strong> <span></span></div>` : ''}
+        <span class="speak-slot"></span>
+      </div>
+    `);
+    b.querySelector('.ru').textContent = turn.content;
+    b.querySelector('.nl').textContent = turn.translation || '';
+    b.querySelector('.toggle-nl').addEventListener('click', () => { const nl = b.querySelector('.nl'); nl.hidden = !nl.hidden; });
+    if (!turn.translation) b.querySelector('.toggle-nl').remove();
+    if (turn.correction) b.querySelector('.correction span').textContent = turn.correction;
+    if (turn.tip) b.querySelector('.tip span').textContent = turn.tip;
+    const sp = renderSpeakButton(turn.content, '🔊');
+    if (sp) b.querySelector('.speak-slot').replaceWith(sp); else b.querySelector('.speak-slot').remove();
+    return b;
+  }
+  function paint() {
+    chat.innerHTML = '';
+    for (const t of dialogueState.turns) chat.appendChild(bubble(t));
+    chat.scrollTop = chat.scrollHeight;
+  }
+  async function ask(userText) {
+    if (userText) {
+      dialogueState.messages.push({ role: 'user', content: userText });
+      dialogueState.turns.push({ role: 'user', content: userText });
+      paint();
+    }
+    send.disabled = true;
+    input.disabled = true;
+    const thinking = el(`<div class="bubble them"><p class="muted">…</p></div>`);
+    chat.appendChild(thinking);
+    chat.scrollTop = chat.scrollHeight;
+    try {
+      const r = await api('/ai/dialogue', { method: 'POST', body: { scenario: s.id, level: dialogueState.level, messages: dialogueState.messages } });
+      dialogueState.messages.push({ role: 'assistant', content: r.reply });
+      dialogueState.turns.push({ role: 'assistant', content: r.reply, translation: r.translation, correction: r.correction, tip: r.tip });
+      paint();
+      speakRussian(r.reply);
+      if (r.finished) {
+        chat.appendChild(el(`<div class="card" style="margin-top:10px"><p>Gesprek afgerond. <a href="#/dialogue">Kies een nieuwe situatie</a> of ga gewoon door.</p></div>`));
+      }
+    } catch (err) {
+      thinking.remove();
+      chat.appendChild(el(`<p class="error-message">${escapeHtml(err.message)}</p>`));
+    } finally {
+      send.disabled = false;
+      input.disabled = false;
+      input.focus();
+    }
+  }
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const text = input.value.trim();
+    if (!text) return;
+    input.value = '';
+    ask(text);
+  });
+  paint();
+  if (!dialogueState.turns.length) ask(null);
+}
+
+// ---------- keyboard trainer: the ЙЦУКЕН layout ----------
+
+const RU_ROWS = [
+  ['й', 'ц', 'у', 'к', 'е', 'н', 'г', 'ш', 'щ', 'з', 'х', 'ъ'],
+  ['ф', 'ы', 'в', 'а', 'п', 'р', 'о', 'л', 'д', 'ж', 'э'],
+  ['я', 'ч', 'с', 'м', 'и', 'т', 'ь', 'б', 'ю', '.']
+];
+const QWERTY_ROWS = [
+  ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']'],
+  ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', "'"],
+  ['z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/']
+];
+
+async function renderKeyboardTrainer() {
+  const content = await ensureContentLoaded();
+  if (!content) return renderNoContentMessage();
+  // drill material: A1/A2 words first, then example sentences of practised words
+  const levelOf = Object.fromEntries(content.categories.map((c) => [c.slug, c.level]));
+  const words = [...new Set(content.exercises.filter((e) => e.wordId != null && ['A1', 'A2'].includes(levelOf[e.category]) && content.words[e.wordId]).map((e) => content.words[e.wordId].ru.replace(/́/g, '')))].filter((w) => /^[а-яё]+$/i.test(w));
+  const sentences = Object.values(content.words).filter((w) => w.example && w.example.ru).map((w) => w.example.ru);
+  const drill = [...shuffle(words).slice(0, 6), ...shuffle(sentences).slice(0, 4)];
+
+  app.innerHTML = '';
+  const wrap = el(`
+    <div class="keyboard-trainer">
+      <h1>⌨️ Toetsenbord ЙЦУКЕН</h1>
+      <p class="muted">Typ de tekst na. De volgende toets licht op in de indeling hieronder; eronder staat de QWERTY-toets op dezelfde plek. Op een iPhone/iPad gebruik je het Russische toetsenbord van iOS (Instellingen → Algemeen → Toetsenbord); op een computer zet je de Russische indeling aan en typ je blind.</p>
+      <div class="card">
+        <div class="exercise-progress"><span id="kb-progress"></span><span class="muted" id="kb-stats"></span></div>
+        <p class="kb-target" id="kb-target"></p>
+        <input type="text" id="kb-input" class="typing-answer" autocomplete="off" autocapitalize="off" spellcheck="false" lang="ru" placeholder="Typ hier…" />
+        <p class="muted kb-hint" id="kb-hint"></p>
+      </div>
+      <div class="kb-layout" id="kb-layout"></div>
+    </div>
+  `);
+  app.appendChild(wrap);
+  const layout = wrap.querySelector('#kb-layout');
+  const keyEls = new Map();
+  RU_ROWS.forEach((row, ri) => {
+    const rowEl = el(`<div class="kb-row"></div>`);
+    row.forEach((ch, ci) => {
+      const k = el(`<div class="kb-key"><span class="ru">${ch}</span><span class="qw">${QWERTY_ROWS[ri][ci] || ''}</span></div>`);
+      keyEls.set(ch, k);
+      rowEl.appendChild(k);
+    });
+    layout.appendChild(rowEl);
+  });
+  const space = el(`<div class="kb-row"><div class="kb-key space"><span class="ru">spatie</span></div></div>`);
+  keyEls.set(' ', space.querySelector('.kb-key'));
+  layout.appendChild(space);
+
+  const targetEl = wrap.querySelector('#kb-target');
+  const input = wrap.querySelector('#kb-input');
+  const hint = wrap.querySelector('#kb-hint');
+  const progress = wrap.querySelector('#kb-progress');
+  const statsEl = wrap.querySelector('#kb-stats');
+  let idx = 0, typedChars = 0, errors = 0, started = null;
+
+  function highlight() {
+    keyEls.forEach((k) => k.classList.remove('next', 'shift'));
+    const target = drill[idx];
+    const pos = input.value.length;
+    const ch = target[pos];
+    if (ch == null) return;
+    const key = keyEls.get(ch.toLowerCase()) || keyEls.get(ch === 'ё' ? 'е' : ch);
+    if (key) {
+      key.classList.add('next');
+      if (ch !== ch.toLowerCase()) key.classList.add('shift');
+    }
+    hint.textContent = ch === ' ' ? 'Volgende: spatie' : `Volgende letter: ${ch}${ch !== ch.toLowerCase() ? ' (met Shift)' : ''}`;
+  }
+  function paintTarget() {
+    const target = drill[idx];
+    const typed = input.value;
+    targetEl.innerHTML = '';
+    [...target].forEach((ch, i) => {
+      const span = document.createElement('span');
+      span.textContent = ch;
+      if (i < typed.length) span.className = typed[i] === ch ? 'ok' : 'bad';
+      else if (i === typed.length) span.className = 'cur';
+      targetEl.appendChild(span);
+    });
+    progress.textContent = `Oefening ${idx + 1} van ${drill.length}`;
+    const minutes = started ? (Date.now() - started) / 60000 : 0;
+    const cpm = minutes > 0 ? Math.round(typedChars / minutes) : 0;
+    const acc = typedChars ? Math.max(0, Math.round(((typedChars - errors) / typedChars) * 100)) : 100;
+    statsEl.textContent = `${cpm} tekens/min · ${acc}% nauwkeurig`;
+    highlight();
+  }
+  input.addEventListener('input', () => {
+    if (!started) started = Date.now();
+    const target = drill[idx];
+    const typed = input.value;
+    typedChars++;
+    const last = typed.length - 1;
+    if (last >= 0 && typed[last] !== target[last]) errors++;
+    if (typed === target) {
+      idx++;
+      input.value = '';
+      if (idx >= drill.length) {
+        const minutes = (Date.now() - started) / 60000;
+        wrap.querySelector('.card').innerHTML = `<h2>Ronde klaar!</h2><p>${Math.round(typedChars / minutes)} tekens per minuut, ${Math.max(0, Math.round(((typedChars - errors) / typedChars) * 100))}% nauwkeurig.</p><div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px"><button class="primary" id="kb-again">Nog een ronde</button><a class="secondary-link" href="#/dashboard">Terug naar lessen</a></div>`;
+        wrap.querySelector('#kb-again').addEventListener('click', () => renderKeyboardTrainer());
+        keyEls.forEach((k) => k.classList.remove('next', 'shift'));
+        return;
+      }
+    }
+    paintTarget();
+  });
+  paintTarget();
+  setTimeout(() => input.focus(), 0);
 }
 
 // ---------- daily reminder (Web Push) ----------

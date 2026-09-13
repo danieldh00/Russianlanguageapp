@@ -26,11 +26,31 @@ is en welke grammaticaregel erachter zit.
   naamwoorden & bijwoorden), een les "Praktische zinnen", een les "Lezen" en
   automatisch gegenereerde vervoegings- en naamvaldrills.
 - **Oefenvormen**: meerkeuze in beide richtingen, losse grammatica-oefeningen,
-  **zinnen bouwen** met woord-chips, **typen** (vanaf B1 typ je het Russische
+  **zinnen bouwen** met woord-chips, **typen** (vanaf A1 typ je het Russische
   woord zelf; ё/е, klemtoontekens, hoofdletters en leestekens tellen niet als
-  fout), **luisteren** (een zin wordt voorgelezen en jij bouwt 'm na) en
-  **lezen** (korte tekst met begripsvragen). Elk woord toont z'n klemtoon
-  (спа́льня) en transliteratie.
+  fout), **gatenzinnen** (de voorbeeldzin met het woord weggelaten — je typt
+  de vorm die de zin vereist, bv. воду), **luisteren** (een zin wordt
+  voorgelezen en jij bouwt 'm na) en **lezen** (korte tekst met
+  begripsvragen). Elk woord toont z'n klemtoon (спа́льня) en transliteratie.
+- **Vandaag herhalen**: één knop met alle woorden die aan herhaling toe zijn,
+  over alle lessen heen (max. 20, meest achterstallige eerst, bij voorkeur
+  als typ- of gatenzin).
+- **Spreken**: microfoonknop bij typ-/gatenzinoefeningen en in gesprekken
+  (Web Speech API, `ru-RU`), en "🎤 Zeg het na" na elk antwoord — de app
+  vergelijkt de herkende tekst met het juiste antwoord (exact / bijna /
+  anders).
+- **📖 Vormen**: na elk antwoord de volledige verbuiging of vervoeging van
+  het woord (`GET /api/words/:id/forms`, data uit de Open Russian dictionary;
+  online).
+- **Gesprek oefenen**: twaalf AI-rollenspellen (apotheek, dokter, hotel,
+  restaurant, de weg vragen, politie, huurbaas, bank, sollicitatie, markt,
+  kennismaken, simkaart) op een gekozen CEFR-niveau. De AI antwoordt in het
+  Russisch in zijn rol (JSON: reply/translation/correction/tip), met
+  vertaling op afroep en een Nederlandse correctie na elke beurt. Vereist
+  `ANTHROPIC_API_KEY`.
+- **Toetsenbordtrainer ЙЦУКЕН**: de Russische indeling op het scherm met de
+  QWERTY-toets eronder; typ woorden/zinnen uit de lessen na, de volgende
+  toets licht op, met tekens/minuut en nauwkeurigheid.
 - **Voorbeeldzinnen**: elk woord heeft een eigen zin (Russisch + Nederlands,
   met luisterknop) die na elk antwoord verschijnt — ±1.400 zinnen in
   `seed/data/examples/`, per niveau, zodat je het woord in context en in
@@ -44,7 +64,8 @@ is en welke grammaticaregel erachter zit.
   `DATA_DIR/vapid.json`; op iOS alleen vanuit de geïnstalleerde PWA
   (16.4+).
 - **Niveautoetsen**: elk niveau sluit je af met een toets van 30 vragen,
-  evenredig verdeeld over alle lessen van dat niveau en alle oefenvormen.
+  evenredig verdeeld over alle lessen van dat niveau en alle oefenvormen,
+  waarvan minstens 40% productie (typen, gatenzin, zinnen bouwen).
   Server-side nagekeken; geslaagd bij 80% of hoger. Dan is het niveau
   officieel behaald (+150 XP, badge, 🎓-label in de bovenbalk, de
   voortgangspagina en de ranglijst). De uitslag toont per les hoe je scoorde
@@ -128,10 +149,11 @@ russisch-leren/
         progress.js               Statistieken + foutenoverzicht + per-woord SRS-status + gamification
         content.js                  Volledige lesinhoud voor offline gebruik
         sync.js                      Offline-wachtrij van antwoorden verwerken
-        ai.js                         AI-uitleg via de Claude API (optioneel)
+        ai.js                         AI-uitleg + rollenspel-dialogen via de Claude API (optioneel)
         leaderboard.js                Ranglijst
         exams.js                      Niveautoetsen: samenstellen, nakijken, certificeringen
         push.js                       Push-abonnementen en herinneringsinstellingen per toestel
+        words.js                      Vormentabellen per woord (Open Russian)
     seed/
       seed.js            Vult/actualiseert de database met lesinhoud (toevoegend, bij elke start)
       data/
@@ -426,6 +448,9 @@ Alle routes onder `/api`, JSON in/uit, sessie-cookie voor authenticatie.
 | GET | `/exams/:level` | Nieuwe toets van 30 vragen voor een niveau (zonder antwoorden/uitleg) |
 | POST | `/exams/:level/submit` | Toets inleveren → score, geslaagd/niet, per-les-uitsplitsing en volledige review met uitleg |
 | GET | `/exams/history` | Eerdere toetspogingen van de ingelogde gebruiker |
+| GET | `/words/:id/forms` | Verbuiging/vervoeging van een woord (Open Russian) |
+| GET | `/ai/scenarios` | Rollenspel-scenario's + of AI geconfigureerd is |
+| POST | `/ai/dialogue` | Volgende beurt in een rollenspel (`{ scenario, level, messages }` → `{ reply, translation, correction, tip, finished }`) |
 | GET | `/push/vapid-public-key` | Publieke VAPID-sleutel voor het push-abonnement |
 | GET | `/push/status?endpoint=` | Herinneringsinstelling van dit toestel |
 | POST | `/push/subscribe` | Abonnement + tijdstip + tijdzone opslaan (per toestel) |
