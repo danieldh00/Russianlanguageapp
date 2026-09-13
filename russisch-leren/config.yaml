@@ -1,10 +1,10 @@
 name: "Russisch Leren"
-version: "1.1.5"
+version: "1.2.0"
 slug: russisch_leren
 description: >-
-  Russisch leren met voortgangsregistratie, spaced repetition, offline
-  ondersteuning en synchronisatie tussen toestellen. Werkt ook als
-  installeerbare PWA op iPhone/iPad.
+  Russisch leren van A1 tot C2 met niveautoetsen, voortgangsregistratie,
+  spaced repetition, offline ondersteuning en synchronisatie tussen
+  toestellen. Werkt ook als installeerbare PWA op iPhone/iPad.
 url: "https://github.com/danieldh00/Russianlanguageapp"
 arch:
   - aarch64

@@ -1,4 +1,7 @@
 const XP_PER_CORRECT = 10;
+// Passing a level exam is worth a chunk of XP on top of the per-answer XP,
+// so the leaderboard rewards proven level mastery, not only volume.
+const XP_PER_CERTIFICATION = 150;
 
 const LEVELS = [
   { minXp: 0, title: 'Beginner (A1)' },
@@ -72,7 +75,10 @@ const ACHIEVEMENTS = [
   { id: 'honderdvijftig_woorden', title: '150 woorden onder de knie', description: '150 woorden goed onder de knie.', icon: '📚', check: (s) => s.wordsMastered >= 150 },
   { id: 'alle_grammatica', title: 'Alle grammatica onder de knie', description: 'Elke grammaticales voor 100% afgerond.', icon: '🧠', check: (s) => s.allGrammarMastered },
   { id: 'beleefd', title: 'Beleefdheden gemeesterd', description: "De les 'Begroetingen & basiszinnen' volledig onder de knie.", icon: '🤝', check: (s) => s.greetingsMastered },
-  { id: 'vijfhonderd_xp', title: '500 XP verdiend', description: 'In totaal 500 XP verzameld.', icon: '⭐', check: (s) => s.xp >= 500 }
+  { id: 'vijfhonderd_xp', title: '500 XP verdiend', description: 'In totaal 500 XP verzameld.', icon: '⭐', check: (s) => s.xp >= 500 },
+  { id: 'toets_a1', title: 'A1-toets behaald', description: 'De niveautoets A1 met minstens 80% gehaald.', icon: '🎓', check: (s) => (s.certifiedLevels || []).includes('A1') },
+  { id: 'toets_b1', title: 'B1-toets behaald', description: 'De niveautoets B1 gehaald: je redt je in het dagelijks leven.', icon: '🏅', check: (s) => (s.certifiedLevels || []).includes('B1') },
+  { id: 'toets_c2', title: 'C2-toets behaald', description: 'De niveautoets C2 gehaald: moedertaalniveau.', icon: '👑', check: (s) => (s.certifiedLevels || []).includes('C2') }
 ];
 
 function computeAchievements(stats) {
@@ -85,4 +91,4 @@ function computeAchievements(stats) {
   }));
 }
 
-module.exports = { XP_PER_CORRECT, levelForXp, computeStreak, computeAchievements };
+module.exports = { XP_PER_CORRECT, XP_PER_CERTIFICATION, levelForXp, computeStreak, computeAchievements };

@@ -1,8 +1,12 @@
 # Russisch Leren
 
-Russisch leren met voortgangsregistratie, spaced repetition en uitleg bij
-fouten. Werkt volledig offline zodra je één keer bent ingelogd, en
-synchroniseert je voortgang tussen toestellen (bv. iPhone en iPad).
+Russisch leren van A1 tot C2 (moedertaalniveau) met voortgangsregistratie,
+spaced repetition en uitleg bij fouten. 125 lessen, ±1.400 woorden en
+±4.800 oefeningen: woordenschat, grammatica, typen, zinnen bouwen, luisteren
+en lezen. Elk niveau sluit je af met een toets van 30 vragen (80% om te
+slagen) die per fout uitlegt wat er misging. Werkt volledig offline zodra
+je één keer bent ingelogd (de toetsen zelf niet), en synchroniseert je
+voortgang tussen toestellen (bv. iPhone en iPad).
 
 ## Installatie
 

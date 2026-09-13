@@ -473,8 +473,171 @@ th { color: var(--muted); font-weight: 600; font-size: 0.75rem; text-transform: 
 .leaderboard-table tr.leaderboard-me td:first-child { border-radius: 10px 0 0 10px; }
 .leaderboard-table tr.leaderboard-me td:last-child { border-radius: 0 10px 10px 0; }
 
+/* ---- dashboard: CEFR level sections (A1 ... C2) ---- */
+.level-jump { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 26px; }
+.level-pill {
+  font-size: 0.8rem; font-weight: 700; letter-spacing: 0.03em; padding: 7px 14px; border-radius: 999px;
+  text-decoration: none; color: var(--accent-ink); background: var(--glass-bg-strong);
+  border: 1.5px solid var(--glass-border); font-variant-numeric: tabular-nums;
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  transition: border-color .12s ease, transform .12s ease;
+}
+.level-pill:hover { border-color: var(--accent); transform: translateY(-1px); }
+.level-pill.passed { color: var(--success); border-color: var(--success); background: var(--success-bg); }
+
+.level-section { margin-bottom: 40px; scroll-margin-top: 90px; }
+.level-header {
+  display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap;
+  margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid var(--glass-border);
+}
+.level-header-main { display: flex; align-items: center; gap: 14px; min-width: 0; flex: 1; }
+.level-header-main h2 { margin: 0 0 3px; font-size: 1.2rem; }
+.level-header-main p { margin: 0; font-size: 0.88rem; line-height: 1.4; }
+.level-header-stats { min-width: 200px; flex: 0 1 260px; font-size: 0.82rem; }
+.level-header-stats .progress-bar { margin-top: 6px; }
+.level-code {
+  display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto;
+  width: 48px; height: 48px; border-radius: 15px;
+  font-family: "PT Serif", Georgia, serif; font-weight: 700; font-size: 1.15rem; color: #fff;
+  background: linear-gradient(160deg, var(--accent-bright), var(--accent));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.4), 0 6px 14px rgba(31,52,104,0.22);
+}
+.level-code.big { width: 64px; height: 64px; font-size: 1.5rem; border-radius: 20px; }
+
+.path-node.exam .path-marker { background: var(--accent2-soft); border-color: var(--accent2); font-size: 1rem; }
+.path-node.exam.complete .path-marker { background: var(--success); border-color: var(--success); }
+.exam-card { border-style: dashed; border-color: var(--accent2); }
+.path-node.exam.complete .exam-card { border-style: solid; border-color: var(--success); }
+.exam-card .level-badge { color: var(--accent2); background: var(--accent2-soft); }
+.path-node.exam.complete .exam-card .level-badge { color: var(--success); background: var(--success-bg); }
+
+/* ---- exercise head: reading passages and listening ---- */
+.exercise-head { margin-bottom: 14px; }
+.reading-label {
+  font-size: 0.7rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px;
+}
+.reading-passage {
+  padding: 16px 18px; margin-bottom: 16px; border-radius: 16px;
+  background: var(--glass-bg-strong); border: 1px solid var(--glass-border);
+  box-shadow: inset 0 1px 0 var(--glass-highlight);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+}
+.reading-passage p {
+  margin: 0 0 10px; font-family: "PT Serif", Georgia, serif; font-size: 1.08rem; line-height: 1.65; white-space: pre-line;
+}
+.listen-box {
+  padding: 16px 18px; margin-bottom: 16px; border-radius: 16px; text-align: center;
+  background: var(--accent-soft); border: 1px solid var(--glass-border);
+}
+.listen-box .reading-label { color: var(--accent-ink); }
+.listen-play { font-size: 1rem; padding: 12px 22px; background: var(--accent); color: #fff; }
+.listen-play:hover { background: var(--accent-ink); }
+.listen-text { margin: 12px 0 0; font-family: "PT Serif", Georgia, serif; font-size: 1.1rem; }
+.listen-reveal { margin-top: 8px; font-size: 0.95rem; }
+.listen-reveal strong { font-family: "PT Serif", Georgia, serif; }
+
+.typing-form { max-width: none; gap: 0; }
+.typing-answer { font-family: "PT Serif", Georgia, serif; font-size: 1.15rem; width: 100%; max-width: 480px; }
+.typing-answer:disabled { opacity: 0.7; }
+
+.option-btn.selected { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-ink); font-weight: 700; }
+
+/* ---- level exams ---- */
+.exam-intro-head { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 16px; }
+.exam-intro-head h1 { font-size: 1.4rem; }
+.exam-intro-head p { margin: 0; line-height: 1.5; }
+.exam-facts { margin: 0 0 18px; padding-left: 20px; line-height: 1.7; font-size: 0.95rem; }
+.exam-facts li::marker { color: var(--accent); }
+.exam-question .exercise-progress { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
+.exam-bar { margin: 0 0 20px; }
+
+.exam-result.passed { border-color: var(--success); }
+.exam-result.failed { border-color: var(--accent2); }
+.exam-score { display: flex; align-items: center; gap: 22px; margin-bottom: 22px; flex-wrap: wrap; }
+.exam-score > div:last-child { flex: 1; min-width: 220px; }
+.exam-score h1 { font-size: 1.45rem; }
+.exam-score p { margin: 0; line-height: 1.55; }
+.exam-score-ring {
+  flex: 0 0 auto; width: 104px; height: 104px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: "PT Serif", Georgia, serif; font-size: 1.6rem; font-weight: 700; font-variant-numeric: tabular-nums;
+  color: var(--accent-ink); background: var(--glass-bg-strong);
+  border: 6px solid var(--accent); box-shadow: 0 0 0 6px var(--accent-soft);
+}
+.exam-result.passed .exam-score-ring { color: var(--success); border-color: var(--success); box-shadow: 0 0 0 6px var(--success-bg); }
+.exam-result.failed .exam-score-ring { color: var(--accent2); border-color: var(--accent2); box-shadow: 0 0 0 6px var(--accent2-soft); }
+
+.exam-breakdown { display: flex; flex-direction: column; gap: 6px; }
+.breakdown-row {
+  display: grid; grid-template-columns: 1fr auto 120px; align-items: center; gap: 12px;
+  padding: 9px 12px; border-radius: 12px; text-decoration: none; color: var(--ink); font-size: 0.9rem;
+  background: var(--glass-bg-strong); border: 1px solid var(--glass-border);
+}
+.breakdown-row:hover { border-color: var(--accent); }
+.breakdown-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.breakdown-score { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--muted); }
+.breakdown-bar { display: block; height: 6px; border-radius: 999px; background: var(--border); overflow: hidden; }
+.breakdown-bar span { display: block; height: 100%; border-radius: 999px; background: var(--accent); }
+.breakdown-row.ok .breakdown-bar span { background: var(--success); }
+.breakdown-row.ok .breakdown-score { color: var(--success); }
+.breakdown-row.bad .breakdown-bar span { background: var(--error); }
+.breakdown-row.bad .breakdown-score { color: var(--error); }
+
+.review-list { display: flex; flex-direction: column; gap: 12px; }
+.review-item {
+  padding: 16px 18px; border-radius: 16px; border: 1px solid var(--glass-border); border-left-width: 4px;
+  background: var(--glass-bg-strong);
+}
+.review-item.incorrect { border-left-color: var(--error); }
+.review-item.correct { border-left-color: var(--success); }
+.review-meta { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 8px; font-size: 0.82rem; }
+.review-item.incorrect .review-meta > .muted { color: var(--error); font-weight: 700; }
+.review-item.correct .review-meta > .muted { color: var(--success); font-weight: 700; }
+.review-context {
+  margin: 0 0 8px; padding: 10px 12px; border-radius: 10px; background: var(--accent-soft);
+  font-family: "PT Serif", Georgia, serif; font-size: 0.98rem; line-height: 1.55; white-space: pre-line;
+}
+.review-prompt { margin: 0 0 8px; font-weight: 700; font-size: 1rem; line-height: 1.45; }
+.review-answers { display: flex; flex-direction: column; gap: 3px; font-size: 0.94rem; margin-bottom: 8px; }
+.review-answers strong { font-family: "PT Serif", Georgia, serif; }
+.review-item.incorrect .given { color: var(--error); }
+.review-answers .correct-answer { color: var(--success); }
+.review-item .explanation { font-size: 0.92rem; line-height: 1.55; }
+.review-item .grammar-rule {
+  margin-top: 10px; padding: 10px 14px; font-size: 0.88rem; line-height: 1.55;
+  border-left: 3px solid var(--accent2); background: var(--accent2-soft); border-radius: 0 10px 10px 0;
+}
+.review-item .grammar-rule strong { color: var(--accent2); font-family: "PT Serif", serif; }
+
+/* ---- progress: certification tiles ---- */
+.cert-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin-top: 14px; }
+.cert-tile {
+  display: flex; flex-direction: column; gap: 4px; padding: 14px; border-radius: 16px; text-decoration: none; color: var(--ink);
+  border: 1.5px solid var(--glass-border); background: var(--glass-bg-strong);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  transition: border-color .12s ease, transform .12s ease;
+}
+.cert-tile:hover { border-color: var(--accent); transform: translateY(-1px); }
+.cert-tile.passed { border-color: var(--success); background: var(--success-bg); }
+.cert-level { font-family: "PT Serif", Georgia, serif; font-size: 1.5rem; font-weight: 700; color: var(--accent-ink); }
+.cert-tile.passed .cert-level { color: var(--success); }
+.cert-title { font-size: 0.82rem; font-weight: 600; line-height: 1.3; }
+.cert-status { font-size: 0.74rem; color: var(--muted); line-height: 1.35; }
+.cert-tile.passed .cert-status { color: var(--success); }
+
+.gam-cert {
+  font-size: 0.72rem; font-weight: 700; padding: 4px 11px; border-radius: 999px; white-space: nowrap;
+  background: var(--success-bg); color: var(--success); border: 1px solid var(--glass-border);
+}
+
 @media (max-width: 480px) {
   .topbar-inner { padding-top: 12px; padding-bottom: 12px; }
+  .level-header-stats { flex-basis: 100%; min-width: 0; }
+  .level-code { width: 40px; height: 40px; font-size: 1rem; border-radius: 12px; }
+  .exam-intro-head { flex-direction: column; gap: 10px; }
+  .exam-score { justify-content: center; text-align: center; }
+  .breakdown-row { grid-template-columns: 1fr auto; }
+  .breakdown-bar { grid-column: 1 / -1; }
   h1 { font-size: 1.4rem; }
   .card { padding: 18px; }
   .lesson-path { padding-left: 30px; }
@@ -489,7 +652,8 @@ th { color: var(--muted); font-weight: 600; font-size: 0.75rem; text-transform: 
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   /* browsers without backdrop-filter support: fall back to solid surfaces
      so text stays legible instead of floating on a half-transparent card */
-  .topbar, .card, .stat-box, .badge, .option-btn, .chip, .sync-badge, .gam-streak, .gam-xp, input, .bottom-nav {
+  .topbar, .card, .stat-box, .badge, .option-btn, .chip, .sync-badge, .gam-streak, .gam-xp, input, .bottom-nav,
+  .level-pill, .reading-passage, .review-item, .cert-tile, .breakdown-row, .exam-score-ring {
     background: var(--surface);
   }
 }

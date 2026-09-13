@@ -1,6 +1,9 @@
 const state = { user: null, syncing: false, pendingCount: 0 };
 let syncInFlight = false;
 
+// the content bundle shape this client understands (see /api/content)
+const CONTENT_SCHEMA_VERSION = 2;
+
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker
@@ -86,11 +89,29 @@ function escapeHtml(str) {
   return String(str).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
+// Same forgiving comparison as the server (src/grading.js): stress marks,
+// ё/е, case, surrounding punctuation and whitespace never count against you.
+function normalizeAnswer(value) {
+  return (value == null ? '' : String(value))
+    .normalize('NFC')
+    .replace(/́/g, '')
+    .toLowerCase()
+    .replace(/ё/g, 'е')
+    .replace(/[\s ]+/g, ' ')
+    .replace(/^[\s.,!?;:«»"'()-]+|[\s.,!?;:«»"'()-]+$/g, '')
+    .trim();
+}
+
+const LEVEL_ORDER = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
+const LEVEL_FALLBACK_TITLES = { A1: 'Beginner', A2: 'Elementair', B1: 'Drempelniveau', B2: 'Gevorderd', C1: 'Vergevorderd', C2: 'Beheersing' };
+
 // ---------- immersion: listen to the Russian text ----------
 
 const CYRILLIC_RUN = /[Ѐ-ӿ][Ѐ-ӿ\s.,!?'"()-]*[Ѐ-ӿ]|[Ѐ-ӿ]/;
 
 function extractSpeakText(ex) {
+  if (ex.type === 'listen') return ex.context || null;
+  if (ex.type === 'reading') return ex.context || null;
   if (CYRILLIC_RUN.test(ex.correctAnswer)) return ex.correctAnswer;
   const match = ex.prompt.match(CYRILLIC_RUN);
   return match ? match[0].trim() : null;
@@ -100,7 +121,7 @@ function speakRussian(text) {
   if (!text || !('speechSynthesis' in window)) return;
   try {
     window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
+    const utterance = new SpeechSynthesisUtterance(text.replace(/́/g, ''));
     utterance.lang = 'ru-RU';
     utterance.rate = 0.9;
     window.speechSynthesis.speak(utterance);
@@ -109,9 +130,9 @@ function speakRussian(text) {
   }
 }
 
-function renderSpeakButton(text) {
+function renderSpeakButton(text, label = '🔊 Luister') {
   if (!text || !('speechSynthesis' in window)) return null;
-  const btn = el(`<button type="button" class="speak-btn" aria-label="Luister naar de Russische uitspraak">🔊 Luister</button>`);
+  const btn = el(`<button type="button" class="speak-btn" aria-label="Luister naar de Russische uitspraak">${label}</button>`);
   btn.addEventListener('click', () => speakRussian(text));
   return btn;
 }
@@ -156,11 +177,15 @@ async function flushOutbox() {
   Storage.removeFromOutbox(username, handled);
 }
 
+function contentIsCurrent(content) {
+  return !!content && content.schemaVersion === CONTENT_SCHEMA_VERSION;
+}
+
 async function refreshContentIfStale() {
   const username = state.user.username;
   const cached = Storage.loadContent(username);
   const staleMs = 24 * 60 * 60 * 1000;
-  if (cached && cached.fetchedAt && Date.now() - new Date(cached.fetchedAt).getTime() < staleMs) return;
+  if (contentIsCurrent(cached) && cached.fetchedAt && Date.now() - new Date(cached.fetchedAt).getTime() < staleMs) return;
   const fresh = await api('/content');
   Storage.saveContent(username, fresh);
 }
@@ -216,17 +241,31 @@ async function syncAll({ force = false } = {}) {
 async function ensureContentLoaded() {
   const username = state.user.username;
   let content = Storage.loadContent(username);
-  if (!content && navigator.onLine) {
+  if (!contentIsCurrent(content) && navigator.onLine) {
     try {
       content = await api('/content');
       Storage.saveContent(username, content);
       await pullWordProgress().catch(() => {});
       await pullStats().catch(() => {});
     } catch (e) {
-      content = null;
+      // keep whatever older bundle we have rather than showing nothing
     }
   }
   return content;
+}
+
+// Grammar rules travel once per bundle (a map by code); resolve them onto an
+// exercise when it's about to be shown. Older cached bundles still carry the
+// rule inline, so fall back to that.
+function withGrammarRule(content, ex) {
+  const rule = ex.ruleCode && content.grammarRules ? content.grammarRules[ex.ruleCode] : ex.grammarRule || null;
+  return { ...ex, grammarRule: rule || null };
+}
+
+function levelsOf(content) {
+  if (content.levels && content.levels.length) return content.levels;
+  const present = [...new Set(content.categories.map((c) => c.level))];
+  return LEVEL_ORDER.filter((l) => present.includes(l)).map((level) => ({ level, title: LEVEL_FALLBACK_TITLES[level] || level, description: '' }));
 }
 
 // ---------- nav / routing ----------
@@ -247,7 +286,8 @@ const NAV_ITEMS = [
 
 function currentRouteSection() {
   const route = (location.hash || '#/dashboard').split('/')[1] || 'dashboard';
-  return route === 'lesson' ? 'dashboard' : route; // a lesson screen is reached from, and belongs to, the "Lessen" tab
+  // a lesson or exam screen is reached from, and belongs to, the "Lessen" tab
+  return route === 'lesson' || route === 'exam' ? 'dashboard' : route;
 }
 
 function renderNav() {
@@ -294,9 +334,11 @@ function renderGamificationBadge() {
   const stats = Storage.loadStats(state.user.username);
   if (!stats) return null;
   const span = el(`<span class="gam-badge"></span>`);
+  const highest = (stats.certifiedLevels || []).slice().sort((a, b) => LEVEL_ORDER.indexOf(b) - LEVEL_ORDER.indexOf(a))[0];
   span.innerHTML =
     `<span class="gam-streak" title="Dagen op rij geoefend">🔥 ${stats.currentStreak}</span>` +
-    `<span class="gam-xp" title="${escapeHtml(stats.title)}">⭐ ${stats.xp} XP</span>`;
+    `<span class="gam-xp" title="${escapeHtml(stats.title)}">⭐ ${stats.xp} XP</span>` +
+    (highest ? `<span class="gam-cert" title="Hoogste behaalde niveautoets">🎓 ${highest}</span>` : '');
   return span;
 }
 
@@ -341,6 +383,7 @@ async function router() {
 
   if (route === 'dashboard') return renderDashboard();
   if (route === 'lesson') return renderLesson(param);
+  if (route === 'exam') return renderExam((param || '').toUpperCase());
   if (route === 'progress') return renderProgress();
   if (route === 'leaderboard') return renderLeaderboard();
   return renderDashboard();
@@ -471,59 +514,120 @@ async function renderDashboard() {
   if (!content) return renderNoContentMessage();
 
   const username = state.user.username;
+  const stats = Storage.loadStats(username);
+  const certified = new Set((stats && stats.certifiedLevels) || []);
   const allStats = content.categories.map((cat) => ({ cat, stats: categoryStats(username, content, cat.slug) }));
 
   // Grammar/sentence-only categories have no tracked vocabulary (no SRS
   // signal), so they can't be "complete" or block the path -- they're always
   // shown as freely available. The recommended path (current/upcoming/locked)
   // is only computed over categories that do have trackable words.
-  const wordBearing = allStats.filter(({ stats }) => stats.totalWords > 0);
+  const wordBearing = allStats.filter(({ stats: s }) => s.totalWords > 0);
   const wordBearingIndex = new Map(wordBearing.map(({ cat }, idx) => [cat.slug, idx]));
-  let frontier = wordBearing.findIndex(({ stats }) => stats.masteredWords < stats.totalWords);
+  let frontier = wordBearing.findIndex(({ stats: s }) => s.masteredWords < s.totalWords);
   if (frontier === -1) frontier = wordBearing.length; // everything mastered
 
+  const levels = levelsOf(content);
   const wrapper = el(`
     <div>
       <h1>Jouw pad door het Russisch</h1>
-      <p class="muted">Volg het pad van boven naar beneden, of kies zelf een les. Alles werkt ook zonder internet.</p>
-      <div class="lesson-path" id="lesson-path"></div>
+      <p class="muted">Van A1 tot C2: volg het pad, of spring naar een niveau. Sluit elk niveau af met een toets. Alles werkt ook zonder internet (behalve de toetsen).</p>
+      <div class="level-jump" id="level-jump"></div>
+      <div id="levels"></div>
     </div>
   `);
   app.innerHTML = '';
   app.appendChild(wrapper);
 
-  const path = wrapper.querySelector('#lesson-path');
-  allStats.forEach(({ cat, stats }, i) => {
-    const hasWords = stats.totalWords > 0;
-    const complete = hasWords && stats.masteredWords === stats.totalWords;
-    const pct = hasWords ? Math.round((stats.masteredWords / stats.totalWords) * 100) : 0;
+  const jump = wrapper.querySelector('#level-jump');
+  const levelsRoot = wrapper.querySelector('#levels');
+  let nodeNumber = 0;
 
-    let nodeState = 'available';
-    if (complete) nodeState = 'complete';
-    else if (hasWords) {
-      const wi = wordBearingIndex.get(cat.slug);
-      if (wi === frontier) nodeState = 'current';
-      else if (wi > frontier + 1) nodeState = 'upcoming';
-    }
+  levels.forEach(({ level, title, description }) => {
+    const entries = allStats.filter(({ cat }) => cat.level === level);
+    if (!entries.length) return;
+    const levelWords = entries.reduce((acc, e) => acc + e.stats.totalWords, 0);
+    const levelMastered = entries.reduce((acc, e) => acc + e.stats.masteredWords, 0);
+    const levelPct = levelWords ? Math.round((levelMastered / levelWords) * 100) : 0;
+    const passed = certified.has(level);
 
-    const marker = complete ? '✓' : nodeState === 'upcoming' ? '🔒' : String(i + 1);
-    const progressLine = hasWords
-      ? `${stats.masteredWords}/${stats.totalWords} woorden onder de knie${stats.dueWords ? ` &middot; ${stats.dueWords} te herhalen` : ''}`
-      : `${stats.totalExercises} oefeningen`;
+    const pill = el(`<a class="level-pill ${passed ? 'passed' : ''}" href="#level-${level}">${level}${passed ? ' ✓' : ''}</a>`);
+    pill.addEventListener('click', (e) => {
+      e.preventDefault();
+      const target = document.getElementById(`level-${level}`);
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    jump.appendChild(pill);
 
-    const node = el(`
-      <div class="path-node ${nodeState}">
-        <div class="path-marker">${marker}</div>
-        <button class="card lesson-card" type="button">
-          <div class="row1"><h2>${escapeHtml(cat.name)}</h2><span class="level-badge">${escapeHtml(cat.level)}</span></div>
-          <p class="muted">${escapeHtml(cat.description || '')}</p>
-          <p class="muted">${progressLine}</p>
-          ${hasWords ? `<div class="progress-bar"><div class="progress-bar-fill" style="width:${pct}%"></div></div>` : ''}
+    const section = el(`
+      <section class="level-section" id="level-${level}">
+        <header class="level-header">
+          <div class="level-header-main">
+            <span class="level-code">${level}</span>
+            <div>
+              <h2>${escapeHtml(title)}</h2>
+              <p class="muted">${escapeHtml(description || '')}</p>
+            </div>
+          </div>
+          <div class="level-header-stats">
+            <span class="muted">${levelMastered}/${levelWords} woorden onder de knie &middot; ${entries.length} lessen</span>
+            <div class="progress-bar"><div class="progress-bar-fill" style="width:${levelPct}%"></div></div>
+          </div>
+        </header>
+        <div class="lesson-path"></div>
+      </section>
+    `);
+    const path = section.querySelector('.lesson-path');
+
+    entries.forEach(({ cat, stats: s }) => {
+      nodeNumber++;
+      const hasWords = s.totalWords > 0;
+      const complete = hasWords && s.masteredWords === s.totalWords;
+      const pct = hasWords ? Math.round((s.masteredWords / s.totalWords) * 100) : 0;
+
+      let nodeState = 'available';
+      if (complete) nodeState = 'complete';
+      else if (hasWords) {
+        const wi = wordBearingIndex.get(cat.slug);
+        if (wi === frontier) nodeState = 'current';
+        else if (wi > frontier + 1) nodeState = 'upcoming';
+      }
+
+      const marker = complete ? '✓' : nodeState === 'upcoming' ? '🔒' : String(nodeNumber);
+      const progressLine = hasWords
+        ? `${s.masteredWords}/${s.totalWords} woorden onder de knie${s.dueWords ? ` &middot; ${s.dueWords} te herhalen` : ''}`
+        : `${s.totalExercises} oefeningen`;
+
+      const node = el(`
+        <div class="path-node ${nodeState}">
+          <div class="path-marker">${marker}</div>
+          <button class="card lesson-card" type="button">
+            <div class="row1"><h2>${escapeHtml(cat.name)}</h2><span class="level-badge">${escapeHtml(cat.level)}</span></div>
+            <p class="muted">${escapeHtml(cat.description || '')}</p>
+            <p class="muted">${progressLine}</p>
+            ${hasWords ? `<div class="progress-bar"><div class="progress-bar-fill" style="width:${pct}%"></div></div>` : ''}
+          </button>
+        </div>
+      `);
+      node.querySelector('.lesson-card').addEventListener('click', () => { location.hash = `#/lesson/${cat.slug}`; });
+      path.appendChild(node);
+    });
+
+    const examNode = el(`
+      <div class="path-node exam ${passed ? 'complete' : ''}">
+        <div class="path-marker">${passed ? '🎓' : '📝'}</div>
+        <button class="card lesson-card exam-card" type="button">
+          <div class="row1"><h2>Niveautoets ${level}</h2><span class="level-badge">${passed ? 'behaald' : 'toets'}</span></div>
+          <p class="muted">${passed
+            ? `Gehaald! Je hebt niveau ${level} officieel afgesloten. Je kunt de toets altijd opnieuw maken.`
+            : `30 vragen uit alle lessen van ${level}. Bij 80% of hoger sluit je het niveau af en verdien je 150 XP. Alleen online.`}</p>
         </button>
       </div>
     `);
-    node.querySelector('.lesson-card').addEventListener('click', () => { location.hash = `#/lesson/${cat.slug}`; });
-    path.appendChild(node);
+    examNode.querySelector('.exam-card').addEventListener('click', () => { location.hash = `#/exam/${level}`; });
+    path.appendChild(examNode);
+
+    levelsRoot.appendChild(section);
   });
 }
 
@@ -556,7 +660,7 @@ async function renderLesson(slug) {
   }
 
   const wordProgress = Storage.loadWordProgress(state.user.username);
-  const items = pickBatch(exercises, wordProgress, 10);
+  const items = pickBatch(exercises, wordProgress, 10).map((ex) => withGrammarRule(content, ex));
   if (!items.length) {
     app.innerHTML = `<div class="card"><h1>${escapeHtml(category.name)}</h1><p class="muted">Alles in deze les staat al gepland voor een latere herhaling. Kom later terug, of kies een andere les.</p><a href="#/dashboard">Terug naar lessen</a></div>`;
     return;
@@ -568,7 +672,7 @@ async function renderLesson(slug) {
 
 function gradeAndRecord(ex) {
   return (chosenValue) => {
-    const isCorrect = chosenValue === ex.correctAnswer;
+    const isCorrect = normalizeAnswer(chosenValue) === normalizeAnswer(ex.correctAnswer);
     const username = state.user.username;
 
     if (ex.wordId != null) {
@@ -596,7 +700,7 @@ function gradeAndRecord(ex) {
   };
 }
 
-function renderSentenceBuild(ex, container, onSubmit) {
+function renderSentenceBuild(ex, container, onSubmit, { submitLabel = 'Controleren' } = {}) {
   let pool = shuffle(ex.options);
   let selected = [];
   let submitted = false;
@@ -624,7 +728,7 @@ function renderSentenceBuild(ex, container, onSubmit) {
     container.appendChild(poolRow);
 
     if (!submitted) {
-      const submitBtn = el(`<button type="button" class="primary" style="margin-top:14px">Controleren</button>`);
+      const submitBtn = el(`<button type="button" class="primary" style="margin-top:14px">${escapeHtml(submitLabel)}</button>`);
       submitBtn.disabled = selected.length === 0;
       submitBtn.addEventListener('click', () => {
         submitted = true;
@@ -639,23 +743,58 @@ function renderSentenceBuild(ex, container, onSubmit) {
   paint();
 }
 
+// Everything above the answer controls: reading passage, listening button,
+// the prompt itself. Shared by lessons and exams.
+function renderExerciseHead(ex, { showContextText = true } = {}) {
+  const head = el(`<div class="exercise-head"></div>`);
+  if (ex.type === 'reading' && ex.context) {
+    const passage = el(`<div class="reading-passage"><div class="reading-label">Lees de tekst</div><p></p></div>`);
+    passage.querySelector('p').textContent = ex.context;
+    const speak = renderSpeakButton(ex.context, '🔊 Voorlezen');
+    if (speak) passage.appendChild(speak);
+    head.appendChild(passage);
+  }
+  if (ex.type === 'listen' && ex.context) {
+    const box = el(`<div class="listen-box"><div class="reading-label">Luisteroefening</div></div>`);
+    const speak = renderSpeakButton(ex.context, '🔊 Speel de zin af');
+    if (speak) {
+      speak.classList.add('listen-play');
+      box.appendChild(speak);
+    } else {
+      box.appendChild(el(`<p class="muted">Spraaksynthese is niet beschikbaar in deze browser; de zin staat hieronder.</p>`));
+      showContextText = true;
+    }
+    if (showContextText) {
+      const txt = el(`<p class="listen-text"></p>`);
+      txt.textContent = ex.context;
+      box.appendChild(txt);
+    }
+    head.appendChild(box);
+  }
+  const promptRow = el(`<div class="prompt-row"><h2></h2></div>`);
+  promptRow.querySelector('h2').textContent = ex.prompt;
+  if (ex.type !== 'listen' && ex.type !== 'reading') {
+    const speakBtn = renderSpeakButton(extractSpeakText(ex));
+    if (speakBtn) promptRow.appendChild(speakBtn);
+  }
+  head.appendChild(promptRow);
+  return head;
+}
+
 function renderExercise(session) {
   const ex = session.items[session.index];
   app.innerHTML = '';
-  const speakText = extractSpeakText(ex);
   const wrapper = el(`
     <div class="card">
       <div class="exercise-progress">${escapeHtml(session.category.name)} &middot; vraag ${session.index + 1} van ${session.items.length}</div>
-      <div class="prompt-row"><h2>${escapeHtml(ex.prompt)}</h2></div>
+      <div id="head"></div>
       <div id="options"></div>
       <div id="feedback"></div>
     </div>
   `);
   app.appendChild(wrapper);
-
-  const promptRow = wrapper.querySelector('.prompt-row');
-  const speakBtn = renderSpeakButton(speakText);
-  if (speakBtn) promptRow.appendChild(speakBtn);
+  wrapper.querySelector('#head').replaceWith(renderExerciseHead(ex, { showContextText: false }));
+  if (ex.type === 'listen') speakRussian(ex.context);
 
   const optionsDiv = wrapper.querySelector('#options');
   const feedbackDiv = wrapper.querySelector('#feedback');
@@ -675,6 +814,7 @@ function renderExercise(session) {
       <div class="feedback ${isCorrect ? 'correct' : 'incorrect'}">
         <strong>${isCorrect ? 'Goed gedaan!' : 'Niet helemaal juist.'}</strong>
         ${isCorrect ? '' : `<div>Het juiste antwoord is: <strong>${escapeHtml(ex.correctAnswer)}</strong></div>`}
+        ${ex.type === 'listen' && ex.context ? `<div class="listen-reveal">Je hoorde: <strong>${escapeHtml(ex.context)}</strong></div>` : ''}
         <div class="explanation">${escapeHtml(ex.explanation)}</div>
         ${ex.grammarRule ? `<div class="grammar-rule"><strong>${escapeHtml(ex.grammarRule.title)}:</strong> ${escapeHtml(ex.grammarRule.explanation)}</div>` : ''}
         <div id="ai-explain-slot"></div>
@@ -683,22 +823,7 @@ function renderExercise(session) {
     feedbackDiv.appendChild(fb);
 
     if (!isCorrect && navigator.onLine) {
-      const aiSlot = fb.querySelector('#ai-explain-slot');
-      const aiBtn = el(`<button type="button" class="ai-btn">🤖 Vraag AI om een diepere uitleg</button>`);
-      aiBtn.addEventListener('click', async () => {
-        aiBtn.disabled = true;
-        aiBtn.textContent = '🤖 Even denken…';
-        try {
-          const data = await api('/ai/explain', { method: 'POST', body: { exerciseId: ex.id, givenAnswer: chosenAnswer } });
-          aiSlot.appendChild(el(`<div class="ai-explanation"><strong>🤖 AI-uitleg</strong><p>${escapeHtml(data.explanation)}</p></div>`));
-          aiBtn.remove();
-        } catch (err) {
-          aiBtn.disabled = false;
-          aiBtn.textContent = '🤖 Vraag AI om een diepere uitleg';
-          aiSlot.appendChild(el(`<p class="error-message">${escapeHtml(err.message)}</p>`));
-        }
-      });
-      aiSlot.appendChild(aiBtn);
+      fb.querySelector('#ai-explain-slot').appendChild(renderAiExplainButton(ex.id, chosenAnswer));
     }
 
     const nextBtn = el(`<button class="primary" style="margin-top:14px">${session.index + 1 < session.items.length ? 'Volgende' : 'Klaar'}</button>`);
@@ -710,29 +835,56 @@ function renderExercise(session) {
     feedbackDiv.appendChild(nextBtn);
   }
 
+  renderAnswerControls(ex, optionsDiv, (value) => afterAnswer(record(value), value));
+}
+
+// The answer widget for any exercise type: chips, multiple choice or a text box.
+function renderAnswerControls(ex, container, onAnswer, { submitLabel = 'Controleren' } = {}) {
   if (ex.type === 'sentence_build' && ex.options && ex.options.length) {
-    renderSentenceBuild(ex, optionsDiv, (value) => afterAnswer(record(value), value));
+    renderSentenceBuild(ex, container, onAnswer, { submitLabel });
   } else if (ex.options && ex.options.length) {
     for (const opt of ex.options) {
       const btn = el(`<button class="option-btn" data-value="${escapeHtml(opt)}">${escapeHtml(opt)}</button>`);
-      btn.addEventListener('click', () => afterAnswer(record(opt), opt));
-      optionsDiv.appendChild(btn);
+      btn.addEventListener('click', () => onAnswer(opt));
+      container.appendChild(btn);
     }
   } else {
     const form = el(`
-      <form id="typing-form">
-        <input type="text" id="typing-answer" autocomplete="off" required />
-        <button type="submit" class="primary" style="margin-top:10px;width:fit-content">Controleren</button>
+      <form class="typing-form">
+        <input type="text" class="typing-answer" autocomplete="off" autocapitalize="off" spellcheck="false" lang="ru" placeholder="Typ hier in het Russisch…" required />
+        <button type="submit" class="primary" style="margin-top:10px;width:fit-content">${escapeHtml(submitLabel)}</button>
       </form>
     `);
-    optionsDiv.appendChild(form);
+    container.appendChild(form);
+    const input = form.querySelector('input');
+    setTimeout(() => input.focus(), 0);
     form.addEventListener('submit', (e) => {
       e.preventDefault();
-      const value = document.getElementById('typing-answer').value;
-      optionsDiv.querySelectorAll('input,button').forEach((n) => (n.disabled = true));
-      afterAnswer(record(value), value);
+      const value = input.value;
+      container.querySelectorAll('input,button').forEach((n) => (n.disabled = true));
+      onAnswer(value);
     });
   }
+}
+
+function renderAiExplainButton(exerciseId, givenAnswer) {
+  const slot = el(`<div class="ai-slot"></div>`);
+  const aiBtn = el(`<button type="button" class="ai-btn">🤖 Vraag AI om een diepere uitleg</button>`);
+  aiBtn.addEventListener('click', async () => {
+    aiBtn.disabled = true;
+    aiBtn.textContent = '🤖 Even denken…';
+    try {
+      const data = await api('/ai/explain', { method: 'POST', body: { exerciseId, givenAnswer } });
+      slot.appendChild(el(`<div class="ai-explanation"><strong>🤖 AI-uitleg</strong><p>${escapeHtml(data.explanation)}</p></div>`));
+      aiBtn.remove();
+    } catch (err) {
+      aiBtn.disabled = false;
+      aiBtn.textContent = '🤖 Vraag AI om een diepere uitleg';
+      slot.appendChild(el(`<p class="error-message">${escapeHtml(err.message)}</p>`));
+    }
+  });
+  slot.appendChild(aiBtn);
+  return slot;
 }
 
 function renderLessonComplete(session) {
@@ -742,7 +894,7 @@ function renderLessonComplete(session) {
     <div class="card">
       <h1>Les afgerond</h1>
       <p>Je had ${session.correctCount} van de ${session.items.length} vragen goed (${pct}%).</p>
-      <div style="display:flex;gap:10px;margin-top:16px">
+      <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
         <button class="primary" id="again-btn">Nog een keer</button>
         <button class="secondary" id="back-btn">Terug naar lessen</button>
       </div>
@@ -750,6 +902,227 @@ function renderLessonComplete(session) {
   `));
   document.getElementById('again-btn').addEventListener('click', () => renderLesson(session.category.slug));
   document.getElementById('back-btn').addEventListener('click', () => { location.hash = '#/dashboard'; });
+}
+
+// ---------- level exams (online only: graded on the server) ----------
+
+async function renderExam(level) {
+  app.innerHTML = '';
+  if (!LEVEL_ORDER.includes(level)) {
+    app.appendChild(el(`<div class="card"><h1>Onbekend niveau</h1><a href="#/dashboard">Terug naar lessen</a></div>`));
+    return;
+  }
+  if (!navigator.onLine) {
+    app.appendChild(el(`
+      <div class="card">
+        <h1>Niveautoets ${level}</h1>
+        <p class="muted">Toetsen worden op de server nagekeken en zijn daarom alleen online beschikbaar. De lessen zelf werken wel offline.</p>
+        <a href="#/dashboard">Terug naar lessen</a>
+      </div>
+    `));
+    return;
+  }
+
+  app.appendChild(el(`<div class="card"><p class="muted">Toets laden…</p></div>`));
+  let info;
+  try {
+    const data = await api('/exams');
+    info = data.levels.find((l) => l.level === level);
+  } catch (err) {
+    app.innerHTML = '';
+    app.appendChild(el(`<div class="card"><p class="error-message">${escapeHtml(err.message)}</p><a href="#/dashboard">Terug naar lessen</a></div>`));
+    return;
+  }
+
+  app.innerHTML = '';
+  const intro = el(`
+    <div class="card exam-intro">
+      <div class="exam-intro-head">
+        <span class="level-code big">${level}</span>
+        <div>
+          <h1>Niveautoets ${level} — ${escapeHtml(info.title)}</h1>
+          <p class="muted">${escapeHtml(info.description)}</p>
+        </div>
+      </div>
+      <ul class="exam-facts">
+        <li><strong>${info.questionCount}</strong> vragen, willekeurig gekozen uit alle ${info.categories} lessen van ${level}</li>
+        <li>Alle oefenvormen komen voor: woorden, grammatica, typen, zinnen bouwen, luisteren en lezen</li>
+        <li>Je ziet pas aan het eind hoe je het deed — mét uitleg bij elke fout</li>
+        <li>Geslaagd bij <strong>${info.passPct}%</strong> of hoger: dan is niveau ${level} afgesloten (+150 XP)</li>
+        ${info.attempts ? `<li>Eerder gemaakt: ${info.attempts}× &middot; beste score ${info.bestScorePct}%${info.passed ? ` &middot; behaald op ${escapeHtml(String(info.passedAt).slice(0, 10))}` : ''}</li>` : ''}
+      </ul>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px">
+        <button class="primary" id="start-exam">${info.passed ? 'Opnieuw maken' : 'Start de toets'}</button>
+        <button class="secondary" id="back-btn">Terug naar lessen</button>
+      </div>
+    </div>
+  `);
+  app.appendChild(intro);
+  intro.querySelector('#back-btn').addEventListener('click', () => { location.hash = '#/dashboard'; });
+  intro.querySelector('#start-exam').addEventListener('click', async () => {
+    intro.querySelector('#start-exam').disabled = true;
+    try {
+      const exam = await api(`/exams/${level}`);
+      runExam(exam);
+    } catch (err) {
+      intro.appendChild(el(`<p class="error-message">${escapeHtml(err.message)}</p>`));
+      intro.querySelector('#start-exam').disabled = false;
+    }
+  });
+}
+
+function runExam(exam) {
+  const answers = new Map();
+  let index = 0;
+
+  function showQuestion() {
+    const q = exam.questions[index];
+    app.innerHTML = '';
+    const wrapper = el(`
+      <div class="card exam-question">
+        <div class="exercise-progress">
+          <span>Niveautoets ${exam.level} &middot; vraag ${index + 1} van ${exam.questions.length}</span>
+          <span class="muted">${escapeHtml(q.category.name)}</span>
+        </div>
+        <div class="progress-bar exam-bar"><div class="progress-bar-fill" style="width:${Math.round((index / exam.questions.length) * 100)}%"></div></div>
+        <div id="head"></div>
+        <div id="options"></div>
+        <div id="actions"></div>
+      </div>
+    `);
+    app.appendChild(wrapper);
+    wrapper.querySelector('#head').replaceWith(renderExerciseHead(q, { showContextText: false }));
+    if (q.type === 'listen') speakRussian(q.context);
+
+    const optionsDiv = wrapper.querySelector('#options');
+    const actions = wrapper.querySelector('#actions');
+    const isLast = index === exam.questions.length - 1;
+
+    function commit(value) {
+      answers.set(q.id, value);
+      optionsDiv.querySelectorAll('.option-btn').forEach((b) => {
+        b.classList.toggle('selected', b.dataset.value === value);
+      });
+      actions.innerHTML = '';
+      const next = el(`<button class="primary" style="margin-top:14px">${isLast ? 'Toets inleveren' : 'Volgende'}</button>`);
+      next.addEventListener('click', () => {
+        if (isLast) submitExam();
+        else { index++; showQuestion(); }
+      });
+      actions.appendChild(next);
+    }
+
+    if (q.type !== 'sentence_build' && q.options && q.options.length) {
+      // multiple choice: selecting is not final until "Volgende", so you can change your mind
+      for (const opt of q.options) {
+        const btn = el(`<button class="option-btn" data-value="${escapeHtml(opt)}">${escapeHtml(opt)}</button>`);
+        btn.addEventListener('click', () => commit(opt));
+        optionsDiv.appendChild(btn);
+      }
+    } else {
+      renderAnswerControls(q, optionsDiv, commit, { submitLabel: 'Antwoord vastleggen' });
+    }
+  }
+
+  async function submitExam() {
+    app.innerHTML = '';
+    app.appendChild(el(`<div class="card"><p class="muted">Nakijken…</p></div>`));
+    try {
+      const payload = exam.questions.map((q) => ({ exerciseId: q.id, answer: answers.get(q.id) || '' }));
+      const result = await api(`/exams/${exam.level}/submit`, { method: 'POST', body: { answers: payload } });
+      await pullStats().catch(() => {});
+      renderNav();
+      renderExamResult(result);
+    } catch (err) {
+      app.innerHTML = '';
+      app.appendChild(el(`<div class="card"><p class="error-message">${escapeHtml(err.message)}</p><a href="#/dashboard">Terug naar lessen</a></div>`));
+    }
+  }
+
+  showQuestion();
+}
+
+function renderExamResult(result) {
+  app.innerHTML = '';
+  const wrong = result.review.filter((r) => !r.isCorrect);
+  const summary = el(`
+    <div class="card exam-result ${result.passed ? 'passed' : 'failed'}">
+      <div class="exam-score">
+        <div class="exam-score-ring"><span>${result.pct}%</span></div>
+        <div>
+          <h1>${result.passed ? `Geslaagd voor niveau ${result.level}!` : `Nog niet geslaagd voor ${result.level}`}</h1>
+          <p>${result.score} van de ${result.total} vragen goed (grens: ${result.passPct}%).
+          ${result.passed
+            ? (result.newlyCertified ? ` Niveau ${result.level} is nu afgesloten: +150 XP en een badge.` : ` Je had dit niveau al behaald — mooi bevestigd.`)
+            : ' Bekijk hieronder per les waar het misging, oefen die lessen en probeer het opnieuw.'}</p>
+        </div>
+      </div>
+      <h2>Per les</h2>
+      <div class="exam-breakdown"></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">
+        <button class="primary" id="retry-btn">${result.passed ? 'Nog een keer' : 'Opnieuw proberen'}</button>
+        <button class="secondary" id="back-btn">Terug naar lessen</button>
+      </div>
+    </div>
+  `);
+  const breakdown = summary.querySelector('.exam-breakdown');
+  for (const c of result.perCategory) {
+    const pct = Math.round((c.correct / c.total) * 100);
+    const row = el(`
+      <a class="breakdown-row ${pct === 100 ? 'ok' : pct < 50 ? 'bad' : 'meh'}" href="#/lesson/${escapeHtml(c.slug)}">
+        <span class="breakdown-name">${escapeHtml(c.name)}</span>
+        <span class="breakdown-score">${c.correct}/${c.total}</span>
+        <span class="breakdown-bar"><span style="width:${pct}%"></span></span>
+      </a>
+    `);
+    breakdown.appendChild(row);
+  }
+  summary.querySelector('#retry-btn').addEventListener('click', () => renderExam(result.level));
+  summary.querySelector('#back-btn').addEventListener('click', () => { location.hash = '#/dashboard'; });
+  app.appendChild(summary);
+
+  const reviewCard = el(`
+    <div class="card">
+      <h2>${wrong.length ? `Wat ging er mis (${wrong.length})` : 'Alles goed — geen fouten om te bespreken'}</h2>
+      <p class="muted">${wrong.length ? 'Per vraag: jouw antwoord, het juiste antwoord, de uitleg en de grammaticaregel erachter. Vraag de AI om een uitleg die ingaat op jóuw fout.' : ''}</p>
+      <div class="review-list"></div>
+      ${result.review.length > wrong.length ? `<button type="button" class="secondary" id="show-all" style="margin-top:12px">Ook de goede antwoorden tonen</button>` : ''}
+    </div>
+  `);
+  const list = reviewCard.querySelector('.review-list');
+  function renderReviewItem(r) {
+    const item = el(`
+      <div class="review-item ${r.isCorrect ? 'correct' : 'incorrect'}">
+        <div class="review-meta"><span class="level-badge">${escapeHtml(r.category.name)}</span><span class="muted">${r.isCorrect ? '✓ goed' : '✗ fout'}</span></div>
+        ${r.context ? `<p class="review-context"></p>` : ''}
+        <p class="review-prompt"></p>
+        <div class="review-answers">
+          <div><span class="muted">Jouw antwoord:</span> <strong class="given"></strong></div>
+          ${r.isCorrect ? '' : `<div><span class="muted">Juist:</span> <strong class="correct-answer"></strong></div>`}
+        </div>
+        <div class="explanation"></div>
+        ${r.grammarRule ? `<div class="grammar-rule"><strong>${escapeHtml(r.grammarRule.title)}:</strong> ${escapeHtml(r.grammarRule.explanation)}${r.grammarRule.example ? `<div class="muted" style="margin-top:6px">Voorbeeld: ${escapeHtml(r.grammarRule.example)}</div>` : ''}</div>` : ''}
+        <div class="ai-slot-holder"></div>
+      </div>
+    `);
+    if (r.context) item.querySelector('.review-context').textContent = r.context;
+    item.querySelector('.review-prompt').textContent = r.prompt;
+    item.querySelector('.given').textContent = r.given || '(geen antwoord)';
+    if (!r.isCorrect) item.querySelector('.correct-answer').textContent = r.correctAnswer;
+    item.querySelector('.explanation').textContent = r.explanation;
+    if (!r.isCorrect && navigator.onLine) item.querySelector('.ai-slot-holder').appendChild(renderAiExplainButton(r.exerciseId, r.given));
+    return item;
+  }
+  wrong.forEach((r) => list.appendChild(renderReviewItem(r)));
+  const showAll = reviewCard.querySelector('#show-all');
+  if (showAll) {
+    showAll.addEventListener('click', () => {
+      result.review.filter((r) => r.isCorrect).forEach((r) => list.appendChild(renderReviewItem(r)));
+      showAll.remove();
+    });
+  }
+  app.appendChild(reviewCard);
+  window.scrollTo({ top: 0 });
 }
 
 // ---------- progress (fully local: folded from the word-progress mirror + this device's attempt log) ----------
@@ -808,6 +1181,24 @@ async function renderProgress() {
     `);
     app.appendChild(levelCard);
 
+    // certifications: one row per CEFR level, from the last synced stats
+    const certByLevel = Object.fromEntries((stats.certifications || []).map((c) => [c.level, c]));
+    const levels = levelsOf(content);
+    const certCard = el(`<div class="card"><h2>Niveautoetsen</h2><p class="muted">Sluit elk niveau af met een toets van 30 vragen (80% om te slagen). Alleen online.</p><div class="cert-grid"></div></div>`);
+    const grid = certCard.querySelector('.cert-grid');
+    levels.forEach(({ level, title }) => {
+      const cert = certByLevel[level];
+      const tile = el(`
+        <a class="cert-tile ${cert ? 'passed' : ''}" href="#/exam/${level}">
+          <div class="cert-level">${level}</div>
+          <div class="cert-title">${escapeHtml(title)}</div>
+          <div class="cert-status">${cert ? `🎓 behaald (${cert.score}/${cert.total}) &middot; ${escapeHtml(String(cert.passedAt).slice(0, 10))}` : 'nog niet behaald'}</div>
+        </a>
+      `);
+      grid.appendChild(tile);
+    });
+    app.appendChild(certCard);
+
     const achCard = el(`<div class="card"><h2>Badges</h2><div class="badge-grid" id="badge-grid"></div></div>`);
     const badgeGrid = achCard.querySelector('#badge-grid');
     for (const a of stats.achievements) {
@@ -821,12 +1212,13 @@ async function renderProgress() {
     app.appendChild(achCard);
   }
 
-  const catCard = el(`<div class="card"><h2>Voortgang per les</h2><div class="table-scroll"><table><thead><tr><th>Les</th><th>Gestart</th><th>Onder de knie</th></tr></thead><tbody id="cat-body"></tbody></table></div></div>`);
+  const catCard = el(`<div class="card"><h2>Voortgang per les</h2><div class="table-scroll"><table><thead><tr><th>Niveau</th><th>Les</th><th>Gestart</th><th>Onder de knie</th></tr></thead><tbody id="cat-body"></tbody></table></div></div>`);
   app.appendChild(catCard);
   const catBody = catCard.querySelector('#cat-body');
   for (const cat of content.categories) {
     const s = categoryStats(username, content, cat.slug);
-    catBody.appendChild(el(`<tr><td>${escapeHtml(cat.name)}</td><td>${s.startedWords}/${s.totalWords}</td><td>${s.masteredWords}/${s.totalWords}</td></tr>`));
+    if (!s.totalWords) continue;
+    catBody.appendChild(el(`<tr><td>${escapeHtml(cat.level)}</td><td>${escapeHtml(cat.name)}</td><td>${s.startedWords}/${s.totalWords}</td><td>${s.masteredWords}/${s.totalWords}</td></tr>`));
   }
 
   const mistakes = attemptsLog.filter((a) => !a.isCorrect);
@@ -874,7 +1266,7 @@ async function renderLeaderboard() {
   app.appendChild(el(`
     <div>
       <h1>Ranglijst</h1>
-      <p class="muted">Vergelijk je voortgang met andere leerlingen. Dit overzicht vraagt een internetverbinding.</p>
+      <p class="muted">Vergelijk je voortgang met andere leerlingen. XP telt goede antwoorden (10) én behaalde niveautoetsen (150). Dit overzicht vraagt een internetverbinding.</p>
       <div id="leaderboard-content"></div>
     </div>
   `));
@@ -894,7 +1286,7 @@ async function renderLeaderboard() {
       <div class="card">
         <div class="table-scroll">
           <table class="leaderboard-table">
-            <thead><tr><th>#</th><th>Gebruiker</th><th>Niveau</th><th>XP</th><th>Reeks</th><th>Woorden</th></tr></thead>
+            <thead><tr><th>#</th><th>Gebruiker</th><th>Toets</th><th>Niveau</th><th>XP</th><th>Reeks</th><th>Woorden</th></tr></thead>
             <tbody></tbody>
           </table>
         </div>
@@ -908,6 +1300,7 @@ async function renderLeaderboard() {
         <tr class="${isMe ? 'leaderboard-me' : ''}">
           <td class="rank-cell">${rankLabel}</td>
           <td>${escapeHtml(entry.username)}${isMe ? ' <span class="muted">(jij)</span>' : ''}</td>
+          <td>${entry.highestLevel ? `🎓 ${escapeHtml(entry.highestLevel)}` : '<span class="muted">—</span>'}</td>
           <td>${entry.level} &middot; <span class="muted">${escapeHtml(entry.levelTitle)}</span></td>
           <td>${entry.xp} XP</td>
           <td>🔥 ${entry.currentStreak}</td>

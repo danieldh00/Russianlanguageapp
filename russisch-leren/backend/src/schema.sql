@@ -31,7 +31,8 @@ CREATE TABLE IF NOT EXISTS words (
   translation_nl TEXT NOT NULL,
   gender TEXT,
   notes TEXT,
-  grammar_rule_id INTEGER REFERENCES grammar_rules(id)
+  grammar_rule_id INTEGER REFERENCES grammar_rules(id),
+  accented TEXT
 );
 
 CREATE TABLE IF NOT EXISTS exercises (
@@ -43,7 +44,36 @@ CREATE TABLE IF NOT EXISTS exercises (
   prompt TEXT NOT NULL,
   correct_answer TEXT NOT NULL,
   options TEXT,
-  explanation TEXT NOT NULL
+  explanation TEXT NOT NULL,
+  context TEXT
+);
+
+-- Level exams (A1..C2): one row per sitting, plus the per-question answers so
+-- the review screen can explain every mistake afterwards.
+CREATE TABLE IF NOT EXISTS exam_attempts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  level TEXT NOT NULL,
+  score INTEGER NOT NULL,
+  total INTEGER NOT NULL,
+  passed INTEGER NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS exam_answers (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  exam_attempt_id INTEGER NOT NULL REFERENCES exam_attempts(id),
+  exercise_id INTEGER NOT NULL REFERENCES exercises(id),
+  given_answer TEXT,
+  is_correct INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS level_certifications (
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  level TEXT NOT NULL,
+  exam_attempt_id INTEGER NOT NULL REFERENCES exam_attempts(id),
+  passed_at TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (user_id, level)
 );
 
 CREATE TABLE IF NOT EXISTS user_word_progress (
@@ -78,6 +108,9 @@ CREATE TABLE IF NOT EXISTS study_days (
 
 CREATE INDEX IF NOT EXISTS idx_words_category ON words(category_id);
 CREATE INDEX IF NOT EXISTS idx_exercises_category ON exercises(category_id);
+CREATE INDEX IF NOT EXISTS idx_exercises_word ON exercises(word_id);
+CREATE INDEX IF NOT EXISTS idx_exam_attempts_user ON exam_attempts(user_id);
+CREATE INDEX IF NOT EXISTS idx_exam_answers_attempt ON exam_answers(exam_attempt_id);
 CREATE INDEX IF NOT EXISTS idx_uwp_user ON user_word_progress(user_id);
 CREATE INDEX IF NOT EXISTS idx_attempts_user ON attempts(user_id);
 CREATE INDEX IF NOT EXISTS idx_attempts_exercise ON attempts(exercise_id);

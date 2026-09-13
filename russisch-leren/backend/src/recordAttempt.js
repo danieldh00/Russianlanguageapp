@@ -1,5 +1,6 @@
 const db = require('./db');
 const { schedule } = require('./srs');
+const { isCorrectAnswer } = require('./grading');
 
 /**
  * Grades an answer, inserts the attempt and updates SRS state. Shared by the
@@ -18,7 +19,7 @@ function recordAttempt(userId, exercise, givenAnswer, { clientId = null, clientT
   }
 
   const given = (givenAnswer || '').toString();
-  const isCorrect = given.trim().toLowerCase() === exercise.correct_answer.trim().toLowerCase() ? 1 : 0;
+  const isCorrect = isCorrectAnswer(exercise, given) ? 1 : 0;
 
   const studyDate = (clientTimestamp ? new Date(clientTimestamp) : new Date()).toISOString().slice(0, 10);
   db.prepare('INSERT OR IGNORE INTO study_days (user_id, study_date) VALUES (?, ?)').run(userId, studyDate);

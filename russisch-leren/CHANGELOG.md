@@ -4,6 +4,41 @@ Alle merkbare wijzigingen aan de "Russisch Leren" add-on staan hier, nieuwste
 versie bovenaan. Dit bestand wordt door Home Assistant Supervisor automatisch
 getoond onder de "Changelog"-knop van de add-on.
 
+## 1.2.0
+
+- Nieuw: **niveautoetsen A1 t/m C2**. Elk niveau sluit je af met een toets
+  van 30 vragen, willekeurig verdeeld over alle lessen van dat niveau en
+  alle oefenvormen. Geslaagd bij 80% of hoger: dan is het niveau officieel
+  behaald (+150 XP, badge, zichtbaar in de bovenbalk, op de voortgangspagina
+  en in de ranglijst). Na afloop zie je per les hoe je scoorde en bij elke
+  fout: jouw antwoord, het juiste antwoord, de uitleg, de grammaticaregel
+  erachter en de knop voor een AI-uitleg over jóuw fout.
+- Nieuw: **lesmateriaal doorgetrokken tot C2** (moedertaalniveau). Van 32
+  naar 125 lessen, van ±230 naar ±1.400 woorden en ±4.800 oefeningen, met
+  47 grammaticaregels. Per niveau thematische lessen gericht op je redden in
+  een Russischtalig land (gezondheid & apotheek, wonen & huren, documenten &
+  bureaucratie, bank, telefoon & internet, werk & sollicitatie, noodgevallen
+  & politie, recht & contracten, nieuws & politiek, spreektaal, slang,
+  idiomen, spreekwoorden, vakjargon, culturele referenties …) plus de
+  grammatica die daarbij hoort (werkwoorden van beweging, aspectparen,
+  gebiedende & voorwaardelijke wijs, deelwoorden, gerundium, passief,
+  woordvorming, partikels, woordvolgorde, schrijftaal & interpunctie).
+- Nieuw: oefenvormen **typen** (vanaf B1 typ je het Russische woord zelf),
+  **luisteren** (een zin wordt voorgelezen, jij bouwt 'm na), **lezen**
+  (korte tekst met begripsvragen) en automatisch gegenereerde
+  **vervoegings- en naamvaldrills**.
+- Nieuw: klemtoontekens op elk woord (bv. спа́льня) en frequentie-gebaseerde
+  woordenschatpakketten per niveau, op basis van de open datasets Open
+  Russian dictionary (CC-BY-SA 4.0) en FrequencyWords/OpenSubtitles (MIT) —
+  zie `backend/seed/data/SOURCES.md`.
+- Het lessenoverzicht is nu gegroepeerd per niveau (A1 … C2) met een
+  voortgangsbalk per niveau, snelkoppelingen bovenaan en de toets als
+  laatste stap van elk niveau.
+- Antwoorden worden soepeler nagekeken: ё/е, klemtoontekens,
+  hoofdletters en leestekens tellen niet mee als fout.
+- Bestaande accounts en voortgang blijven volledig behouden; de nieuwe
+  inhoud wordt bij de eerste start na de update automatisch toegevoegd.
+
 ## 1.1.5
 
 - Nieuw: dit changelog-bestand zelf — vanaf nu staat bij elke update hier

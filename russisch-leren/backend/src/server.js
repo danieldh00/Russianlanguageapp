@@ -24,6 +24,7 @@ const contentRoutes = require('./routes/content');
 const syncRoutes = require('./routes/sync');
 const aiRoutes = require('./routes/ai');
 const leaderboardRoutes = require('./routes/leaderboard');
+const { router: examRoutes } = require('./routes/exams');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -46,6 +47,7 @@ app.use('/api/progress', progressRoutes);
 app.use('/api/content', contentRoutes);
 app.use('/api/sync', syncRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);
+app.use('/api/exams', examRoutes);
 app.use('/api/ai', aiRoutes);
 
 const FRONTEND_DIR = path.join(__dirname, '..', '..', 'frontend');

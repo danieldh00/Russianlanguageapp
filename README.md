@@ -7,22 +7,38 @@ is en welke grammaticaregel erachter zit.
 ## Functionaliteit
 
 - **Accounts**: registratie/login (bcrypt-gehashte wachtwoorden, sessie-cookie).
-- **Lessen**: 32 categorieën, Nederlands ↔ Russisch, niveau A1 t/m B1.
-  - *Woordenschat*: alfabet & uitspraak, begroetingen, getallen 1-10 en 11-100,
-    kleuren, familie, eten & drinken, tijd & dagen van de week, lichaamsdelen,
-    kleding, weer, huis & wonen, beroepen, reizen, bijvoeglijke naamwoorden,
-    vraagwoorden, veelgebruikte werkwoorden, gevoelens, seizoenen & maanden,
-    vervoer, sport & hobby's, natuur & dieren, werk & school.
-  - *Grammatica*: geslacht en meervoud van zelfstandige naamwoorden, alle zes
-    naamvallen (nominatief, genitief, datief, accusatief, instrumentalis,
-    prepositief), overeenkomst van bijvoeglijke naamwoorden, werkwoordvervoeging
-    in de tegenwoordige tijd, verleden en toekomende tijd, het aspectonderscheid
-    (voltooid/onvoltooid), ontkenning en vraagzinnen, zacht/hard teken, klemtoon
-    (akanje), vergrotende & overtreffende trap, wederkerende werkwoorden
-    (-ся/-сь).
-  - *Praktische zinnen*: complete, bruikbare zinnen voor echte situaties (de
-    weg vragen, bestellen, jezelf voorstellen) die je met woord-chips in de
-    juiste volgorde legt — in plaats van losse, willekeurige woordjes.
+- **Lessen**: 125 lessen, Nederlands ↔ Russisch, van **A1 tot en met C2**
+  (moedertaalniveau) — ±1.400 woorden, ±4.800 oefeningen en 47
+  grammaticaregels. Het dashboard groepeert de lessen per niveau, met een
+  voortgangsbalk per niveau en de niveautoets als laatste stap.
+
+  | Niveau | Lessen | Woorden | Waar het over gaat |
+  |---|---|---|---|
+  | A1 Beginner | 19 | 182 | alfabet, begroeten, getallen, kleuren, familie, eten, tijd, lichaam, kleding, weer, wonen, beroepen, basisgrammatica (geslacht, meervoud, naamvallen, vervoeging) |
+  | A2 Elementair | 10 | 47 | reizen, vervoer, sport, natuur, werk & school, gevoelens, verleden/toekomst, aspect, ontkenning & vragen |
+  | B1 Drempelniveau | 28 | 329 | *je redden*: gezondheid & apotheek, wonen & huren, documenten & bureaucratie, bank, telefoon & internet, sollicitatie, uit eten, markt, de weg vragen, meningen; werkwoorden van beweging, aspectparen, gebiedende & voorwaardelijke wijs, telwoorden/datum/tijd |
+  | B2 Gevorderd | 27 | 325 | nieuws & politiek, milieu, technologie, cultuur, economie, noodgevallen & politie, recht & contracten, idiomen, spreektaal & register, onderwijs; deelwoorden, gerundium, passief, samengestelde zinnen, woordvorming, korte adjectieven |
+  | C1 Vergevorderd | 22 | 270 | abstracte begrippen & argumentatie, formeel/academisch register, nuances & synoniemen, spreekwoorden, partikels, slang, media, medisch/carrière/woningmarkt gevorderd; stijl & register, aspectnuances, woordvolgorde & nadruk |
+  | C2 Beheersing | 19 | 258 | literaire woordenschat, frazeologie met klassieke bronnen, culturele & historische referenties, humor & woordspeling, vakjargon (juridisch/financieel, IT & systeembeheer), regionale varianten; schrijftaal & interpunctie, aspectmeesterschap, stilistische syntaxis |
+
+  Elk niveau vanaf B1 bevat daarnaast vier frequentie-gebaseerde
+  woordenschatpakketten (zelfstandige naamwoorden, werkwoorden, bijvoeglijke
+  naamwoorden & bijwoorden), een les "Praktische zinnen", een les "Lezen" en
+  automatisch gegenereerde vervoegings- en naamvaldrills.
+- **Oefenvormen**: meerkeuze in beide richtingen, losse grammatica-oefeningen,
+  **zinnen bouwen** met woord-chips, **typen** (vanaf B1 typ je het Russische
+  woord zelf; ё/е, klemtoontekens, hoofdletters en leestekens tellen niet als
+  fout), **luisteren** (een zin wordt voorgelezen en jij bouwt 'm na) en
+  **lezen** (korte tekst met begripsvragen). Elk woord toont z'n klemtoon
+  (спа́льня) en transliteratie.
+- **Niveautoetsen**: elk niveau sluit je af met een toets van 30 vragen,
+  evenredig verdeeld over alle lessen van dat niveau en alle oefenvormen.
+  Server-side nagekeken; geslaagd bij 80% of hoger. Dan is het niveau
+  officieel behaald (+150 XP, badge, 🎓-label in de bovenbalk, de
+  voortgangspagina en de ranglijst). De uitslag toont per les hoe je scoorde
+  en bij elke fout: jouw antwoord, het juiste antwoord, de uitleg, de
+  grammaticaregel erachter en een knop voor een AI-uitleg over precies jóuw
+  fout. Toetsen vereisen een internetverbinding; herkansen kan onbeperkt.
 - **Spaced repetition**: elk woord heeft per gebruiker een `ease_factor`,
   `interval_days` en `next_review_at` (SM-2-achtig algoritme, zie
   `russisch-leren/backend/src/srs.js`). Woorden die aan herhaling toe zijn, komen als eerste
@@ -32,9 +48,9 @@ is en welke grammaticaregel erachter zit.
   een `grammar_rules`-record met de onderliggende regel en een voorbeeld. Bij
   een fout antwoord kun je optioneel ook een AI om een diepere, op jouw
   specifieke fout toegespitste uitleg vragen (zie hieronder).
-- **Gamification**: XP per goed antwoord, niveaus (van Beginner A1 tot
-  Zelfstandig gebruiker), een dagelijkse leer-reeks ("streak") en 8 te
-  ontgrendelen badges. Het dashboard toont je lessen als een pad: voltooide
+- **Gamification**: XP per goed antwoord en per behaalde niveautoets,
+  XP-niveaus, een dagelijkse leer-reeks ("streak") en 11 te ontgrendelen
+  badges (waaronder drie voor behaalde toetsen). Het dashboard toont je lessen als een pad: voltooide
   lessen, je huidige les, en de rest — geen harde vergrendeling, je kunt altijd
   zelf een les kiezen.
 - **Immersie**: een luisterknop op elke oefening spreekt de Russische tekst
@@ -43,9 +59,9 @@ is en welke grammaticaregel erachter zit.
 - **Voortgangsdashboard**: nauwkeurigheid, aantal geoefende/onder-de-knie
   woorden per les, niveau/streak/badges, en overzichten van de vaakst gemaakte
   fouten en recente fouten (met uitleg).
-- **Ranglijst**: alle geregistreerde gebruikers gerangschikt op XP, met niveau,
-  leer-reeks en aantal onder-de-knie woorden — handig om onderling een beetje
-  te wedijveren. Vereist een internetverbinding (`GET /api/leaderboard`),
+- **Ranglijst**: alle geregistreerde gebruikers gerangschikt op XP, met
+  hoogst behaalde toetsniveau, XP-niveau, leer-reeks en aantal onder-de-knie
+  woorden — handig om onderling een beetje te wedijveren. Vereist een internetverbinding (`GET /api/leaderboard`),
   net als inloggen en registreren.
 
 ## Techniek
@@ -84,6 +100,8 @@ russisch-leren/
       schema.sql          Databaseschema
       srs.js               Spaced-repetition-planner (server)
       gamification.js       XP/niveau-berekening, leer-reeks, badge-definities
+      grading.js            Antwoorden normaliseren en vergelijken (ё/е, klemtoon, hoofdletters)
+      levels.js             CEFR-niveaus A1..C2 met titels en omschrijvingen
       recordAttempt.js      Gedeelde logica: antwoord verwerken + SRS bijwerken
                              (gebruikt door zowel /exercises/:id/answer als /sync/attempts)
       loadAddonOptions.js     Leest /data/options.json wanneer als HA add-on gedraaid
@@ -96,13 +114,24 @@ russisch-leren/
         content.js                  Volledige lesinhoud voor offline gebruik
         sync.js                      Offline-wachtrij van antwoorden verwerken
         ai.js                         AI-uitleg via de Claude API (optioneel)
+        leaderboard.js                Ranglijst
+        exams.js                      Niveautoetsen: samenstellen, nakijken, certificeringen
     seed/
-      seed.js            Vult de database met lesinhoud
-      data/              Woordenschat, grammaticaregels, grammatica-oefeningen, praktische zinnen
+      seed.js            Vult/actualiseert de database met lesinhoud (toevoegend, bij elke start)
+      data/
+        index.js         Voegt alle contentmodules samen tot één bundel
+        categories.js, words.js, grammarRules.js,
+        grammarExercises.js, practicalSentences.js   Basisinhoud A1/A2
+        levels/b1.js .. c2.js           Per niveau: lessen, regels, oefeningen, zinnen, leesteksten, drills
+        levels/vocab-b1.js .. vocab-c2.js   Frequentie-gebaseerde woordenschatpakketten per niveau
+        generated/openrussian-forms.json   Klemtoon + woordvormen uit Open Russian (gegenereerd)
+        translit.js      Transliteratie en klemtoon-hulpfuncties
+        SOURCES.md       Bronvermelding en licenties van de open datasets
+      import/build-openrussian.js   Ontwikkelscript dat generated/ opbouwt uit de open datasets
   frontend/
     index.html, css/            SPA-opmaak en vormgeving
     js/
-      app.js                    Router + alle views (login, dashboard, quiz, voortgang, gamification, AI-uitleg)
+      app.js                    Router + alle views (login, dashboard per niveau, quiz, toets, voortgang, ranglijst)
       storage.js                 Lokale opslag (localStorage), per gebruiker genamespaced
       srs.js                      Spaced-repetition-planner (client, spiegelt de backend-versie hierboven)
     manifest.webmanifest        PWA-manifest (naam, iconen, themakleur)
@@ -122,9 +151,11 @@ cp .env.example .env        # pas SESSION_SECRET aan
 npm start                    # start op http://localhost:3000
 ```
 
-De database vult zichzelf automatisch met lesinhoud zodra `categories` leeg
-blijkt te zijn (dus bij een eerste start op een nieuwe database) — geen
-losse seed-stap nodig, bij geen enkele installatiemethode.
+De database wordt bij **elke start** gesynchroniseerd met de lesinhoud in
+`seed/data/`: op een lege database is dat de eerste vulling, op een bestaande
+worden alleen nieuwe categorieën/woorden/regels/oefeningen toegevoegd
+(bestaande behouden hun ID; `attempts` en `user_word_progress` worden nooit
+aangeraakt). Geen losse seed-stap nodig, bij geen enkele installatiemethode.
 
 Open daarna `http://localhost:3000` in de browser, registreer een account en
 begin met een les.
@@ -135,17 +166,8 @@ Voor ontwikkeling met automatisch herladen bij bestandswijzigingen:
 npm run dev
 ```
 
-Heb je de content in `seed/data/` aangepast en wil je die bewust opnieuw
-inladen op een database die al gevuld is? Draai dan handmatig:
-
-```bash
-npm run seed
-```
-
-> **Let op**: dit commando verwijdert en herbouwt alle lesinhoud
-> (categorieën, woorden, oefeningen) én de bijbehorende voortgangsgegevens
-> (`attempts`, `user_word_progress`). Gebruikersaccounts blijven behouden.
-> Nodig na een contentupdate; niet nodig bij een gewone (her)start.
+`npm run seed` voert dezelfde toevoegende synchronisatie los uit (handig om
+een contentwijziging te controleren zonder de server te starten).
 
 ## Draaien met Docker
 
@@ -177,8 +199,9 @@ het gaat via de normale Add-on Store en heeft geen SSH/Portainer nodig.
 4. Ga naar het tabblad **Configuration** en vul `session_secret` in (een
    lange, willekeurige string, bv. gegenereerd met `openssl rand -hex 32`).
    `anthropic_api_key` is optioneel (voor de AI-uitleg-knop). Sla op.
-5. Start de add-on. De 32 lessen worden bij deze allereerste start automatisch
-   ingeladen (geen aparte seed-stap nodig). Je voortgang staat in de
+5. Start de add-on. De 125 lessen worden bij deze allereerste start automatisch
+   ingeladen (geen aparte seed-stap nodig), en bij elke update worden nieuwe
+   lessen er automatisch bijgezet. Je voortgang staat in de
    persistente `/data`-opslag van de add-on en overleeft dus herstarts en
    updates.
 
@@ -328,20 +351,36 @@ kostenpost zolang de sleutel actief is.
 
 ## Uitbreiden met eigen content
 
-Nieuwe woorden, categorieën of grammaticaregels toevoegen kan zonder de
-applicatiecode aan te passen:
+Nieuwe woorden, lessen of grammaticaregels toevoegen kan zonder de
+applicatiecode aan te passen. Alles staat onder
+`russisch-leren/backend/seed/data/`:
 
-- `russisch-leren/backend/seed/data/categories.js` — lessen/categorieën
-- `russisch-leren/backend/seed/data/words.js` — woordenschat (per woord automatisch
-  gegenereerde meerkeuzeoefeningen in beide richtingen)
-- `russisch-leren/backend/seed/data/grammarRules.js` — grammaticaregels met uitleg
-- `russisch-leren/backend/seed/data/grammarExercises.js` — losse grammatica-oefeningen met
-  eigen foutuitleg, gekoppeld aan een regel uit `grammarRules.js`
-- `russisch-leren/backend/seed/data/practicalSentences.js` — praktische zinnen voor de
-  woord-chipoefening (`sentence_build`): elke zin heeft `tokens` (de losse
-  woorden, `tokens.join(' ')` moet exact de zin opleveren) en een `explanation`
+- A1/A2: `categories.js`, `words.js`, `grammarRules.js`, `grammarExercises.js`,
+  `practicalSentences.js`.
+- B1 t/m C2: één module per niveau in `levels/<niveau>.js` die
+  `{ categories, grammarRules, words, grammarExercises, practicalSentences, readings, drills }`
+  exporteert, plus `levels/vocab-<niveau>.js` voor de woordenschatpakketten
+  (`{ categories, words }`). `index.js` voegt alles samen en controleert op
+  dubbele slugs/codes.
 
-Na het aanpassen van deze bestanden: `npm run seed` opnieuw draaien.
+Formaten:
+
+- **Woord**: `{ category, russian, translation_nl, notes?, grammarRule? }`.
+  Transliteratie, klemtoon en geslacht worden automatisch aangevuld uit
+  `generated/openrussian-forms.json` (zie `SOURCES.md`); per woord ontstaan
+  meerkeuzeoefeningen in beide richtingen en vanaf B1 ook een typoefening.
+- **Grammatica-oefening**: `{ category, grammarRule, prompt, correctAnswer, options, explanation }`.
+- **Praktische zin**: `{ category, prompt, tokens, explanation }` —
+  `tokens.join(' ')` moet exact de zin opleveren; hieruit ontstaan een
+  zinnen-bouw- én een luisteroefening.
+- **Leestekst**: `{ category, title, passage, questions: [{ prompt, correctAnswer, options, explanation, grammarRule? }] }`.
+- **Drills**: `{ level, conjugation: { category, rule, maxVerbs }, past, imperative, aspect, cases, comparative }`
+  — genereert automatisch vervoegings-/naamvaloefeningen uit de woordvormen
+  in `generated/`.
+
+De wijziging komt live bij de eerstvolgende (her)start: de seed is toevoegend
+en verwijdert nooit iets, dus een hernoemde les moet je zelf uit de database
+halen als je 'm echt kwijt wilt.
 
 ## API (overzicht)
 
@@ -363,7 +402,21 @@ Alle routes onder `/api`, JSON in/uit, sessie-cookie voor authenticatie.
 | POST | `/sync/attempts` | Batch van offline gegeven antwoorden verwerken (idempotent via `clientId`) |
 | GET | `/progress/stats` | XP, niveau, leer-reeks ("streak") en badges |
 | POST | `/ai/explain` | Diepere AI-uitleg bij één fout antwoord (503 als er geen `ANTHROPIC_API_KEY` is ingesteld) |
-| GET | `/leaderboard` | Alle gebruikers gerangschikt op XP, met niveau, streak en onder-de-knie woorden |
+| GET | `/leaderboard` | Alle gebruikers gerangschikt op XP, met hoogst behaalde toetsniveau, streak en onder-de-knie woorden |
+| GET | `/exams` | Status per CEFR-niveau: aantal lessen/vragen, eerdere pogingen, behaald of niet |
+| GET | `/exams/:level` | Nieuwe toets van 30 vragen voor een niveau (zonder antwoorden/uitleg) |
+| POST | `/exams/:level/submit` | Toets inleveren → score, geslaagd/niet, per-les-uitsplitsing en volledige review met uitleg |
+| GET | `/exams/history` | Eerdere toetspogingen van de ingelogde gebruiker |
+
+## Bronnen & licenties van de lesinhoud
+
+De Nederlandse vertalingen, uitleg, leesteksten en zinnen zijn eigen werk.
+Klemtoon, woordvormen en de frequentie-gebaseerde woordkeuze per niveau komen
+uit twee open datasets: de [Open Russian dictionary](https://github.com/Badestrand/russian-dictionary)
+(CC-BY-SA 4.0) en [FrequencyWords](https://github.com/hermitdave/FrequencyWords)
+(MIT, afgeleid van OpenSubtitles). Details, wat precies is overgenomen en hoe
+je de afgeleide `generated/openrussian-forms.json` opnieuw bouwt staan in
+`russisch-leren/backend/seed/data/SOURCES.md`.
 
 ## Bekende beperkingen (bewuste keuzes voor deze versie)
 

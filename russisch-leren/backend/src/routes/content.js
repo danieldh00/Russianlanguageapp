@@ -1,42 +1,61 @@
 const express = require('express');
 const db = require('../db');
 const { requireAuth } = require('../middleware');
+const { LEVELS, LEVEL_TITLES, LEVEL_DESCRIPTIONS } = require('../levels');
 
 const router = express.Router();
 
 // GET /api/content -> the full lesson content bundle, for offline caching on the client.
 // Includes correct answers and explanations inline (needed so quizzes can be
 // graded fully offline) -- unlike /api/exercises/:slug, which withholds them
-// until an answer is submitted.
+// until an answer is submitted. Grammar rules are sent once, as a map by
+// code, rather than repeated inside every exercise that references them:
+// with thousands of exercises that duplication would dominate the payload
+// the phone has to keep in localStorage.
 router.get('/', requireAuth, (req, res) => {
   const categories = db.prepare('SELECT slug, name, description, level, sort_order FROM categories ORDER BY sort_order').all();
 
+  const grammarRules = {};
+  for (const r of db.prepare('SELECT code, title, explanation, example FROM grammar_rules').all()) {
+    grammarRules[r.code] = { code: r.code, title: r.title, explanation: r.explanation, example: r.example };
+  }
+
   const exercises = db
     .prepare(
-      `SELECT e.id, e.type, e.prompt, e.correct_answer, e.options, e.explanation,
-              e.word_id, c.slug AS category,
-              gr.code AS rule_code, gr.title AS rule_title, gr.explanation AS rule_explanation, gr.example AS rule_example
+      `SELECT e.id, e.type, e.prompt, e.correct_answer, e.options, e.explanation, e.context,
+              e.word_id, c.slug AS category, gr.code AS rule_code
        FROM exercises e
        JOIN categories c ON c.id = e.category_id
        LEFT JOIN grammar_rules gr ON gr.id = e.grammar_rule_id
        ORDER BY e.id`
     )
     .all()
-    .map((row) => ({
-      id: row.id,
-      category: row.category,
-      wordId: row.word_id,
-      type: row.type,
-      prompt: row.prompt,
-      options: row.options ? JSON.parse(row.options) : null,
-      correctAnswer: row.correct_answer,
-      explanation: row.explanation,
-      grammarRule: row.rule_code
-        ? { code: row.rule_code, title: row.rule_title, explanation: row.rule_explanation, example: row.rule_example }
-        : null
-    }));
+    .map((row) => {
+      const ex = {
+        id: row.id,
+        category: row.category,
+        wordId: row.word_id,
+        type: row.type,
+        prompt: row.prompt,
+        options: row.options ? JSON.parse(row.options) : null,
+        correctAnswer: row.correct_answer,
+        explanation: row.explanation
+      };
+      if (row.context) ex.context = row.context;
+      if (row.rule_code) ex.ruleCode = row.rule_code;
+      return ex;
+    });
 
-  res.json({ categories, exercises, generatedAt: new Date().toISOString() });
+  res.json({
+    // bumped whenever the shape of this bundle changes, so a device holding
+    // an older cached copy refetches instead of trusting the 24h staleness window
+    schemaVersion: 2,
+    levels: LEVELS.map((l) => ({ level: l, title: LEVEL_TITLES[l], description: LEVEL_DESCRIPTIONS[l] })),
+    categories,
+    grammarRules,
+    exercises,
+    generatedAt: new Date().toISOString()
+  });
 });
 
 module.exports = router;

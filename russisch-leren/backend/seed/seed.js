@@ -1,9 +1,8 @@
 const db = require('../src/db');
-const categories = require('./data/categories');
-const grammarRules = require('./data/grammarRules');
-const words = require('./data/words');
-const grammarExercises = require('./data/grammarExercises');
-const practicalSentences = require('./data/practicalSentences');
+const data = require('./data');
+const { transliterate, stripStress } = require('./data/translit');
+
+const { categories, grammarRules, words, grammarExercises, practicalSentences, readings, forms } = data;
 
 function shuffle(arr) {
   const a = [...arr];
@@ -15,9 +14,11 @@ function shuffle(arr) {
 }
 
 function pickDistractors(pool, excludeValue, count) {
-  const candidates = shuffle(pool.filter((v) => v !== excludeValue));
+  const candidates = shuffle([...new Set(pool.filter((v) => v && v !== excludeValue))]);
   return candidates.slice(0, count);
 }
+
+const LEVEL_RANK = { A1: 1, A2: 2, B1: 3, B2: 4, C1: 5, C2: 6 };
 
 // Adds lesson content (categories, words, grammar rules, exercises) that
 // doesn't exist yet, and refreshes the text of rows that do -- without ever
@@ -37,11 +38,16 @@ function seedDatabase() {
       ON CONFLICT(code) DO UPDATE SET
         title = excluded.title, explanation = excluded.explanation, example = excluded.example
     `);
-    for (const rule of grammarRules) upsertRule.run(rule);
+    for (const rule of grammarRules) upsertRule.run({ example: null, ...rule });
     const ruleIdByCode = {};
     for (const row of db.prepare('SELECT id, code FROM grammar_rules').all()) {
       ruleIdByCode[row.code] = row.id;
     }
+    const ruleId = (code, ctx) => {
+      if (!code) return null;
+      if (!ruleIdByCode[code]) throw new Error(`Unknown grammar rule code '${code}' in ${ctx}`);
+      return ruleIdByCode[code];
+    };
 
     const upsertCategory = db.prepare(`
       INSERT INTO categories (slug, name, description, level, sort_order)
@@ -50,20 +56,26 @@ function seedDatabase() {
         name = excluded.name, description = excluded.description,
         level = excluded.level, sort_order = excluded.sort_order
     `);
-    for (const cat of categories) upsertCategory.run(cat);
+    for (const cat of categories) upsertCategory.run({ description: null, ...cat });
     const categoryIdBySlug = {};
-    for (const row of db.prepare('SELECT id, slug FROM categories').all()) {
+    const categoryLevelBySlug = {};
+    for (const row of db.prepare('SELECT id, slug, level FROM categories').all()) {
       categoryIdBySlug[row.slug] = row.id;
+      categoryLevelBySlug[row.slug] = row.level;
     }
+    const categoryId = (slug, ctx) => {
+      if (!categoryIdBySlug[slug]) throw new Error(`Unknown category slug '${slug}' in ${ctx}`);
+      return categoryIdBySlug[slug];
+    };
 
     const findWord = db.prepare('SELECT id FROM words WHERE category_id = ? AND russian = ?');
     const insertWord = db.prepare(`
-      INSERT INTO words (category_id, russian, transliteration, translation_nl, gender, notes, grammar_rule_id)
-      VALUES (@category_id, @russian, @transliteration, @translation_nl, @gender, @notes, @grammar_rule_id)
+      INSERT INTO words (category_id, russian, transliteration, translation_nl, gender, notes, grammar_rule_id, accented)
+      VALUES (@category_id, @russian, @transliteration, @translation_nl, @gender, @notes, @grammar_rule_id, @accented)
     `);
     const updateWord = db.prepare(`
       UPDATE words SET transliteration = @transliteration, translation_nl = @translation_nl,
-        gender = @gender, notes = @notes, grammar_rule_id = @grammar_rule_id
+        gender = @gender, notes = @notes, grammar_rule_id = @grammar_rule_id, accented = @accented
       WHERE id = @id
     `);
 
@@ -72,76 +84,78 @@ function seedDatabase() {
     const wordsByCategory = {};
     const resolvedWords = [];
     for (const w of words) {
-      const category_id = categoryIdBySlug[w.category];
-      if (!category_id) throw new Error(`Unknown category slug: ${w.category}`);
-      const grammar_rule_id = w.grammarRule ? ruleIdByCode[w.grammarRule] : null;
+      const category_id = categoryId(w.category, `word '${w.russian}'`);
+      const level = categoryLevelBySlug[w.category];
+      const morph = forms[w.russian.trim().toLowerCase()] || null;
+      const accented = w.accented || (morph && morph.accented && morph.accented !== w.russian ? morph.accented : null);
       const params = {
         category_id,
         russian: w.russian,
-        transliteration: w.transliteration || null,
+        transliteration: w.transliteration || transliterate(w.russian),
         translation_nl: w.translation_nl,
-        gender: w.gender || null,
+        gender: w.gender || (morph && morph.pos === 'noun' && morph.gender ? morph.gender : null),
         notes: w.notes || null,
-        grammar_rule_id
+        grammar_rule_id: ruleId(w.grammarRule, `word '${w.russian}'`),
+        accented
       };
       const existing = findWord.get(category_id, w.russian);
       const id = existing
         ? (updateWord.run({ ...params, id: existing.id }), existing.id)
         : insertWord.run(params).lastInsertRowid;
-      const record = { id, category_id, ...w };
+      const record = { id, level, morph, ...params, category: w.category, grammarRule: w.grammarRule || null };
       resolvedWords.push(record);
       wordsByCategory[w.category] = wordsByCategory[w.category] || [];
       wordsByCategory[w.category].push(record);
     }
 
-    // Word-linked exercises (mc_ru_nl/mc_nl_ru) are deduped per (word_id, type):
+    // Word-linked exercises (mc_ru_nl/mc_nl_ru/typing) are deduped per (word_id, type):
     // the same word in two different categories (e.g. a word repeated for a
     // grammar lesson) must get its own exercise for each, or one category's
     // lesson silently loses that flashcard. Exercises with no word_id
-    // (hand-crafted grammar exercises, sentence_build) have no such natural
-    // key, so they're deduped on their (unique, hand-authored) prompt text.
+    // (hand-crafted grammar exercises, sentence_build, reading, listening,
+    // generated drills) have no such natural key, so they're deduped on their
+    // (unique) prompt text + answer.
     const findWordExercise = db.prepare('SELECT id FROM exercises WHERE word_id = ? AND type = ?');
     const findTextExercise = db.prepare('SELECT id FROM exercises WHERE word_id IS NULL AND type = ? AND prompt = ? AND correct_answer = ?');
     const insertExercise = db.prepare(`
-      INSERT INTO exercises (category_id, word_id, grammar_rule_id, type, prompt, correct_answer, options, explanation)
-      VALUES (@category_id, @word_id, @grammar_rule_id, @type, @prompt, @correct_answer, @options, @explanation)
+      INSERT INTO exercises (category_id, word_id, grammar_rule_id, type, prompt, correct_answer, options, explanation, context)
+      VALUES (@category_id, @word_id, @grammar_rule_id, @type, @prompt, @correct_answer, @options, @explanation, @context)
     `);
     function addExerciseIfNew(ex) {
       const exists = ex.word_id != null
         ? findWordExercise.get(ex.word_id, ex.type)
         : findTextExercise.get(ex.type, ex.prompt, ex.correct_answer);
-      if (exists) return;
-      insertExercise.run(ex);
+      if (exists) return false;
+      insertExercise.run({ word_id: null, grammar_rule_id: null, options: null, context: null, ...ex });
+      return true;
     }
 
-    // Auto-generate vocab exercises (RU->NL and NL->RU multiple choice) for
-    // every word. Existing words already have theirs (matched by prompt),
-    // so this only adds exercises for words that are new this run.
+    // Auto-generate vocab exercises (RU->NL and NL->RU multiple choice, plus a
+    // typed NL->RU exercise from B1 up) for every word. Existing words already
+    // have theirs (matched per word), so this only adds exercises for words
+    // that are new this run.
     for (const w of resolvedWords) {
       const siblings = wordsByCategory[w.category].filter((s) => s.id !== w.id);
       if (siblings.length < 2) continue; // need enough distractors in this category
 
+      const shown = `${w.accented || w.russian}${w.transliteration ? ` (${w.transliteration})` : ''}`;
       const nlDistractors = pickDistractors(siblings.map((s) => s.translation_nl), w.translation_nl, 3);
       const ruDistractors = pickDistractors(siblings.map((s) => s.russian), w.russian, 3);
-      const grammar_rule_id = w.grammarRule ? ruleIdByCode[w.grammarRule] : null;
+      const grammar_rule_id = ruleId(w.grammarRule, `word '${w.russian}'`);
 
       if (nlDistractors.length >= 2) {
-        const options = shuffle([w.translation_nl, ...nlDistractors]);
         addExerciseIfNew({
           category_id: w.category_id,
           word_id: w.id,
           grammar_rule_id,
           type: 'mc_ru_nl',
-          prompt: `Wat betekent '${w.russian}'${w.transliteration ? ` (${w.transliteration})` : ''}?`,
+          prompt: `Wat betekent '${shown}'?`,
           correct_answer: w.translation_nl,
-          options: JSON.stringify(options),
-          explanation:
-            `'${w.russian}'${w.transliteration ? ` (${w.transliteration})` : ''} betekent '${w.translation_nl}'.` +
-            (w.notes ? ` ${w.notes}` : '')
+          options: JSON.stringify(shuffle([w.translation_nl, ...nlDistractors])),
+          explanation: `'${shown}' betekent '${w.translation_nl}'.` + (w.notes ? ` ${w.notes}` : '')
         });
       }
       if (ruDistractors.length >= 2) {
-        const options = shuffle([w.russian, ...ruDistractors]);
         addExerciseIfNew({
           category_id: w.category_id,
           word_id: w.id,
@@ -149,46 +163,96 @@ function seedDatabase() {
           type: 'mc_nl_ru',
           prompt: `Hoe zeg je '${w.translation_nl}' in het Russisch?`,
           correct_answer: w.russian,
-          options: JSON.stringify(options),
-          explanation:
-            `'${w.translation_nl}' is in het Russisch '${w.russian}'${w.transliteration ? ` (${w.transliteration})` : ''}.` +
-            (w.notes ? ` ${w.notes}` : '')
+          options: JSON.stringify(shuffle([w.russian, ...ruDistractors])),
+          explanation: `'${w.translation_nl}' is in het Russisch '${shown}'.` + (w.notes ? ` ${w.notes}` : '')
+        });
+      }
+      if (LEVEL_RANK[w.level] >= LEVEL_RANK.B1 && !/\s/.test(w.russian.trim())) {
+        addExerciseIfNew({
+          category_id: w.category_id,
+          word_id: w.id,
+          grammar_rule_id,
+          type: 'typing',
+          prompt: `Typ in het Russisch: '${w.translation_nl}'`,
+          correct_answer: w.russian,
+          options: null,
+          explanation: `'${w.translation_nl}' schrijf je als '${shown}'.` + (w.notes ? ` ${w.notes}` : '')
         });
       }
     }
 
     // Hand-crafted grammar exercises
     for (const ex of grammarExercises) {
-      const category_id = categoryIdBySlug[ex.category];
-      const grammar_rule_id = ruleIdByCode[ex.grammarRule];
-      if (!category_id || !grammar_rule_id) throw new Error(`Bad grammar exercise reference: ${JSON.stringify(ex)}`);
       addExerciseIfNew({
-        category_id,
+        category_id: categoryId(ex.category, `grammar exercise '${ex.prompt}'`),
         word_id: null,
-        grammar_rule_id,
+        grammar_rule_id: ruleId(ex.grammarRule, `grammar exercise '${ex.prompt}'`),
         type: ex.type,
         prompt: ex.prompt,
         correct_answer: ex.correctAnswer,
-        options: JSON.stringify(ex.options),
-        explanation: ex.explanation
+        options: ex.options ? JSON.stringify(ex.options) : null,
+        explanation: ex.explanation,
+        context: ex.context || null
       });
     }
 
-    // Practical sentence-building exercises
-    const practicalCategoryId = categoryIdBySlug['praktische-zinnen'];
-    if (!practicalCategoryId) throw new Error("Missing category 'praktische-zinnen' for practical sentences");
+    // Practical sentence-building exercises, plus a listening exercise per
+    // sentence (the sentence is spoken aloud; pick its meaning).
+    const sentencesByLevel = {};
     for (const sentence of practicalSentences) {
-      addExerciseIfNew({
-        category_id: practicalCategoryId,
-        word_id: null,
-        grammar_rule_id: null,
-        type: 'sentence_build',
-        prompt: sentence.prompt,
-        correct_answer: sentence.tokens.join(' '),
-        options: JSON.stringify(shuffle(sentence.tokens)),
-        explanation: sentence.explanation
-      });
+      const slug = sentence.category || 'praktische-zinnen';
+      const level = categoryLevelBySlug[slug] || 'A2';
+      sentencesByLevel[level] = sentencesByLevel[level] || [];
+      sentencesByLevel[level].push({ ...sentence, slug });
     }
+    for (const list of Object.values(sentencesByLevel)) {
+      for (const sentence of list) {
+        const category_id = categoryId(sentence.slug, `practical sentence '${sentence.prompt}'`);
+        const russian = sentence.tokens.join(' ');
+        addExerciseIfNew({
+          category_id,
+          type: 'sentence_build',
+          prompt: sentence.prompt,
+          correct_answer: russian,
+          options: JSON.stringify(shuffle(sentence.tokens)),
+          explanation: sentence.explanation,
+          grammar_rule_id: ruleId(sentence.grammarRule, `practical sentence '${sentence.prompt}'`)
+        });
+        const distractors = pickDistractors(list.map((s) => s.prompt), sentence.prompt, 3);
+        if (distractors.length >= 2) {
+          addExerciseIfNew({
+            category_id,
+            type: 'listen',
+            prompt: 'Luister naar de zin en kies de juiste betekenis.',
+            correct_answer: sentence.prompt,
+            options: JSON.stringify(shuffle([sentence.prompt, ...distractors])),
+            explanation: `Je hoorde: '${russian}' — ${sentence.prompt} ${sentence.explanation}`,
+            context: russian
+          });
+        }
+      }
+    }
+
+    // Reading comprehension: a passage with one or more questions.
+    for (const reading of readings) {
+      const category_id = categoryId(reading.category, `reading '${reading.title}'`);
+      for (const q of reading.questions) {
+        addExerciseIfNew({
+          category_id,
+          type: 'reading',
+          prompt: `[${reading.title}] ${q.prompt}`,
+          correct_answer: q.correctAnswer,
+          options: JSON.stringify(shuffle(q.options)),
+          explanation: q.explanation,
+          context: reading.passage,
+          grammar_rule_id: ruleId(q.grammarRule, `reading '${reading.title}'`)
+        });
+      }
+    }
+
+    // Form drills generated from the Open Russian morphology tables, for the
+    // levels that declare drill categories (see levels/<level>.js `drills`).
+    generateDrills({ resolvedWords, categoryIdBySlug, categoryLevelBySlug, ruleId, addExerciseIfNew });
   });
 
   run();
@@ -199,6 +263,155 @@ function seedDatabase() {
     exercises: db.prepare('SELECT COUNT(*) c FROM exercises').get().c,
     grammar_rules: db.prepare('SELECT COUNT(*) c FROM grammar_rules').get().c
   };
+}
+
+const PERSONS = [
+  ['presfut_sg1', 'я'], ['presfut_sg2', 'ты'], ['presfut_sg3', 'он/она'],
+  ['presfut_pl1', 'мы'], ['presfut_pl2', 'вы'], ['presfut_pl3', 'они']
+];
+const CASES = [
+  ['sg_gen', 'genitief (enkelvoud)'], ['sg_dat', 'datief (enkelvoud)'], ['sg_acc', 'accusatief (enkelvoud)'],
+  ['sg_inst', 'instrumentalis (enkelvoud)'], ['sg_prep', 'prepositief (enkelvoud)'],
+  ['pl_nom', 'nominatief meervoud'], ['pl_gen', 'genitief meervoud'], ['pl_inst', 'instrumentalis meervoud']
+];
+const ASPECT_NL = { imperfective: 'onvoltooid', perfective: 'voltooid', both: 'beide aspecten' };
+
+function generateDrills({ resolvedWords, categoryIdBySlug, categoryLevelBySlug, ruleId, addExerciseIfNew }) {
+  const drillConfigs = data.drills || [];
+  for (const cfg of drillConfigs) {
+    const level = cfg.level;
+    const levelWords = resolvedWords
+      .filter((w) => w.level === level && w.morph && w.morph.forms)
+      .sort((a, b) => (a.morph.rank || 1e9) - (b.morph.rank || 1e9) || a.russian.localeCompare(b.russian));
+    const verbs = levelWords.filter((w) => w.morph.pos === 'verb' && !/\s/.test(w.russian));
+    const nouns = levelWords.filter((w) => w.morph.pos === 'noun' && !/\s/.test(w.russian) && !w.morph.indeclinable);
+    const adjectives = levelWords.filter((w) => w.morph.pos === 'adjective' && !/\s/.test(w.russian));
+    const shown = (w) => `${w.accented || w.russian}`;
+
+    if (cfg.conjugation && categoryIdBySlug[cfg.conjugation.category]) {
+      const category_id = categoryIdBySlug[cfg.conjugation.category];
+      const grammar_rule_id = ruleId(cfg.conjugation.rule, `drill config ${level}`);
+      for (const w of verbs.slice(0, cfg.conjugation.maxVerbs || 25)) {
+        const f = w.morph.forms;
+        const allForms = PERSONS.map(([k]) => f[k]).filter(Boolean);
+        if (allForms.length < 4) continue;
+        // two persons per verb, spread deterministically across the list
+        const picks = [PERSONS[w.id % 6], PERSONS[(w.id + 3) % 6]];
+        for (const [key, pronoun] of picks) {
+          const correct = f[key];
+          if (!correct) continue;
+          const distractors = pickDistractors(allForms, correct, 3);
+          if (distractors.length < 2) continue;
+          addExerciseIfNew({
+            category_id, grammar_rule_id, type: 'mc',
+            prompt: `Vervoeg '${shown(w)}' (${w.translation_nl}) voor '${pronoun}':`,
+            correct_answer: stripStress(correct),
+            options: JSON.stringify(shuffle([correct, ...distractors].map(stripStress))),
+            explanation: `'${w.russian}' (${w.translation_nl}) wordt bij '${pronoun}' '${correct}'. Volledig: ${PERSONS.map(([k, p]) => `${p} ${f[k] || '—'}`).join(', ')}.` +
+              (w.morph.aspect ? ` Aspect: ${ASPECT_NL[w.morph.aspect] || w.morph.aspect}${w.morph.partner ? `, partner: ${w.morph.partner}` : ''}.` : '')
+          });
+        }
+      }
+    }
+
+    if (cfg.past && categoryIdBySlug[cfg.past.category]) {
+      const category_id = categoryIdBySlug[cfg.past.category];
+      const grammar_rule_id = ruleId(cfg.past.rule, `drill config ${level}`);
+      for (const w of verbs.slice(0, cfg.past.maxVerbs || 15)) {
+        const f = w.morph.forms;
+        const pastForms = [f.past_m, f.past_f, f.past_n, f.past_pl].filter(Boolean);
+        if (pastForms.length < 3) continue;
+        const subject = [['past_f', 'она'], ['past_pl', 'они'], ['past_m', 'он']][w.id % 3];
+        const correct = f[subject[0]];
+        if (!correct) continue;
+        addExerciseIfNew({
+          category_id, grammar_rule_id, type: 'mc',
+          prompt: `Verleden tijd van '${shown(w)}' (${w.translation_nl}) bij '${subject[1]}':`,
+          correct_answer: stripStress(correct),
+          options: JSON.stringify(shuffle([correct, ...pickDistractors(pastForms, correct, 3)].map(stripStress))),
+          explanation: `In de verleden tijd richt de uitgang zich naar het onderwerp: он ${f.past_m}, она ${f.past_f}, оно ${f.past_n}, они ${f.past_pl}.`
+        });
+      }
+    }
+
+    if (cfg.imperative && categoryIdBySlug[cfg.imperative.category]) {
+      const category_id = categoryIdBySlug[cfg.imperative.category];
+      const grammar_rule_id = ruleId(cfg.imperative.rule, `drill config ${level}`);
+      for (const w of verbs.slice(0, cfg.imperative.maxVerbs || 15)) {
+        const f = w.morph.forms;
+        if (!f.imperative_pl || !f.imperative_sg) continue;
+        const distractors = pickDistractors([f.imperative_sg, f.presfut_pl2, f.past_pl, f.presfut_sg3], f.imperative_pl, 3);
+        if (distractors.length < 2) continue;
+        addExerciseIfNew({
+          category_id, grammar_rule_id, type: 'mc',
+          prompt: `Beleefde gebiedende wijs (u/jullie) van '${shown(w)}' (${w.translation_nl}):`,
+          correct_answer: stripStress(f.imperative_pl),
+          options: JSON.stringify(shuffle([f.imperative_pl, ...distractors].map(stripStress))),
+          explanation: `Gebiedende wijs van '${w.russian}': informeel '${f.imperative_sg}', beleefd/meervoud '${f.imperative_pl}' (uitgang -те).`
+        });
+      }
+    }
+
+    if (cfg.aspect && categoryIdBySlug[cfg.aspect.category]) {
+      const category_id = categoryIdBySlug[cfg.aspect.category];
+      const grammar_rule_id = ruleId(cfg.aspect.rule, `drill config ${level}`);
+      const withPartner = verbs.filter((w) => w.morph.partner && /^[а-яё]+$/i.test(w.morph.partner) && w.morph.aspect !== 'both');
+      const partnerPool = withPartner.map((w) => w.morph.partner);
+      for (const w of withPartner.slice(0, cfg.aspect.maxVerbs || 20)) {
+        const distractors = pickDistractors(partnerPool, w.morph.partner, 3);
+        if (distractors.length < 2) continue;
+        addExerciseIfNew({
+          category_id, grammar_rule_id, type: 'mc',
+          prompt: `'${shown(w)}' (${w.translation_nl}) is ${ASPECT_NL[w.morph.aspect]}. Wat is de aspectpartner?`,
+          correct_answer: w.morph.partner,
+          options: JSON.stringify(shuffle([w.morph.partner, ...distractors])),
+          explanation: `'${w.russian}' (${ASPECT_NL[w.morph.aspect]}) hoort bij '${w.morph.partner}' (${w.morph.aspect === 'imperfective' ? 'voltooid' : 'onvoltooid'}). Het onvoltooide aspect beschrijft een proces of herhaling, het voltooide een afgeronde handeling met resultaat.`
+        });
+      }
+    }
+
+    if (cfg.cases && categoryIdBySlug[cfg.cases.category]) {
+      const category_id = categoryIdBySlug[cfg.cases.category];
+      const grammar_rule_id = ruleId(cfg.cases.rule, `drill config ${level}`);
+      for (const w of nouns.slice(0, cfg.cases.maxNouns || 25)) {
+        const f = w.morph.forms;
+        const allForms = [...new Set(Object.values(f).filter(Boolean))];
+        if (allForms.length < 4) continue;
+        const picks = [CASES[w.id % CASES.length], CASES[(w.id + 4) % CASES.length]];
+        for (const [key, label] of picks) {
+          const correct = f[key];
+          if (!correct || stripStress(correct) === stripStress(f.sg_nom || w.russian)) continue;
+          const distractors = pickDistractors(allForms, correct, 3);
+          if (distractors.length < 2) continue;
+          addExerciseIfNew({
+            category_id, grammar_rule_id, type: 'mc',
+            prompt: `Wat is de ${label} van '${shown(w)}' (${w.translation_nl})?`,
+            correct_answer: stripStress(correct),
+            options: JSON.stringify(shuffle([correct, ...distractors].map(stripStress))),
+            explanation: `'${w.russian}' (${w.gender ? { m: 'mannelijk', f: 'vrouwelijk', n: 'onzijdig' }[w.gender] || w.gender : '?'}): ${CASES.map(([k, l]) => `${l}: ${f[k] || '—'}`).join('; ')}.`
+          });
+        }
+      }
+    }
+
+    if (cfg.comparative && categoryIdBySlug[cfg.comparative.category]) {
+      const category_id = categoryIdBySlug[cfg.comparative.category];
+      const grammar_rule_id = ruleId(cfg.comparative.rule, `drill config ${level}`);
+      const withComp = adjectives.filter((w) => w.morph.comparative && !/[ ,/]/.test(w.morph.comparative));
+      const pool = withComp.map((w) => w.morph.comparative);
+      for (const w of withComp.slice(0, cfg.comparative.maxAdjectives || 15)) {
+        const distractors = pickDistractors(pool, w.morph.comparative, 3);
+        if (distractors.length < 2) continue;
+        addExerciseIfNew({
+          category_id, grammar_rule_id, type: 'mc',
+          prompt: `Vergrotende trap van '${shown(w)}' (${w.translation_nl}):`,
+          correct_answer: stripStress(w.morph.comparative),
+          options: JSON.stringify(shuffle([w.morph.comparative, ...distractors].map(stripStress))),
+          explanation: `'${w.russian}' → '${w.morph.comparative}'.` + (w.morph.superlative ? ` Overtreffende trap: '${w.morph.superlative}'.` : '')
+        });
+      }
+    }
+  }
 }
 
 if (require.main === module) {
