@@ -2,6 +2,7 @@ const express = require('express');
 const db = require('../db');
 const { requireAuth } = require('../middleware');
 const { LEVELS, LEVEL_TITLES, LEVEL_DESCRIPTIONS } = require('../levels');
+const phrasebook = require('../../seed/data/phrasebook');
 
 const router = express.Router();
 
@@ -59,11 +60,13 @@ router.get('/', requireAuth, (req, res) => {
   res.json({
     // bumped whenever the shape of this bundle changes, so a device holding
     // an older cached copy refetches instead of trusting the 24h staleness window
-    schemaVersion: 3,
+    schemaVersion: 4,
     levels: LEVELS.map((l) => ({ level: l, title: LEVEL_TITLES[l], description: LEVEL_DESCRIPTIONS[l] })),
     categories,
     grammarRules,
     words,
+    // survival phrasebook (static content, no exercises): offline reference
+    phrasebook,
     exercises,
     generatedAt: new Date().toISOString()
   });

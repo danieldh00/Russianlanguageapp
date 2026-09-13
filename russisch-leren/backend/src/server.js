@@ -27,6 +27,7 @@ const leaderboardRoutes = require('./routes/leaderboard');
 const { router: examRoutes } = require('./routes/exams');
 const pushRoutes = require('./routes/push');
 const wordRoutes = require('./routes/words');
+const haRoutes = require('./routes/ha');
 const { startScheduler: startReminderScheduler } = require('./push');
 
 const app = express();
@@ -53,6 +54,7 @@ app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/exams', examRoutes);
 app.use('/api/push', pushRoutes);
 app.use('/api/words', wordRoutes);
+app.use('/api/ha', haRoutes);
 app.use('/api/ai', aiRoutes);
 
 const FRONTEND_DIR = path.join(__dirname, '..', '..', 'frontend');

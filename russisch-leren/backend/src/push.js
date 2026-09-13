@@ -30,17 +30,8 @@ function loadOrCreateKeys() {
 const keys = loadOrCreateKeys();
 webpush.setVapidDetails(VAPID_SUBJECT, keys.publicKey, keys.privateKey);
 
-// "YYYY-MM-DD" and "HH:MM" as the clock reads right now in a given IANA
-// time zone; falls back to UTC for an unknown zone.
-function localNow(timeZone) {
-  let s;
-  try {
-    s = new Date().toLocaleString('sv-SE', { timeZone });
-  } catch (err) {
-    s = new Date().toLocaleString('sv-SE', { timeZone: 'UTC' });
-  }
-  return { date: s.slice(0, 10), time: s.slice(11, 16) };
-}
+const { localNow } = require('./localtime');
+const ha = require('./ha');
 
 function dueWordCount(userId) {
   return db
@@ -92,12 +83,21 @@ async function sendDueReminders() {
 }
 
 let timer = null;
+let sensorTimer = null;
 function startScheduler() {
   if (timer) return;
   timer = setInterval(() => {
     sendDueReminders().catch((err) => console.warn('Herinneringen versturen mislukt:', err.message));
+    ha.sendDueReminders().catch((err) => console.warn('HA-herinneringen versturen mislukt:', err.message));
   }, 60 * 1000);
   timer.unref();
+  if (ha.available()) {
+    console.log('Home Assistant API bereikbaar: sensoren en meldingen ingeschakeld.');
+    const tick = () => ha.updateSensors().catch((err) => console.warn('HA-sensoren bijwerken mislukt:', err.message));
+    setTimeout(tick, 5000);
+    sensorTimer = setInterval(tick, 5 * 60 * 1000);
+    sensorTimer.unref();
+  }
 }
 
 module.exports = { publicKey: keys.publicKey, localNow, sendTo, reminderPayload, sendDueReminders, startScheduler };

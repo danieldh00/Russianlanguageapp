@@ -1,5 +1,5 @@
 name: "Russisch Leren"
-version: "1.6.0"
+version: "1.7.0"
 slug: russisch_leren
 description: >-
   Russisch leren van A1 tot C2 met niveautoetsen, voortgangsregistratie,
@@ -16,6 +16,7 @@ ports:
 ports_description:
   3000/tcp: "Webinterface"
 webui: "http://[HOST]:[PORT:3000]/"
+homeassistant_api: true
 environment:
   DATA_DIR: /data
 options:
@@ -23,3 +24,4 @@ options:
 schema:
   session_secret: "password"
   anthropic_api_key: "password?"
+  public_url: "str?"

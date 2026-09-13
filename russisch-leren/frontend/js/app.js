@@ -2,7 +2,7 @@ const state = { user: null, syncing: false, pendingCount: 0 };
 let syncInFlight = false;
 
 // the content bundle shape this client understands (see /api/content)
-const CONTENT_SCHEMA_VERSION = 3;
+const CONTENT_SCHEMA_VERSION = 4;
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
@@ -339,7 +339,7 @@ const NAV_ITEMS = [
 function currentRouteSection() {
   const route = (location.hash || '#/dashboard').split('/')[1] || 'dashboard';
   // a lesson or exam screen is reached from, and belongs to, the "Lessen" tab
-  return ['lesson', 'exam', 'practice', 'review', 'dialogue', 'keyboard'].includes(route) ? 'dashboard' : route;
+  return ['lesson', 'exam', 'practice', 'review', 'dialogue', 'keyboard', 'phrasebook', 'dictation', 'match'].includes(route) ? 'dashboard' : route;
 }
 
 function renderNav() {
@@ -426,6 +426,9 @@ async function router() {
   if (route === 'review') return renderReviewSession();
   if (route === 'dialogue') return param ? renderDialogue(param) : renderDialogueList();
   if (route === 'keyboard') return renderKeyboardTrainer();
+  if (route === 'phrasebook') return renderPhrasebook();
+  if (route === 'dictation') return renderDictation();
+  if (route === 'match') return renderMatchGame();
   if (route === 'exam') return renderExam((param || '').toUpperCase());
   if (route === 'progress') return renderProgress();
   if (route === 'settings') return renderSettings();
@@ -664,6 +667,9 @@ async function renderDashboard() {
       openMistakes, '#/practice');
   }
   tool('dialogue-card', '🗣️', 'Gesprek oefenen', 'Rollenspel met de AI: apotheek, hotel, politie, huurbaas… Jij typt of spreekt Russisch, de AI antwoordt in zijn rol en corrigeert je.', null, '#/dialogue');
+  tool('match-card', '🃏', 'Koppelspel', 'Vijf Russische en vijf Nederlandse woorden: tik de paren bij elkaar, zo snel mogelijk. Telt mee voor je herhaling.', null, '#/match');
+  tool('dictation-card', '🔢', 'Getallen & tijd', 'Luister naar prijzen, tijden, datums en telefoonnummers en typ wat je hoort — het eerste wat misgaat in een winkel of taxi.', null, '#/dictation');
+  tool('phrasebook-card', '📕', 'Zakboekje', 'Per situatie de zinnen die je écht nodig hebt — apotheek, noodgeval, taxi, hotel — groot, met uitspraak, ook offline.', null, '#/phrasebook');
   tool('keyboard-card', '⌨️', 'Toetsenbord ЙЦУКЕН', 'Leer blind typen op de Russische indeling: woorden en zinnen uit de lessen, met de toets die je zoekt uitgelicht.', null, '#/keyboard');
   wrapper.querySelector('#practice-slot').appendChild(tools);
 
@@ -1516,12 +1522,23 @@ async function renderProgress() {
     app.appendChild(achCard);
   }
 
-  const catCard = el(`<div class="card"><h2>Voortgang per les</h2><div class="table-scroll"><table><thead><tr><th>Niveau</th><th>Les</th><th>Gestart</th><th>Onder de knie</th></tr></thead><tbody id="cat-body"></tbody></table></div></div>`);
-  app.appendChild(catCard);
-  const catBody = catCard.querySelector('#cat-body');
+  // only lessons you've actually started -- 126 rows of zeros is noise
+  const started = [], untouched = [];
   for (const cat of content.categories) {
     const s = categoryStats(username, content, cat.slug);
     if (!s.totalWords) continue;
+    (s.startedWords > 0 ? started : untouched).push({ cat, s });
+  }
+  const catCard = el(`
+    <div class="card">
+      <h2>Voortgang per les</h2>
+      ${started.length ? `<div class="table-scroll"><table><thead><tr><th>Niveau</th><th>Les</th><th>Geoefend</th><th>Onder de knie</th></tr></thead><tbody id="cat-body"></tbody></table></div>` : '<p class="muted">Je bent nog aan geen enkele les begonnen.</p>'}
+      ${untouched.length ? `<p class="muted" style="margin-top:10px;font-size:0.82rem">${untouched.length} ${untouched.length === 1 ? 'les' : 'lessen'} nog niet gestart (niet getoond).</p>` : ''}
+    </div>
+  `);
+  app.appendChild(catCard);
+  const catBody = catCard.querySelector('#cat-body');
+  for (const { cat, s } of started) {
     catBody.appendChild(el(`<tr><td>${escapeHtml(cat.level)}</td><td>${escapeHtml(cat.name)}</td><td>${s.startedWords}/${s.totalWords}</td><td>${s.masteredWords}/${s.totalWords}</td></tr>`));
   }
 
@@ -2036,6 +2053,393 @@ async function renderKeyboardTrainer() {
   setTimeout(() => input.focus(), 0);
 }
 
+// ---------- survival phrasebook (offline, from the content bundle) ----------
+
+async function renderPhrasebook() {
+  const content = await ensureContentLoaded();
+  if (!content) return renderNoContentMessage();
+  const book = content.phrasebook || [];
+  app.innerHTML = '';
+  const wrap = el(`
+    <div class="phrasebook">
+      <h1>📕 Zakboekje</h1>
+      <p class="muted">De zinnen die je ter plekke nodig hebt, per situatie. Tik op 🔊 om ze te laten uitspreken (🐢 langzaam), of laat het scherm gewoon zien. Werkt offline.</p>
+      <input type="search" id="pb-search" class="typing-answer pb-search" placeholder="Zoek (Nederlands of Russisch)…" autocomplete="off" />
+      <div class="pb-tabs" id="pb-tabs"></div>
+      <div id="pb-body"></div>
+    </div>
+  `);
+  app.appendChild(wrap);
+  const tabs = wrap.querySelector('#pb-tabs');
+  const body = wrap.querySelector('#pb-body');
+  const search = wrap.querySelector('#pb-search');
+  let current = book[0] ? book[0].id : null;
+
+  function paint() {
+    tabs.innerHTML = '';
+    body.innerHTML = '';
+    const q = search.value.trim().toLowerCase();
+    const sections = q
+      ? book.map((s) => ({ ...s, phrases: s.phrases.filter(([ru, nl]) => ru.toLowerCase().includes(q) || nl.toLowerCase().includes(q)) })).filter((s) => s.phrases.length)
+      : book.filter((s) => s.id === current);
+    if (!q) {
+      for (const s of book) {
+        const t = el(`<button type="button" class="level-pill ${s.id === current ? 'passed' : ''}">${s.icon} ${escapeHtml(s.title)}</button>`);
+        t.addEventListener('click', () => { current = s.id; paint(); });
+        tabs.appendChild(t);
+      }
+    }
+    if (!sections.length) body.appendChild(el(`<p class="muted">Niets gevonden.</p>`));
+    for (const s of sections) {
+      const card = el(`<div class="card"><h2>${s.icon} ${escapeHtml(s.title)}</h2><div class="pb-list"></div></div>`);
+      const list = card.querySelector('.pb-list');
+      for (const [ru, nl] of s.phrases) {
+        const row = el(`<div class="pb-row"><div class="pb-text"><p class="pb-ru"></p><p class="pb-nl muted"></p></div><span class="pb-speak"></span></div>`);
+        row.querySelector('.pb-ru').textContent = ru;
+        row.querySelector('.pb-nl').textContent = nl;
+        const sp = renderSpeakButton(ru, '🔊');
+        if (sp) row.querySelector('.pb-speak').replaceWith(sp); else row.querySelector('.pb-speak').remove();
+        list.appendChild(row);
+      }
+      body.appendChild(card);
+    }
+  }
+  search.addEventListener('input', paint);
+  paint();
+}
+
+// ---------- numbers & time dictation ----------
+
+// Russian cardinal numbers 0..999 999 with gender for 1 and 2.
+const RU_ONES = { m: ['', 'один', 'два', 'три', 'четыре', 'пять', 'шесть', 'семь', 'восемь', 'девять'], f: ['', 'одна', 'две', 'три', 'четыре', 'пять', 'шесть', 'семь', 'восемь', 'девять'] };
+const RU_TEENS = ['десять', 'одиннадцать', 'двенадцать', 'тринадцать', 'четырнадцать', 'пятнадцать', 'шестнадцать', 'семнадцать', 'восемнадцать', 'девятнадцать'];
+const RU_TENS = ['', '', 'двадцать', 'тридцать', 'сорок', 'пятьдесят', 'шестьдесят', 'семьдесят', 'восемьдесят', 'девяносто'];
+const RU_HUNDREDS = ['', 'сто', 'двести', 'триста', 'четыреста', 'пятьсот', 'шестьсот', 'семьсот', 'восемьсот', 'девятьсот'];
+function ruUnder1000(n, gender = 'm') {
+  const parts = [];
+  const h = Math.floor(n / 100), rest = n % 100;
+  if (h) parts.push(RU_HUNDREDS[h]);
+  if (rest >= 10 && rest < 20) parts.push(RU_TEENS[rest - 10]);
+  else {
+    const t = Math.floor(rest / 10), o = rest % 10;
+    if (t) parts.push(RU_TENS[t]);
+    if (o) parts.push(RU_ONES[gender][o]);
+  }
+  return parts.join(' ');
+}
+// plural form after a number: one / few (2-4) / many
+function ruPlural(n, [one, few, many]) {
+  const a = Math.abs(n) % 100, b = a % 10;
+  if (a > 10 && a < 20) return many;
+  if (b > 1 && b < 5) return few;
+  if (b === 1) return one;
+  return many;
+}
+function ruNumber(n, gender = 'm') {
+  if (n === 0) return 'ноль';
+  const parts = [];
+  const th = Math.floor(n / 1000), rest = n % 1000;
+  if (th) parts.push(`${ruUnder1000(th, 'f')} ${ruPlural(th, ['тысяча', 'тысячи', 'тысяч'])}`);
+  if (rest) parts.push(ruUnder1000(rest, gender));
+  return parts.join(' ');
+}
+const RU_MONTHS_GEN = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+const RU_ORD_N = ['', 'первое', 'второе', 'третье', 'четвёртое', 'пятое', 'шестое', 'седьмое', 'восьмое', 'девятое', 'десятое', 'одиннадцатое', 'двенадцатое', 'тринадцатое', 'четырнадцатое', 'пятнадцатое', 'шестнадцатое', 'семнадцатое', 'восемнадцатое', 'девятнадцатое', 'двадцатое'];
+function ruOrdinalDay(d) {
+  if (d <= 20) return RU_ORD_N[d];
+  if (d === 30) return 'тридцатое';
+  const t = d < 30 ? 'двадцать' : 'тридцать';
+  return `${t} ${RU_ORD_N[d % 10]}`;
+}
+function rnd(a, b) { return a + Math.floor(Math.random() * (b - a + 1)); }
+function pad2(n) { return String(n).padStart(2, '0'); }
+
+const DICTATION_MODES = {
+  prijs: {
+    label: '💶 Prijzen', hint: 'Typ het bedrag in roebels (alleen cijfers).',
+    make() {
+      const pick = Math.random();
+      const n = pick < 0.4 ? rnd(1, 99) * 10 : pick < 0.8 ? rnd(100, 9999) : rnd(10000, 99999);
+      const rub = ruPlural(n, ['рубль', 'рубля', 'рублей']);
+      return { text: `${ruNumber(n)} ${rub}`, answer: String(n), show: `${n} ₽` };
+    }
+  },
+  getal: {
+    label: '🔢 Getallen', hint: 'Typ het getal.',
+    make() { const n = Math.random() < 0.5 ? rnd(0, 100) : rnd(100, 9999); return { text: ruNumber(n), answer: String(n), show: String(n) }; }
+  },
+  tijd: {
+    label: '🕒 Tijden', hint: 'Typ de tijd als UU:MM (bv. 14:05).',
+    make() {
+      const h = rnd(0, 23), m = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55][rnd(0, 11)];
+      const hours = `${ruNumber(h)} ${ruPlural(h, ['час', 'часа', 'часов'])}`;
+      const minutes = m ? ` ${ruNumber(m, 'f')} ${ruPlural(m, ['минута', 'минуты', 'минут'])}` : '';
+      return { text: `${hours}${minutes}`, answer: `${pad2(h)}:${pad2(m)}`, show: `${pad2(h)}:${pad2(m)}`, alt: [`${h}:${pad2(m)}`] };
+    }
+  },
+  datum: {
+    label: '📅 Datums', hint: 'Typ de datum als DD-MM (bv. 09-05).',
+    make() {
+      const mo = rnd(1, 12), d = rnd(1, mo === 2 ? 28 : 30);
+      return { text: `${ruOrdinalDay(d)} ${RU_MONTHS_GEN[mo - 1]}`, answer: `${pad2(d)}-${pad2(mo)}`, show: `${pad2(d)}-${pad2(mo)}`, alt: [`${d}-${mo}`, `${d}-${pad2(mo)}`, `${pad2(d)}-${mo}`] };
+    }
+  },
+  telefoon: {
+    label: '📱 Telefoonnummers', hint: 'Typ de cijfers (zonder +7), bv. 9161234567.',
+    make() {
+      const g = [rnd(900, 999), rnd(100, 999), rnd(10, 99), rnd(10, 99)];
+      const text = `плюс семь, ${ruNumber(g[0])}, ${ruNumber(g[1])}, ${ruNumber(g[2])}, ${ruNumber(g[3])}`;
+      const digits = `${g[0]}${g[1]}${pad2(g[2])}${pad2(g[3])}`;
+      return { text, answer: digits, show: `+7 ${g[0]} ${g[1]}-${pad2(g[2])}-${pad2(g[3])}` };
+    }
+  }
+};
+
+async function renderDictation() {
+  app.innerHTML = '';
+  const wrap = el(`
+    <div class="dictation">
+      <h1>🔢 Getallen & tijd</h1>
+      <p class="muted">Je hoort een prijs, tijd, datum, getal of telefoonnummer in het Russisch; typ wat je hoort. Luister zo vaak je wilt, ook langzaam.</p>
+      <div class="pb-tabs" id="dict-modes"></div>
+      <div class="card">
+        <div class="exercise-progress"><span id="dict-progress"></span><span class="muted" id="dict-score"></span></div>
+        <div class="listen-box"><div class="reading-label">Luister</div><span class="dict-speak"></span><p class="muted" id="dict-hint"></p></div>
+        <form class="typing-form" id="dict-form">
+          <div class="typing-row"><input type="text" id="dict-input" class="typing-answer" inputmode="numeric" autocomplete="off" placeholder="…" /></div>
+          <button type="submit" class="primary" style="margin-top:10px;width:fit-content">Controleren</button>
+        </form>
+        <div id="dict-feedback"></div>
+      </div>
+    </div>
+  `);
+  app.appendChild(wrap);
+  const modesEl = wrap.querySelector('#dict-modes');
+  let mode = Storage.loadSettings().dictationMode || 'prijs';
+  let round = 0, score = 0, item = null;
+
+  function paintModes() {
+    modesEl.innerHTML = '';
+    for (const [id, m] of Object.entries(DICTATION_MODES)) {
+      const t = el(`<button type="button" class="level-pill ${id === mode ? 'passed' : ''}">${m.label}</button>`);
+      t.addEventListener('click', () => { mode = id; const s = Storage.loadSettings(); s.dictationMode = id; Storage.saveSettings(s); round = 0; score = 0; next(); });
+      modesEl.appendChild(t);
+    }
+  }
+  function next() {
+    paintModes();
+    item = DICTATION_MODES[mode].make();
+    round++;
+    wrap.querySelector('#dict-progress').textContent = `${DICTATION_MODES[mode].label} · opgave ${round}`;
+    wrap.querySelector('#dict-score').textContent = `${score} goed`;
+    wrap.querySelector('#dict-hint').textContent = DICTATION_MODES[mode].hint;
+    const slot = wrap.querySelector('.listen-box .speak-group, .listen-box .dict-speak');
+    const sp = renderSpeakButton(item.text, '🔊 Speel af');
+    if (sp) { sp.classList.add('listen-play'); slot.replaceWith(sp); }
+    wrap.querySelector('#dict-feedback').innerHTML = '';
+    const input = wrap.querySelector('#dict-input');
+    input.value = '';
+    input.disabled = false;
+    wrap.querySelector('#dict-form button').disabled = false;
+    input.focus();
+    speakRussian(item.text);
+  }
+  wrap.querySelector('#dict-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const input = wrap.querySelector('#dict-input');
+    const given = input.value.trim().replace(/\s+/g, '').replace(/[.,]/g, mode === 'tijd' ? ':' : mode === 'datum' ? '-' : '');
+    const okAnswer = given === item.answer || (item.alt || []).includes(given);
+    if (okAnswer) score++;
+    input.disabled = true;
+    wrap.querySelector('#dict-form button').disabled = true;
+    const fb = el(`
+      <div class="feedback ${okAnswer ? 'correct' : 'incorrect'}">
+        <strong>${okAnswer ? 'Goed gehoord!' : 'Niet helemaal.'}</strong>
+        <div class="explanation">Je hoorde: <span lang="ru" class="serif">${escapeHtml(item.text)}</span> = <strong>${escapeHtml(item.show)}</strong>${okAnswer ? '' : ` — jij typte ${escapeHtml(input.value || '(niets)')}`}.</div>
+        <button type="button" class="primary" style="margin-top:12px" id="dict-next">Volgende</button>
+      </div>
+    `);
+    wrap.querySelector('#dict-feedback').appendChild(fb);
+    fb.querySelector('#dict-next').addEventListener('click', next);
+    fb.querySelector('#dict-next').focus();
+  });
+  next();
+}
+
+// ---------- match pairs game ----------
+
+async function renderMatchGame() {
+  const content = await ensureContentLoaded();
+  if (!content) return renderNoContentMessage();
+  const username = state.user.username;
+  const wordProgress = Storage.loadWordProgress(username);
+  // candidate words: practised ones first (due first), then words from unlocked lessons
+  const path = computePath(content, username);
+  const unlockedCats = new Set([...path.bySlug.values()].filter((n) => n.unlocked).map((n) => n.cat.slug));
+  const byWord = new Map();
+  for (const ex of content.exercises) {
+    if (ex.wordId == null || ex.type !== 'mc_ru_nl' || !unlockedCats.has(ex.category)) continue;
+    if (!byWord.has(ex.wordId)) byWord.set(ex.wordId, ex);
+  }
+  const due = new Set(dueWordIds(content, username));
+  const practised = Object.keys(wordProgress).map(Number).filter((id) => byWord.has(id));
+  const ordered = [...shuffle(practised.filter((id) => due.has(id))), ...shuffle(practised.filter((id) => !due.has(id))), ...shuffle([...byWord.keys()].filter((id) => !wordProgress[id]))];
+  const chosen = [];
+  const seenNl = new Set();
+  for (const id of ordered) {
+    const w = content.words[id];
+    if (!w || seenNl.has(w.nl)) continue;
+    seenNl.add(w.nl);
+    chosen.push({ id, ru: w.ru, nl: w.nl, ex: byWord.get(id) });
+    if (chosen.length === 5) break;
+  }
+  app.innerHTML = '';
+  if (chosen.length < 5) {
+    app.appendChild(el(`<div class="card"><h1>🃏 Koppelspel</h1><p class="muted">Nog te weinig woorden beschikbaar. Doe eerst een paar lessen.</p><a href="#/dashboard">Terug naar lessen</a></div>`));
+    return;
+  }
+  const wrap = el(`
+    <div class="match">
+      <h1>🃏 Koppelspel</h1>
+      <p class="muted">Tik een Russisch woord en daarna de Nederlandse vertaling. Goede paren verdwijnen; fouten kosten tijd. Elk goed paar telt als een goed antwoord voor je herhaling.</p>
+      <div class="card">
+        <div class="exercise-progress"><span id="match-left">5 paren te gaan</span><span class="muted" id="match-timer">0,0 s</span></div>
+        <div class="match-grid">
+          <div class="match-col" id="col-ru"></div>
+          <div class="match-col" id="col-nl"></div>
+        </div>
+        <div id="match-done"></div>
+      </div>
+    </div>
+  `);
+  app.appendChild(wrap);
+  const colRu = wrap.querySelector('#col-ru'), colNl = wrap.querySelector('#col-nl');
+  const start = Date.now();
+  let selectedRu = null, left = chosen.length, mistakes = 0;
+  const timer = setInterval(() => { wrap.querySelector('#match-timer').textContent = ((Date.now() - start) / 1000).toFixed(1).replace('.', ',') + ' s'; }, 100);
+  const tiles = { ru: shuffle(chosen), nl: shuffle(chosen) };
+  for (const w of tiles.ru) {
+    const t = el(`<button type="button" class="match-tile ru" lang="ru"></button>`);
+    t.textContent = w.ru;
+    t.addEventListener('click', () => {
+      if (t.classList.contains('done')) return;
+      colRu.querySelectorAll('.match-tile').forEach((x) => x.classList.remove('selected'));
+      t.classList.add('selected');
+      selectedRu = w;
+      speakRussian(w.ru);
+    });
+    colRu.appendChild(t);
+  }
+  for (const w of tiles.nl) {
+    const t = el(`<button type="button" class="match-tile nl"></button>`);
+    t.textContent = w.nl;
+    t.addEventListener('click', () => {
+      if (!selectedRu || t.classList.contains('done')) return;
+      const ruTile = [...colRu.querySelectorAll('.match-tile')].find((x) => x.textContent === selectedRu.ru);
+      if (w.id === selectedRu.id) {
+        t.classList.add('done'); ruTile.classList.add('done'); ruTile.classList.remove('selected');
+        gradeAndRecord(selectedRu.ex)(selectedRu.ex.correctAnswer);
+        selectedRu = null;
+        left--;
+        wrap.querySelector('#match-left').textContent = left ? `${left} ${left === 1 ? 'paar' : 'paren'} te gaan` : 'Klaar!';
+        if (!left) finish();
+      } else {
+        mistakes++;
+        t.classList.add('wrong'); ruTile.classList.add('wrong');
+        gradeAndRecord(selectedRu.ex)(w.nl);
+        setTimeout(() => { t.classList.remove('wrong'); ruTile.classList.remove('wrong'); }, 500);
+      }
+    });
+    colNl.appendChild(t);
+  }
+  function finish() {
+    clearInterval(timer);
+    const secs = ((Date.now() - start) / 1000).toFixed(1).replace('.', ',');
+    const best = Storage.loadSettings().matchBest;
+    const isBest = !best || parseFloat(secs.replace(',', '.')) < best;
+    if (isBest && !mistakes) { const s = Storage.loadSettings(); s.matchBest = parseFloat(secs.replace(',', '.')); Storage.saveSettings(s); }
+    const done = el(`
+      <div class="feedback correct" style="margin-top:14px">
+        <strong>Alle paren gevonden in ${secs} s${mistakes ? ` met ${mistakes} ${mistakes === 1 ? 'fout' : 'fouten'}` : ' zonder fouten'}.</strong>
+        ${isBest && !mistakes ? '<div class="explanation">🏆 Nieuw persoonlijk record!</div>' : best ? `<div class="explanation">Record: ${String(best).replace('.', ',')} s.</div>` : ''}
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px"><button type="button" class="primary" id="match-again">Nog een ronde</button><a class="secondary-link" href="#/dashboard">Terug naar lessen</a></div>
+      </div>
+    `);
+    done.querySelector('#match-again').addEventListener('click', () => renderMatchGame());
+    wrap.querySelector('#match-done').appendChild(done);
+  }
+}
+
+// ---------- Home Assistant: notification target + sensor ----------
+
+function renderHaCard() {
+  const card = el(`
+    <div class="card">
+      <h2>🏠 Home Assistant</h2>
+      <p class="muted">Laat Home Assistant de dagelijkse herinnering sturen naar jóuw telefoon (Companion-app) of naar het dashboard, en publiceer een sensor met je herhaalachterstand voor dashboards en automatiseringen.</p>
+      <div id="ha-body"><p class="muted">Laden…</p></div>
+    </div>
+  `);
+  const body = card.querySelector('#ha-body');
+  (async () => {
+    let st;
+    try {
+      st = await api('/ha/status');
+    } catch (err) {
+      body.innerHTML = `<p class="muted">${escapeHtml(err.message)}</p>`;
+      return;
+    }
+    if (!st.available) {
+      body.innerHTML = `<p class="muted">Niet beschikbaar: de app draait niet als Home Assistant add-on (of de add-on mist <code>homeassistant_api: true</code>).</p>`;
+      return;
+    }
+    const s = st.settings || { target: 'persistent_notification', enabled: false, reminderTime: '19:00', sensorEnabled: true };
+    body.innerHTML = '';
+    body.appendChild(el(`
+      <div>
+        <div class="setting-row">
+          <label for="ha-target">Melding naar</label>
+          <select id="ha-target"></select>
+          <p class="muted setting-hint">Dit koppelt dit leeraccount (<strong>${escapeHtml(state.user.username)}</strong>) aan een Home Assistant-toestel: elk toestel met de Companion-app staat hier als <em>notify.mobile_app_…</em>. Kies je eigen telefoon. "Home Assistant-melding" verschijnt in het dashboard van iedereen.</p>
+        </div>
+        <div class="reminder-row">
+          <label for="ha-time">Tijdstip</label>
+          <input type="time" id="ha-time" value="${escapeHtml(s.reminderTime)}" />
+          <label class="check"><input type="checkbox" id="ha-enabled" ${s.enabled ? 'checked' : ''} /> Herinnering aan</label>
+          <label class="check"><input type="checkbox" id="ha-sensor" ${s.sensorEnabled ? 'checked' : ''} /> Sensor publiceren</label>
+        </div>
+        <p class="muted setting-hint">Sensor: <code>${escapeHtml(st.sensorEntityId)}</code> — status = aantal woorden te herhalen; attributen: reeks, XP, niveau, vandaag geoefend. Bijgewerkt elke 5 minuten.${st.publicUrl ? '' : ' Tip: vul in de add-on-configuratie <code>public_url</code> in (bv. je Cloudflare-adres), dan opent de melding direct de app.'}</p>
+        <div class="reminder-row">
+          <button type="button" class="primary" id="ha-save">Opslaan</button>
+          <button type="button" class="secondary" id="ha-test">Testmelding</button>
+        </div>
+        <p class="muted reminder-status" id="ha-status">${st.error ? escapeHtml('Home Assistant meldde: ' + st.error) : (s.enabled ? `Aan — dagelijks om ${escapeHtml(s.reminderTime)} naar ${escapeHtml(s.target)}.` : 'Uit.')}</p>
+      </div>
+    `));
+    const sel = body.querySelector('#ha-target');
+    for (const t of st.targets) {
+      const o = document.createElement('option');
+      o.value = t.id; o.textContent = t.label;
+      sel.appendChild(o);
+    }
+    if (st.targets.some((t) => t.id === s.target)) sel.value = s.target;
+    const statusEl = body.querySelector('#ha-status');
+    const tz = (Intl.DateTimeFormat().resolvedOptions().timeZone) || 'Europe/Amsterdam';
+    body.querySelector('#ha-save').addEventListener('click', async () => {
+      statusEl.textContent = 'Opslaan…';
+      try {
+        const r = await api('/ha/settings', { method: 'POST', body: { target: sel.value, enabled: body.querySelector('#ha-enabled').checked, reminderTime: body.querySelector('#ha-time').value || '19:00', timeZone: tz, sensorEnabled: body.querySelector('#ha-sensor').checked } });
+        statusEl.textContent = r.settings.enabled ? `Opgeslagen — dagelijks om ${r.settings.reminderTime} naar ${r.settings.target}.` : 'Opgeslagen — herinnering uit.';
+      } catch (err) { statusEl.textContent = err.message; }
+    });
+    body.querySelector('#ha-test').addEventListener('click', async () => {
+      statusEl.textContent = 'Testmelding versturen…';
+      try { await api('/ha/test', { method: 'POST', body: {} }); statusEl.textContent = 'Verstuurd via Home Assistant.'; } catch (err) { statusEl.textContent = err.message; }
+    });
+  })();
+  return card;
+}
+
 // ---------- settings: speech, reminder, account ----------
 
 const SPEECH_SAMPLE = 'Здравствуйте! Меня зовут Даниэль. Я учу русский язык.';
@@ -2107,6 +2511,7 @@ async function renderSettings() {
   app.appendChild(el(`<div><h1>⚙️ Instellingen</h1><p class="muted">Deze instellingen gelden voor dit toestel.</p></div>`));
   app.appendChild(renderSpeechCard());
   app.appendChild(renderReminderCard());
+  if (navigator.onLine) app.appendChild(renderHaCard());
 
   const account = el(`
     <div class="card">

@@ -23,6 +23,11 @@ function loadAddonOptions() {
   if (options.anthropic_api_key && !process.env.ANTHROPIC_API_KEY) {
     process.env.ANTHROPIC_API_KEY = options.anthropic_api_key;
   }
+  // the address the app is reachable on from a phone (e.g. the Cloudflare
+  // hostname), used as the link inside Home Assistant notifications
+  if (options.public_url && !process.env.PUBLIC_URL) {
+    process.env.PUBLIC_URL = String(options.public_url).replace(/\/+$/, '');
+  }
 }
 
 module.exports = { loadAddonOptions };

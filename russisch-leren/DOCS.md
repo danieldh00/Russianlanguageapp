@@ -31,6 +31,17 @@ dan een melding op dagen dat je nog niet geoefend hebt. Vereist een
 geïnstalleerde app: Safari → Delen → "Zet op beginscherm", en de app vanaf
 het beginscherm openen (iOS 16.4 of nieuwer).
 
+## Home Assistant-meldingen en sensor
+
+Onder ⚙️ Instellingen → Home Assistant kies je per leeraccount naar welk
+toestel de dagelijkse herinnering gaat (elk toestel met de Companion-app
+staat er als `notify.mobile_app_…`; of kies de dashboardmelding). Zet in
+de add-on-configuratie `public_url` op het adres waarop je de app opent
+(bv. `https://russisch.jouwdomein.nl`), dan opent de melding direct de
+app. De add-on publiceert ook `sensor.russisch_leren_<naam>` met het aantal
+woorden dat op herhaling wacht (attributen: reeks, XP, niveau, vandaag
+geoefend), handig voor dashboards en automatiseringen.
+
 ## Bereikbaar maken van buiten je netwerk
 
 Deze add-on regelt zelf geen HTTPS. Als je 'm ook buiten je thuisnetwerk wilt

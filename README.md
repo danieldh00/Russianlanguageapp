@@ -51,6 +51,22 @@ is en welke grammaticaregel erachter zit.
   Russisch in zijn rol (JSON: reply/translation/correction/tip), met
   vertaling op afroep en een Nederlandse correctie na elke beurt. Vereist
   `ANTHROPIC_API_KEY`.
+- **Home Assistant-integratie** (als add-on, `homeassistant_api: true`): per
+  leeraccount een notify-doel (`notify.mobile_app_…` van de Companion-app of
+  de dashboardmelding) voor de dagelijkse herinnering — de koppeling tussen
+  app-account en HA-gebruiker/telefoon — en een sensor
+  `sensor.russisch_leren_<naam>` (woorden te herhalen; attributen reeks,
+  XP, niveau, vandaag geoefend), elke 5 minuten bijgewerkt via de Core API
+  (`http://supervisor/core/api`, `SUPERVISOR_TOKEN`). Optie `public_url`
+  maakt de melding klikbaar naar de app.
+- **Zakboekje**: twaalf situaties met overlevingszinnen (offline, in de
+  content-bundel: `seed/data/phrasebook.js`), groot, met uitspraak en
+  zoekfunctie.
+- **Getallen & tijd**: dictee van prijzen, getallen, tijden, datums en
+  telefoonnummers, gegenereerd in de browser met Russische telwoorden
+  (geslacht, meervoudsvormen, rangtelwoorden voor datums).
+- **Koppelspel**: vijf paren RU↔NL op tijd; goede paren worden als
+  antwoorden geregistreerd en tellen mee voor spaced repetition.
 - **Toetsenbordtrainer ЙЦУКЕН**: de Russische indeling op het scherm met de
   QWERTY-toets eronder; typ woorden/zinnen uit de lessen na, de volgende
   toets licht op, met tekens/minuut en nauwkeurigheid.
@@ -461,6 +477,9 @@ Alle routes onder `/api`, JSON in/uit, sessie-cookie voor authenticatie.
 | GET | `/words/:id/forms` | Verbuiging/vervoeging van een woord (Open Russian) |
 | GET | `/ai/scenarios` | Rollenspel-scenario's + of AI geconfigureerd is |
 | POST | `/ai/dialogue` | Volgende beurt in een rollenspel (`{ scenario, level, messages }` → `{ reply, translation, correction, tip, finished }`) |
+| GET | `/ha/status` | Home Assistant bereikbaar? notify-doelen + instellingen van deze leerling |
+| POST | `/ha/settings` | Notify-doel, tijdstip, aan/uit, sensor aan/uit opslaan |
+| POST | `/ha/test` | Herinnering nu via Home Assistant versturen |
 | GET | `/push/vapid-public-key` | Publieke VAPID-sleutel voor het push-abonnement |
 | GET | `/push/status?endpoint=` | Herinneringsinstelling van dit toestel |
 | POST | `/push/subscribe` | Abonnement + tijdstip + tijdzone opslaan (per toestel) |

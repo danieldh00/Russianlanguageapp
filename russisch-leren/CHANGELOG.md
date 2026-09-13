@@ -4,6 +4,30 @@ Alle merkbare wijzigingen aan de "Russisch Leren" add-on staan hier, nieuwste
 versie bovenaan. Dit bestand wordt door Home Assistant Supervisor automatisch
 getoond onder de "Changelog"-knop van de add-on.
 
+## 1.7.0
+
+- Nieuw: **Home Assistant-integratie** (Instellingen → Home Assistant).
+  Per leeraccount kies je naar welk Home Assistant-doel de dagelijkse
+  herinnering gaat: een telefoon/tablet met de Companion-app
+  (`notify.mobile_app_…`) — dát is de koppeling tussen dit account en jouw
+  HA-gebruiker — of de dashboardmelding. De melding bevat het aantal woorden
+  te herhalen en opent de app (stel `public_url` in bij de add-on-opties).
+  Daarnaast een sensor per leerling, `sensor.russisch_leren_<naam>`: status
+  = woorden te herhalen, met reeks, XP, niveau en "vandaag geoefend" als
+  attributen, elke 5 minuten bijgewerkt — voor dashboards en
+  automatiseringen. Hiervoor heeft de add-on nu `homeassistant_api: true`.
+- Nieuw: **📕 Zakboekje** — twaalf situaties (basis, noodgeval, apotheek,
+  dokter, restaurant, hotel, vervoer, winkel, geld & telefoon, politie &
+  documenten, wonen, kennismaken) met de zinnen die je ter plekke nodig
+  hebt, groot, met uitspraak (ook langzaam) en zoekfunctie. Werkt offline.
+- Nieuw: **🔢 Getallen & tijd** — dictee: je hoort prijzen, getallen,
+  tijden, datums of telefoonnummers in het Russisch en typt wat je hoort.
+- Nieuw: **🃏 Koppelspel** — vijf Russische en vijf Nederlandse woorden,
+  tik de paren, met tijd en persoonlijk record; goede paren tellen mee voor
+  je herhaling.
+- Voortgangspagina: "Voortgang per les" toont alleen nog lessen waar je aan
+  begonnen bent (plus hoeveel er nog ongestart zijn).
+
 ## 1.6.0
 
 - Nieuw: **⚙️ Instellingen** als vierde tab onderin (in plaats van

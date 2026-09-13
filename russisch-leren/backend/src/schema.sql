@@ -93,6 +93,20 @@ CREATE TABLE IF NOT EXISTS level_certifications (
   PRIMARY KEY (user_id, level)
 );
 
+-- Home Assistant integration: which HA notify target (a Companion-app
+-- device, or the HA dashboard notification) belongs to this learner, when
+-- to remind, and whether to publish a sensor with their review backlog.
+CREATE TABLE IF NOT EXISTS ha_notifications (
+  user_id INTEGER PRIMARY KEY REFERENCES users(id),
+  target TEXT NOT NULL DEFAULT 'persistent_notification',
+  enabled INTEGER NOT NULL DEFAULT 0,
+  reminder_time TEXT NOT NULL DEFAULT '19:00',
+  time_zone TEXT NOT NULL DEFAULT 'Europe/Amsterdam',
+  sensor_enabled INTEGER NOT NULL DEFAULT 1,
+  last_sent_date TEXT,
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS user_word_progress (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL REFERENCES users(id),
