@@ -50,9 +50,11 @@ is en welke grammaticaregel erachter zit.
   specifieke fout toegespitste uitleg vragen (zie hieronder).
 - **Gamification**: XP per goed antwoord en per behaalde niveautoets,
   XP-niveaus, een dagelijkse leer-reeks ("streak") en 11 te ontgrendelen
-  badges (waaronder drie voor behaalde toetsen). Het dashboard toont je lessen als een pad: voltooide
-  lessen, je huidige les, en de rest — geen harde vergrendeling, je kunt altijd
-  zelf een les kiezen.
+  badges (waaronder drie voor behaalde toetsen). Het dashboard toont je lessen als een pad
+  met echte vergrendeling: een les opent pas als je in de les ervoor elk woord
+  minstens één keer hebt geoefend, en een volgend niveau opent na de toets van
+  het niveau ervoor (of nadat je alle lessen van dat niveau hebt gedaan).
+  Afgeronde lessen blijven altijd te herhalen.
 - **Immersie**: een luisterknop op elke oefening spreekt de Russische tekst
   hardop uit (via de ingebouwde spraaksynthese van de browser, werkt ook
   offline) — handig om de uitspraak te oefenen, niet alleen het schrift.

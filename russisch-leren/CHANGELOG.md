@@ -4,6 +4,24 @@ Alle merkbare wijzigingen aan de "Russisch Leren" add-on staan hier, nieuwste
 versie bovenaan. Dit bestand wordt door Home Assistant Supervisor automatisch
 getoond onder de "Changelog"-knop van de add-on.
 
+## 1.2.2
+
+- Fix: lessen met een slotje waren gewoon te openen. Het slot wordt nu
+  echt afgedwongen: een les opent pas als je in de les ervoor elk woord
+  minstens één keer hebt geoefend, en een volgend niveau opent pas na de
+  toets van het niveau ervoor (of nadat je alle lessen van dat niveau hebt
+  gedaan). Vergrendelde kaarten zijn niet klikbaar en tonen waar je eerst
+  mee verder moet; ook rechtstreeks navigeren naar een vergrendelde les of
+  toets wordt geweigerd.
+- Fix: een les opnieuw doen kon niet ("alles staat al gepland voor een
+  latere herhaling"). Een les is nu altijd te herhalen: eerst de woorden
+  die aan herhaling toe zijn, dan nieuwe, dan de rest — altijd een
+  volledige sessie van 10 vragen.
+- Nieuwe woorden komen sneller aan bod: in een sessie krijgt elk nieuw
+  woord eerst één oefening voordat een tweede van hetzelfde woord volgt.
+- Op de kaarten staat nu "x/y woorden geoefend · z onder de knie", zodat
+  je ziet wat er nog nodig is om de volgende les te openen.
+
 ## 1.2.1
 
 - Fix: de alfabetles verklapte het antwoord. Bij "Wat betekent 'В в (V v)'?"

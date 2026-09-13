@@ -509,29 +509,85 @@ function categoryStats(username, content, slug) {
   return { totalWords: wordIds.length, masteredWords: mastered, startedWords: started, dueWords: due, totalExercises: exercises.length };
 }
 
+// The learning path with real locks. A lesson is "done" once every word in
+// it has been practised at least once (mastery via spaced repetition takes
+// days and would make the lock absurd); the next lesson in the level unlocks
+// when the one before it is done. Grammar/sentence-only lessons carry no
+// tracked words, so they never block the lesson after them -- they just
+// open together with the lesson they follow. A level unlocks once the
+// previous level's exam is passed, or once all of its lessons are done.
+// Used by the dashboard for rendering and by the lesson/exam routes to
+// refuse direct navigation to something that's still locked.
+function computePath(content, username) {
+  const stats = Storage.loadStats(username);
+  const certified = new Set((stats && stats.certifiedLevels) || []);
+  const levels = levelsOf(content);
+  const bySlug = new Map();
+  const byLevel = new Map();
+  let previousLevelDone = true; // the first level is always open
+  let currentAssigned = false;
+
+  levels.forEach(({ level }, li) => {
+    const entries = content.categories
+      .filter((c) => c.level === level)
+      .map((cat) => ({ cat, stats: categoryStats(username, content, cat.slug) }));
+    if (!entries.length) return;
+    const prevLevel = li > 0 ? levels[li - 1].level : null;
+    const levelUnlocked = li === 0 || certified.has(prevLevel) || previousLevelDone;
+
+    let gate = levelUnlocked;
+    let allDone = true;
+    entries.forEach(({ cat, stats: s }) => {
+      const hasWords = s.totalWords > 0;
+      const done = hasWords ? s.startedWords === s.totalWords : true;
+      const mastered = hasWords && s.masteredWords === s.totalWords;
+      const unlocked = gate;
+      const current = unlocked && !currentAssigned && hasWords && !done;
+      if (current) currentAssigned = true;
+      bySlug.set(cat.slug, { cat, stats: s, unlocked, done, mastered, current, level });
+      if (hasWords && !done) { gate = false; allDone = false; }
+    });
+    byLevel.set(level, { unlocked: levelUnlocked, passed: certified.has(level), allDone, entries: entries.map((e) => e.cat.slug), prevLevel });
+    previousLevelDone = allDone;
+  });
+
+  return { bySlug, byLevel, levels };
+}
+
+// The lesson a locked one is waiting on: the nearest earlier lesson (same
+// level) with words still to practise -- or the previous level as a whole.
+function lockReason(path, slug) {
+  const node = path.bySlug.get(slug);
+  if (!node) return null;
+  const level = path.byLevel.get(node.level);
+  if (!level.unlocked) return `Rond eerst niveau ${level.prevLevel} af: maak de toets van ${level.prevLevel} of oefen alle lessen van dat niveau.`;
+  const idx = level.entries.indexOf(slug);
+  for (let i = idx - 1; i >= 0; i--) {
+    const prev = path.bySlug.get(level.entries[i]);
+    if (prev.stats.totalWords > 0 && !prev.done) {
+      return `Rond eerst '${prev.cat.name}' af (${prev.stats.startedWords}/${prev.stats.totalWords} woorden geoefend).`;
+    }
+  }
+  return 'Deze les is nog vergrendeld.';
+}
+
 async function renderDashboard() {
   const content = await ensureContentLoaded();
   if (!content) return renderNoContentMessage();
 
   const username = state.user.username;
-  const stats = Storage.loadStats(username);
-  const certified = new Set((stats && stats.certifiedLevels) || []);
-  const allStats = content.categories.map((cat) => ({ cat, stats: categoryStats(username, content, cat.slug) }));
-
-  // Grammar/sentence-only categories have no tracked vocabulary (no SRS
-  // signal), so they can't be "complete" or block the path -- they're always
-  // shown as freely available. The recommended path (current/upcoming/locked)
-  // is only computed over categories that do have trackable words.
-  const wordBearing = allStats.filter(({ stats: s }) => s.totalWords > 0);
-  const wordBearingIndex = new Map(wordBearing.map(({ cat }, idx) => [cat.slug, idx]));
-  let frontier = wordBearing.findIndex(({ stats: s }) => s.masteredWords < s.totalWords);
-  if (frontier === -1) frontier = wordBearing.length; // everything mastered
+  const path = computePath(content, username);
+  const certified = new Set([...path.byLevel.entries()].filter(([, l]) => l.passed).map(([lvl]) => lvl));
+  const allStats = content.categories.map((cat) => {
+    const node = path.bySlug.get(cat.slug);
+    return { cat, stats: node ? node.stats : categoryStats(username, content, cat.slug) };
+  });
 
   const levels = levelsOf(content);
   const wrapper = el(`
     <div>
       <h1>Jouw pad door het Russisch</h1>
-      <p class="muted">Van A1 tot C2: volg het pad, of spring naar een niveau. Sluit elk niveau af met een toets. Alles werkt ook zonder internet (behalve de toetsen).</p>
+      <p class="muted">Van A1 tot C2. Elke les opent zodra je de vorige helemaal hebt geoefend; een nieuw niveau opent na de toets (of na alle lessen) van het niveau ervoor. Alles werkt ook zonder internet, behalve de toetsen.</p>
       <div class="level-jump" id="level-jump"></div>
       <div id="levels"></div>
     </div>
@@ -550,6 +606,8 @@ async function renderDashboard() {
     const levelMastered = entries.reduce((acc, e) => acc + e.stats.masteredWords, 0);
     const levelPct = levelWords ? Math.round((levelMastered / levelWords) * 100) : 0;
     const passed = certified.has(level);
+    const levelState = path.byLevel.get(level);
+    const levelLocked = !(levelState && levelState.unlocked);
 
     const pill = el(`<a class="level-pill ${passed ? 'passed' : ''}" href="#level-${level}">${level}${passed ? ' ✓' : ''}</a>`);
     pill.addEventListener('click', (e) => {
@@ -560,10 +618,10 @@ async function renderDashboard() {
     jump.appendChild(pill);
 
     const section = el(`
-      <section class="level-section" id="level-${level}">
+      <section class="level-section ${levelLocked ? 'locked' : ''}" id="level-${level}">
         <header class="level-header">
           <div class="level-header-main">
-            <span class="level-code">${level}</span>
+            <span class="level-code">${levelLocked ? '🔒' : level}</span>
             <div>
               <h2>${escapeHtml(title)}</h2>
               <p class="muted">${escapeHtml(description || '')}</p>
@@ -577,55 +635,62 @@ async function renderDashboard() {
         <div class="lesson-path"></div>
       </section>
     `);
-    const path = section.querySelector('.lesson-path');
+    const pathEl = section.querySelector('.lesson-path');
 
     entries.forEach(({ cat, stats: s }) => {
       nodeNumber++;
+      const node = path.bySlug.get(cat.slug);
       const hasWords = s.totalWords > 0;
-      const complete = hasWords && s.masteredWords === s.totalWords;
-      const pct = hasWords ? Math.round((s.masteredWords / s.totalWords) * 100) : 0;
+      const pct = hasWords ? Math.round((s.startedWords / s.totalWords) * 100) : 0;
 
       let nodeState = 'available';
-      if (complete) nodeState = 'complete';
-      else if (hasWords) {
-        const wi = wordBearingIndex.get(cat.slug);
-        if (wi === frontier) nodeState = 'current';
-        else if (wi > frontier + 1) nodeState = 'upcoming';
-      }
+      if (!node.unlocked) nodeState = 'locked';
+      else if (node.mastered) nodeState = 'complete';
+      else if (node.done) nodeState = 'done';
+      else if (node.current) nodeState = 'current';
 
-      const marker = complete ? '✓' : nodeState === 'upcoming' ? '🔒' : String(nodeNumber);
-      const progressLine = hasWords
-        ? `${s.masteredWords}/${s.totalWords} woorden onder de knie${s.dueWords ? ` &middot; ${s.dueWords} te herhalen` : ''}`
-        : `${s.totalExercises} oefeningen`;
+      const marker = node.mastered ? '✓' : nodeState === 'locked' ? '🔒' : String(nodeNumber);
+      let progressLine;
+      if (!hasWords) progressLine = `${s.totalExercises} oefeningen &middot; altijd te herhalen`;
+      else if (node.mastered) progressLine = `Alle ${s.totalWords} woorden onder de knie${s.dueWords ? ` &middot; ${s.dueWords} te herhalen` : ''}`;
+      else progressLine = `${s.startedWords}/${s.totalWords} woorden geoefend &middot; ${s.masteredWords} onder de knie${s.dueWords ? ` &middot; ${s.dueWords} te herhalen` : ''}`;
+      const lockLine = nodeState === 'locked' ? `<p class="lock-reason">🔒 ${escapeHtml(lockReason(path, cat.slug))}</p>` : '';
 
-      const node = el(`
+      const nodeEl = el(`
         <div class="path-node ${nodeState}">
           <div class="path-marker">${marker}</div>
-          <button class="card lesson-card" type="button">
+          <button class="card lesson-card" type="button" ${nodeState === 'locked' ? 'aria-disabled="true"' : ''}>
             <div class="row1"><h2>${escapeHtml(cat.name)}</h2><span class="level-badge">${escapeHtml(cat.level)}</span></div>
             <p class="muted">${escapeHtml(cat.description || '')}</p>
             <p class="muted">${progressLine}</p>
+            ${lockLine}
             ${hasWords ? `<div class="progress-bar"><div class="progress-bar-fill" style="width:${pct}%"></div></div>` : ''}
           </button>
         </div>
       `);
-      node.querySelector('.lesson-card').addEventListener('click', () => { location.hash = `#/lesson/${cat.slug}`; });
-      path.appendChild(node);
+      nodeEl.querySelector('.lesson-card').addEventListener('click', () => {
+        if (nodeState === 'locked') return;
+        location.hash = `#/lesson/${cat.slug}`;
+      });
+      pathEl.appendChild(nodeEl);
     });
 
     const examNode = el(`
-      <div class="path-node exam ${passed ? 'complete' : ''}">
-        <div class="path-marker">${passed ? '🎓' : '📝'}</div>
-        <button class="card lesson-card exam-card" type="button">
+      <div class="path-node exam ${passed ? 'complete' : levelLocked ? 'locked' : ''}">
+        <div class="path-marker">${passed ? '🎓' : levelLocked ? '🔒' : '📝'}</div>
+        <button class="card lesson-card exam-card" type="button" ${levelLocked ? 'aria-disabled="true"' : ''}>
           <div class="row1"><h2>Niveautoets ${level}</h2><span class="level-badge">${passed ? 'behaald' : 'toets'}</span></div>
           <p class="muted">${passed
             ? `Gehaald! Je hebt niveau ${level} officieel afgesloten. Je kunt de toets altijd opnieuw maken.`
-            : `30 vragen uit alle lessen van ${level}. Bij 80% of hoger sluit je het niveau af en verdien je 150 XP. Alleen online.`}</p>
+            : `30 vragen uit alle lessen van ${level}. Bij 80% of hoger sluit je het niveau af, verdien je 150 XP en gaat het volgende niveau open. Alleen online.`}</p>
         </button>
       </div>
     `);
-    examNode.querySelector('.exam-card').addEventListener('click', () => { location.hash = `#/exam/${level}`; });
-    path.appendChild(examNode);
+    examNode.querySelector('.exam-card').addEventListener('click', () => {
+      if (levelLocked) return;
+      location.hash = `#/exam/${level}`;
+    });
+    pathEl.appendChild(examNode);
 
     levelsRoot.appendChild(section);
   });
@@ -633,18 +698,32 @@ async function renderDashboard() {
 
 // ---------- lesson / quiz (fully local: grading, SRS update, outbox) ----------
 
+// Session order: words due for review first, then words never practised
+// (one exercise per new word before a second one of the same word, so a
+// lesson's vocabulary is covered in as few sessions as possible), then
+// exercises without a tracked word, and finally words that are scheduled
+// for later -- so a lesson can always be redone as extra practice instead
+// of turning you away because "everything is planned for later".
 function pickBatch(exercises, wordProgress, limit) {
   const now = Date.now();
-  const due = [], fresh = [], rest = [];
+  const due = [], fresh = [], untracked = [], scheduled = [];
   exercises.forEach((ex) => {
-    if (ex.wordId == null) { rest.push(ex); return; }
+    if (ex.wordId == null) { untracked.push(ex); return; }
     const p = wordProgress[ex.wordId];
     if (!p) { fresh.push(ex); return; }
     if (p.nextReviewAt && new Date(p.nextReviewAt).getTime() <= now) due.push(ex);
-    // else: scheduled for later, leave out of this batch
+    else scheduled.push(ex);
   });
   due.sort((a, b) => new Date(wordProgress[a.wordId].nextReviewAt) - new Date(wordProgress[b.wordId].nextReviewAt));
-  const pool = [...due, ...shuffle(fresh), ...shuffle(rest)];
+
+  const seen = new Set();
+  const firstPerWord = [], repeats = [];
+  shuffle(fresh).forEach((ex) => {
+    if (seen.has(ex.wordId)) repeats.push(ex);
+    else { seen.add(ex.wordId); firstPerWord.push(ex); }
+  });
+
+  const pool = [...due, ...firstPerWord, ...repeats, ...shuffle(untracked), ...shuffle(scheduled)];
   return pool.slice(0, limit);
 }
 
@@ -659,12 +738,22 @@ async function renderLesson(slug) {
     return;
   }
 
-  const wordProgress = Storage.loadWordProgress(state.user.username);
-  const items = pickBatch(exercises, wordProgress, 10).map((ex) => withGrammarRule(content, ex));
-  if (!items.length) {
-    app.innerHTML = `<div class="card"><h1>${escapeHtml(category.name)}</h1><p class="muted">Alles in deze les staat al gepland voor een latere herhaling. Kom later terug, of kies een andere les.</p><a href="#/dashboard">Terug naar lessen</a></div>`;
+  const path = computePath(content, state.user.username);
+  const node = path.bySlug.get(slug);
+  if (node && !node.unlocked) {
+    app.innerHTML = '';
+    app.appendChild(el(`
+      <div class="card">
+        <h1>🔒 ${escapeHtml(category.name)}</h1>
+        <p class="muted">Deze les is nog vergrendeld. ${escapeHtml(lockReason(path, slug))}</p>
+        <a href="#/dashboard">Terug naar lessen</a>
+      </div>
+    `));
     return;
   }
+
+  const wordProgress = Storage.loadWordProgress(state.user.username);
+  const items = pickBatch(exercises, wordProgress, 10).map((ex) => withGrammarRule(content, ex));
 
   const session = { category, items, index: 0, correctCount: 0 };
   renderExercise(session);
@@ -911,6 +1000,20 @@ async function renderExam(level) {
   if (!LEVEL_ORDER.includes(level)) {
     app.appendChild(el(`<div class="card"><h1>Onbekend niveau</h1><a href="#/dashboard">Terug naar lessen</a></div>`));
     return;
+  }
+  const content = await ensureContentLoaded();
+  if (content) {
+    const levelState = computePath(content, state.user.username).byLevel.get(level);
+    if (levelState && !levelState.unlocked) {
+      app.appendChild(el(`
+        <div class="card">
+          <h1>🔒 Niveautoets ${level}</h1>
+          <p class="muted">Niveau ${level} is nog vergrendeld. Rond eerst niveau ${levelState.prevLevel} af: maak de toets van ${levelState.prevLevel}, of oefen alle lessen van dat niveau.</p>
+          <a href="#/dashboard">Terug naar lessen</a>
+        </div>
+      `));
+      return;
+    }
   }
   if (!navigator.onLine) {
     app.appendChild(el(`
