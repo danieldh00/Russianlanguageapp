@@ -4,6 +4,35 @@ Alle merkbare wijzigingen aan de "Russisch Leren" add-on staan hier, nieuwste
 versie bovenaan. Dit bestand wordt door Home Assistant Supervisor automatisch
 getoond onder de "Changelog"-knop van de add-on.
 
+## 1.8.0
+
+- Nieuw: **Leesverhalen** (Lessen → Leesverhalen). Twaalf korte verhalen,
+  twee per niveau van A1 tot C2, die meegroeien met je Russisch: van een
+  simpele voorstelling tot een literaire terugkeer naar het ouderlijk huis
+  en een essay over taal en macht. Tik op een zin voor de Nederlandse
+  vertaling, op een los woord voor de betekenis (met een gok naar het
+  grondwoord bij verbogen vormen), of laat het hele verhaal voorlezen.
+  Elk verhaal sluit af met begripsvragen mét uitleg; een verhaal levert
+  10 XP op plus 5 XP per goed antwoord, eenmalig — herlezen mag altijd,
+  maar levert geen XP meer op. Werkt volledig offline.
+- Nieuw: **Weekdoel met streak-vriezers** (Instellingen → Weekdoel). Kies
+  hoeveel XP en hoeveel dagen per week je wilt halen (250 tot 2000 XP,
+  3 tot 7 dagen). Bovenaan het lessenscherm staat een ring met je
+  voortgang en een balk met de zeven dagen van deze week. Elke volle week
+  op rij levert een vriezer op; mis je daarna een dag, dan vangt de
+  vriezer die automatisch op en blijft je reeks staan. Meerdere dagen
+  achter elkaar missen wordt niet opgevangen. Het weekdoel hoort bij je
+  account en geldt dus op al je toestellen.
+- Nieuw: **Schrijven met de hand** (Lessen → Schrijven met de hand). Trek
+  de Cyrillische drukletters na op het scherm met vinger of muis. De app
+  kijkt na of je binnen de vorm blijft én of je de hele letter hebt
+  geraakt, en geeft een percentage terug. Een ronde van acht letters
+  levert 20 XP op, met 10 XP bonus vanaf gemiddeld 80%.
+- De Home Assistant-sensor heeft er attributen bij gekregen: `weekly_xp`,
+  `weekly_goal_xp`, `weekly_days`, `weekly_goal_days`,
+  `weekly_goal_reached` en `streak_freezes`. De dagelijkse
+  HA-herinnering vermeldt hoeveel XP je nog van je weekdoel af zit.
+
 ## 1.7.2
 
 - XP voor activiteiten die geen oefenvraag zijn: een ronde

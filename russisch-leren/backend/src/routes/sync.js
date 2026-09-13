@@ -54,7 +54,7 @@ router.post('/activities', requireAuth, (req, res) => {
   let xpGained = 0;
   for (const item of items) {
     if (!item || !item.clientId || typeof item.kind !== 'string') { failed.push({ clientId: item && item.clientId, error: 'clientId en kind zijn verplicht.' }); continue; }
-    const xp = activityXp(item.kind, item.detail);
+    const xp = activityXp(item.kind, item.detail, userId);
     if (xp == null) { failed.push({ clientId: item.clientId, error: 'Onbekende activiteit.' }); continue; }
     const ts = item.clientTimestamp && !Number.isNaN(Date.parse(item.clientTimestamp)) ? new Date(item.clientTimestamp) : new Date();
     const r = insert.run(userId, item.kind, xp, item.detail ? JSON.stringify(item.detail).slice(0, 500) : null, String(item.clientId), ts.toISOString().slice(0, 19).replace('T', ' '));

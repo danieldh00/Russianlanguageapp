@@ -152,6 +152,29 @@ CREATE TABLE IF NOT EXISTS study_days (
   PRIMARY KEY (user_id, study_date)
 );
 
+-- Per-account learning goal and the streak freezes they hold. Kept on the
+-- server (not in localStorage) so the goal and the freeze balance follow the
+-- learner to every device they log in on.
+CREATE TABLE IF NOT EXISTS user_prefs (
+  user_id INTEGER PRIMARY KEY REFERENCES users(id),
+  weekly_goal_xp INTEGER NOT NULL DEFAULT 500,
+  weekly_goal_days INTEGER NOT NULL DEFAULT 5,
+  freezes INTEGER NOT NULL DEFAULT 0,
+  last_freeze_streak INTEGER NOT NULL DEFAULT 0,
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- A spent streak freeze: the learner missed this day, and a freeze they had
+-- saved up covered it, so the streak survives. Recorded rather than computed
+-- on the fly, so the same day can never be covered twice and the streak stays
+-- reproducible.
+CREATE TABLE IF NOT EXISTS streak_freezes (
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  freeze_date TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (user_id, freeze_date)
+);
+
 CREATE INDEX IF NOT EXISTS idx_words_category ON words(category_id);
 CREATE INDEX IF NOT EXISTS idx_exercises_category ON exercises(category_id);
 CREATE INDEX IF NOT EXISTS idx_exercises_word ON exercises(word_id);

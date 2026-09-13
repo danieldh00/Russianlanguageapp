@@ -1,12 +1,18 @@
 # Russisch Leren
 
 Russisch leren van A1 tot C2 (moedertaalniveau) met voortgangsregistratie,
-spaced repetition en uitleg bij fouten. 125 lessen, ±1.400 woorden en
-±4.800 oefeningen: woordenschat, grammatica, typen, zinnen bouwen, luisteren
-en lezen. Elk niveau sluit je af met een toets van 30 vragen (80% om te
-slagen) die per fout uitlegt wat er misging. Werkt volledig offline zodra
-je één keer bent ingelogd (de toetsen zelf niet), en synchroniseert je
-voortgang tussen toestellen (bv. iPhone en iPad).
+spaced repetition en uitleg bij fouten. 126 lessen, ±1.400 woorden en
+±8.000 oefeningen: woordenschat, grammatica, typen, zinnen bouwen, luisteren,
+lezen, klemtoon en plaatjes. Elk niveau sluit je af met een toets van 30
+vragen (80% om te slagen) die per fout uitlegt wat er misging. Werkt volledig
+offline zodra je één keer bent ingelogd (de toetsen en de AI-onderdelen niet),
+en synchroniseert je voortgang tussen toestellen (bv. iPhone en iPad).
+
+Naast het lessenpad zitten er losse oefenvormen in: dagelijkse herhaling over
+alle lessen heen, je eigen fouten opnieuw, AI-rollenspellen, een koppelspel,
+dictee van getallen en tijden, een zakboekje met noodzinnen, de ЙЦУКЕН-
+toetsenbordtrainer, twaalf leesverhalen met begripsvragen en een
+schrijftrainer voor de Cyrillische letters.
 
 ## Installatie
 
@@ -39,8 +45,20 @@ staat er als `notify.mobile_app_…`; of kies de dashboardmelding). Zet in
 de add-on-configuratie `public_url` op het adres waarop je de app opent
 (bv. `https://russisch.jouwdomein.nl`), dan opent de melding direct de
 app. De add-on publiceert ook `sensor.russisch_leren_<naam>` met het aantal
-woorden dat op herhaling wacht (attributen: reeks, XP, niveau, vandaag
-geoefend), handig voor dashboards en automatiseringen.
+woorden dat op herhaling wacht, handig voor dashboards en automatiseringen.
+Attributen: `streak`, `longest_streak`, `xp`, `level`, `level_title`,
+`words_mastered`, `weekly_xp`, `weekly_goal_xp`, `weekly_days`,
+`weekly_goal_days`, `weekly_goal_reached`, `streak_freezes`,
+`studied_today` en `last_studied`.
+
+## Weekdoel en streak-vriezers
+
+Onder ⚙️ Instellingen → Weekdoel stel je in hoeveel XP en hoeveel dagen per
+week je wilt halen. Het doel loopt van maandag tot en met zondag en hoort bij
+je account, niet bij één toestel. Houd je een volle week je reeks vast, dan
+verdien je een vriezer (maximaal twee tegelijk). Mis je daarna één dag, dan
+wordt die automatisch opgevangen en blijft je reeks staan; meerdere dagen
+achter elkaar missen wordt niet opgevangen.
 
 ## Bereikbaar maken van buiten je netwerk
 

@@ -846,3 +846,83 @@ select#dialogue-level { padding: 9px 12px; border: 1.5px solid var(--glass-borde
     background: var(--surface);
   }
 }
+
+/* ---------- weekly goal card ---------- */
+.goal-card { margin-bottom: 18px; }
+.goal-card.reached { border-color: var(--success); }
+.goal-main { display: flex; align-items: center; gap: 18px; }
+.goal-ring { position: relative; flex: 0 0 auto; width: 80px; height: 80px; }
+.goal-ring svg { transform: rotate(-90deg); display: block; }
+.goal-ring-track { fill: none; stroke: var(--glass-border); stroke-width: 9; }
+.goal-ring-fill { fill: none; stroke: var(--accent); stroke-width: 9; stroke-linecap: round; transition: stroke-dasharray .5s ease; }
+.goal-ring-fill.empty { stroke: transparent; }
+.goal-card.reached .goal-ring-fill { stroke: var(--success); }
+.goal-ring-label {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-size: 0.9rem; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums;
+}
+.goal-text { flex: 1; min-width: 0; }
+.goal-text h2 { margin: 0 0 4px; font-size: 1.05rem; }
+.goal-numbers { margin: 0 0 8px; font-size: 0.86rem; }
+.goal-days { display: flex; gap: 6px; flex-wrap: wrap; }
+.goal-day {
+  width: 26px; height: 26px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  font-size: 0.7rem; font-weight: 700; border: 1.5px solid var(--glass-border); color: var(--muted);
+  background: var(--glass-bg);
+}
+.goal-day.done { background: var(--accent); border-color: var(--accent); color: #fff; }
+.goal-day.frozen { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); }
+.goal-day.missed { opacity: 0.55; }
+.goal-day.future { border-style: dashed; }
+.goal-day.today { box-shadow: 0 0 0 3px var(--accent-soft); }
+.goal-freeze { margin: 12px 0 0; font-size: 0.82rem; line-height: 1.5; }
+
+/* ---------- graded readers ---------- */
+.story-card { display: block; width: 100%; text-align: left; font-family: inherit; cursor: pointer; margin-bottom: 14px; }
+.story-card.read { border-color: var(--success); }
+.story-card h2 { margin: 0; font-size: 1.1rem; font-family: inherit; }
+.story-card-nl { margin: 2px 0 6px; font-size: 0.92rem; color: var(--accent-ink); font-weight: 600; }
+.story-card p { font-size: 0.86rem; line-height: 1.45; margin: 0 0 4px; }
+.story-meta { font-variant-numeric: tabular-nums; }
+.story-controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 12px 0 16px; }
+.story-para { margin-bottom: 14px; }
+.story-ru { font-family: inherit; font-size: 1.16rem; line-height: 1.75; margin: 0; }
+.story-word { cursor: pointer; border-radius: 4px; padding: 0 1px; }
+.story-word:hover, .story-word:active { background: var(--accent-soft); }
+.story-para-tools { display: flex; gap: 10px; align-items: center; margin-top: 10px; flex-wrap: wrap; }
+.story-para-tools .secondary { padding: 6px 14px; font-size: 0.8rem; }
+.story-nl { margin: 10px 0 0; font-size: 0.95rem; line-height: 1.6; }
+.story-hint {
+  margin: 10px 0 0; font-size: 0.9rem; font-family: inherit; padding: 8px 12px;
+  background: var(--accent-soft); color: var(--accent-ink); border-radius: 12px;
+}
+.story-hint.unknown { background: var(--surface-2); color: var(--muted); }
+.story-glossary { margin-top: 18px; }
+.story-question { font-family: inherit; }
+.story-review-row { padding: 10px 0; border-bottom: 1px solid var(--glass-border); }
+.story-review-row:last-child { border-bottom: none; }
+.story-review-q { margin: 0 0 2px; font-size: 0.95rem; font-weight: 600; }
+.story-review-row.ok .story-review-q { color: var(--success); }
+.story-review-row.bad .story-review-q { color: var(--error); }
+.story-review-a { margin: 0 0 4px; font-size: 0.88rem; font-family: inherit; }
+.story-review-row .explanation { font-size: 0.84rem; }
+
+/* ---------- handwriting trainer ---------- */
+.hw-letter-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin: 6px 0 12px; }
+.hw-letter-head h2 { margin: 0; font-family: inherit; font-size: 1.8rem; letter-spacing: 0.04em; }
+.hw-letter-head p { margin: 4px 0 0; font-size: 0.85rem; line-height: 1.45; }
+#hw-canvas {
+  display: block; width: 100%; max-width: 320px; aspect-ratio: 300 / 260; margin: 0 auto;
+  border: 1.5px solid var(--glass-border); border-radius: 16px; background: var(--glass-bg-strong);
+  touch-action: none; cursor: crosshair;
+}
+.hw-buttons { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 14px; }
+.hw-buttons button { padding: 10px 18px; font-size: 0.9rem; }
+
+@media (max-width: 480px) {
+  .goal-main { gap: 14px; }
+  .goal-ring, .goal-ring svg { width: 66px; height: 66px; }
+  .goal-day { width: 23px; height: 23px; font-size: 0.65rem; }
+  .story-ru { font-size: 1.08rem; }
+  .hw-letter-head h2 { font-size: 1.5rem; }
+}

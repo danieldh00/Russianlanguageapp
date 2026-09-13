@@ -7,8 +7,8 @@ is en welke grammaticaregel erachter zit.
 ## Functionaliteit
 
 - **Accounts**: registratie/login (bcrypt-gehashte wachtwoorden, sessie-cookie).
-- **Lessen**: 125 lessen, Nederlands ↔ Russisch, van **A1 tot en met C2**
-  (moedertaalniveau) — ±1.400 woorden, ±4.800 oefeningen en 47
+- **Lessen**: 126 lessen, Nederlands ↔ Russisch, van **A1 tot en met C2**
+  (moedertaalniveau) — ±1.400 woorden, ±8.000 oefeningen en 48
   grammaticaregels. Het dashboard groepeert de lessen per niveau, met een
   voortgangsbalk per niveau en de niveautoets als laatste stap.
 
@@ -116,6 +116,23 @@ is en welke grammaticaregel erachter zit.
   betekenisverschil за́мок/замо́к) plus een gegenereerde klemtoonoefening
   bij elk woord met bekende klemtoon (type `stress`: kies de juiste
   accentpositie; de enige oefening waar het accentteken zelf telt).
+- **Leesverhalen**: twaalf korte verhalen, twee per niveau van A1 tot C2, met
+  per alinea een verborgen Nederlandse vertaling, een woordenlijst en een
+  luisterknop. Tik op een los woord voor de betekenis; bij een verbogen vorm
+  raadt de app het grondwoord op basis van de gedeelde stam en zegt erbij dat
+  het een gok is. Elk verhaal sluit af met begripsvragen mét uitleg
+  (10 XP + 5 XP per goed antwoord, eenmalig per verhaal — de server kijkt
+  of dit verhaal al eens is afgerond). Reist mee in de offline inhoudsbundel.
+- **Weekdoel en streak-vriezers**: een doel in XP én dagen per week (maandag
+  t/m zondag), zichtbaar als ring en dagbalk boven het lessenpad. Elke volle
+  week reeks levert een vriezer op (maximaal twee); één gemiste dag wordt
+  daarmee automatisch opgevangen, meerdere dagen achter elkaar niet. Het doel
+  hoort bij het account en geldt dus op elk toestel.
+- **Schrijftrainer**: trek de Cyrillische drukletters na op een canvas. De
+  score combineert nauwkeurigheid (hoeveel van je inkt binnen de letter valt)
+  en dekking (hoeveel van de letter je hebt geraakt), berekend uit twee
+  maskers, dus zowel krabbelen als één veeg scoort laag. Acht letters per
+  ronde: 20 XP, met 10 XP bonus vanaf gemiddeld 80%.
 - **Voortgangsdashboard**: nauwkeurigheid, aantal geoefende/onder-de-knie
   woorden per les, niveau/streak/badges, en overzichten van de vaakst gemaakte
   fouten en recente fouten (met uitleg).
@@ -160,6 +177,9 @@ russisch-leren/
       schema.sql          Databaseschema
       srs.js               Spaced-repetition-planner (server)
       gamification.js       XP/niveau-berekening, leer-reeks, badge-definities
+      xp.js                  Eén XP-berekening voor voortgang, ranglijst en HA-sensor
+      goals.js                Weekdoel (XP/dagen sinds maandag) en streak-vriezers
+      ha.js                    Home Assistant: notify-doelen, meldingen en sensor per leerling
       grading.js            Antwoorden normaliseren en vergelijken (ё/е, klemtoon, hoofdletters)
       push.js               Web Push: VAPID-sleutels, dagelijkse herinneringsplanner
       levels.js             CEFR-niveaus A1..C2 met titels en omschrijvingen
@@ -179,6 +199,7 @@ russisch-leren/
         exams.js                      Niveautoetsen: samenstellen, nakijken, certificeringen
         push.js                       Push-abonnementen en herinneringsinstellingen per toestel
         words.js                      Vormentabellen per woord (Open Russian)
+        ha.js                          Home Assistant-status, meldingsinstellingen en testmelding
     seed/
       seed.js            Vult/actualiseert de database met lesinhoud (toevoegend, bij elke start)
       data/
@@ -189,6 +210,8 @@ russisch-leren/
         levels/vocab-b1.js .. vocab-c2.js   Frequentie-gebaseerde woordenschatpakketten per niveau
         examples/a.js .. c2.js          Voorbeeldzin per woord ({ 'вода': [ru, nl] })
         pictures.js                     Emoji-plaatje per concreet woord ({ 'яблоко': '🍎' })
+        phrasebook.js                   Zakboekje: noodzinnen per situatie
+        stories.js                      Twaalf leesverhalen A1..C2 met woordenlijst en begripsvragen
         generated/openrussian-forms.json   Klemtoon + woordvormen uit Open Russian (gegenereerd)
         translit.js      Transliteratie en klemtoon-hulpfuncties
         SOURCES.md       Bronvermelding en licenties van de open datasets
@@ -467,8 +490,10 @@ Alle routes onder `/api`, JSON in/uit, sessie-cookie voor authenticatie.
 | GET | `/progress/words` | Volledige per-woord SRS-status (voor het lokale voortgangs-mirror op een toestel) |
 | GET | `/content` | Volledige lesinhoud incl. juiste antwoorden/uitleg (voor offline gebruik op een toestel) |
 | POST | `/sync/attempts` | Batch van offline gegeven antwoorden verwerken (idempotent via `clientId`) |
-| POST | `/sync/activities` | XP-activiteiten (toetsenbordronde, dictee, gespreksbeurt); server bepaalt de XP, dag telt als oefendag |
-| GET | `/progress/stats` | XP, niveau, leer-reeks ("streak") en badges |
+| POST | `/sync/activities` | XP-activiteiten (toetsenbordronde, dictee, gespreksbeurt, gelezen verhaal, schrijfronde); server bepaalt de XP, dag telt als oefendag |
+| GET | `/progress/stats` | XP, niveau, leer-reeks ("streak"), vriezers, weekdoel en badges |
+| GET | `/progress/goal` | Weekdoel (XP en dagen sinds maandag) + de toegestane keuzes |
+| POST | `/progress/goal` | Weekdoel instellen (`{ weeklyXp, weeklyDays }`; onbekende waarden worden genegeerd) |
 | POST | `/ai/explain` | Diepere AI-uitleg bij één fout antwoord (503 als er geen `ANTHROPIC_API_KEY` is ingesteld) |
 | GET | `/leaderboard` | Alle gebruikers gerangschikt op XP, met hoogst behaalde toetsniveau, streak en onder-de-knie woorden |
 | GET | `/exams` | Status per CEFR-niveau: aantal lessen/vragen, eerdere pogingen, behaald of niet |

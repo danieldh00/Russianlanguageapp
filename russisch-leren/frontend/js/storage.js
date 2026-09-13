@@ -82,6 +82,18 @@ const Storage = {
     Storage.saveActivities(username, Storage.loadActivities(username).filter((it) => !idSet.has(it.clientId)));
   },
 
+  // which stories have been read, and with what comprehension score:
+  // { [storyId]: { score, total, at } }. Local only -- the XP for reading is
+  // what travels to the server; this just marks the cards as read.
+  loadStories(username) { return readJSON(`ru:${username}:stories`, {}) || {}; },
+  markStoryRead(username, storyId, score, total) {
+    const all = Storage.loadStories(username);
+    const prev = all[storyId];
+    // keep the best score, so re-reading a story can never make the card look worse
+    if (!prev || score >= prev.score) all[storyId] = { score, total, at: new Date().toISOString() };
+    writeJSON(`ru:${username}:stories`, all);
+  },
+
   // device-level preferences (speech rate/voice, ...): not tied to an account
   loadSettings() { return readJSON('ru:settings', {}) || {}; },
   saveSettings(settings) { writeJSON('ru:settings', settings); },

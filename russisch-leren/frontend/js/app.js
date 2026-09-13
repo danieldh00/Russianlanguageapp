@@ -2,7 +2,7 @@ const state = { user: null, syncing: false, pendingCount: 0 };
 let syncInFlight = false;
 
 // the content bundle shape this client understands (see /api/content)
-const CONTENT_SCHEMA_VERSION = 4;
+const CONTENT_SCHEMA_VERSION = 5;
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
@@ -357,7 +357,7 @@ const NAV_ITEMS = [
 function currentRouteSection() {
   const route = (location.hash || '#/dashboard').split('/')[1] || 'dashboard';
   // a lesson or exam screen is reached from, and belongs to, the "Lessen" tab
-  return ['lesson', 'exam', 'practice', 'review', 'dialogue', 'keyboard', 'phrasebook', 'dictation', 'match'].includes(route) ? 'dashboard' : route;
+  return ['lesson', 'exam', 'practice', 'review', 'dialogue', 'keyboard', 'phrasebook', 'dictation', 'match', 'stories', 'story', 'handwriting'].includes(route) ? 'dashboard' : route;
 }
 
 function renderNav() {
@@ -447,6 +447,9 @@ async function router() {
   if (route === 'phrasebook') return renderPhrasebook();
   if (route === 'dictation') return renderDictation();
   if (route === 'match') return renderMatchGame();
+  if (route === 'stories') return renderStoryList();
+  if (route === 'story') return renderStory(param);
+  if (route === 'handwriting') return renderHandwriting();
   if (route === 'exam') return renderExam((param || '').toUpperCase());
   if (route === 'progress') return renderProgress();
   if (route === 'settings') return renderSettings();
@@ -654,6 +657,7 @@ async function renderDashboard() {
       <h1>Jouw pad door het Russisch</h1>
       <p class="muted">Van A1 tot C2. Elke les opent zodra je de vorige helemaal hebt geoefend; een nieuw niveau opent na de toets (of na alle lessen) van het niveau ervoor. Alles werkt ook zonder internet, behalve de toetsen.</p>
       <div class="level-jump" id="level-jump"></div>
+      <div id="goal-slot"></div>
       <div id="practice-slot"></div>
       <div id="levels"></div>
     </div>
@@ -689,7 +693,18 @@ async function renderDashboard() {
   tool('dictation-card', '🔢', 'Getallen & tijd', 'Luister naar prijzen, tijden, datums en telefoonnummers en typ wat je hoort — het eerste wat misgaat in een winkel of taxi.', null, '#/dictation');
   tool('phrasebook-card', '📕', 'Zakboekje', 'Per situatie de zinnen die je écht nodig hebt — apotheek, noodgeval, taxi, hotel — groot, met uitspraak, ook offline.', null, '#/phrasebook');
   tool('keyboard-card', '⌨️', 'Toetsenbord ЙЦУКЕН', 'Leer blind typen op de Russische indeling: woorden en zinnen uit de lessen, met de toets die je zoekt uitgelicht.', null, '#/keyboard');
+  const storiesRead = Object.keys(Storage.loadStories(username)).length;
+  const storyTotal = (content.stories || []).length;
+  if (storyTotal) {
+    tool('stories-card', '📖', 'Leesverhalen',
+      `Korte verhalen van A1 tot C2. Tik op een zin voor de vertaling, op een woord voor de betekenis, en beantwoord daarna de begripsvragen.`,
+      `${storiesRead}/${storyTotal}`, '#/stories');
+  }
+  tool('handwriting-card', '✍️', 'Schrijven met de hand', 'Trek de Cyrillische letters na op het scherm. De app kijkt na hoe nauwkeurig je bent — schrijven laat de vorm pas echt beklijven.', null, '#/handwriting');
   wrapper.querySelector('#practice-slot').appendChild(tools);
+
+  const goalCard = renderWeeklyGoalCard();
+  if (goalCard) wrapper.querySelector('#goal-slot').appendChild(goalCard);
 
   const jump = wrapper.querySelector('#level-jump');
   const levelsRoot = wrapper.querySelector('#levels');
@@ -2393,6 +2408,721 @@ async function renderMatchGame() {
   }
 }
 
+// ---------- weekly goal + streak freezes ----------
+
+const WEEKDAY_LETTERS = ['M', 'D', 'W', 'D', 'V', 'Z', 'Z'];
+
+function addDays(isoDate, n) {
+  const d = new Date(isoDate + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+// The card at the top of the lesson path: a ring for the XP goal, seven dots
+// for the days of this week, and how many streak freezes are in the bank.
+function renderWeeklyGoalCard() {
+  const stats = Storage.loadStats(state.user.username);
+  const w = stats && stats.weekly;
+  if (!w) return null;
+
+  const radius = 34;
+  const circumference = 2 * Math.PI * radius;
+  const pct = Math.max(0, Math.min(100, w.xpPct || 0));
+  const dash = (pct / 100) * circumference;
+  const doneDays = new Set(w.dayDates || []);
+  const frozenDays = new Set(w.frozenDates || []);
+  const today = new Date().toISOString().slice(0, 10);
+
+  const card = el(`
+    <div class="card goal-card ${w.reached ? 'reached' : ''}">
+      <div class="goal-main">
+        <div class="goal-ring">
+          <svg viewBox="0 0 80 80" width="80" height="80" aria-hidden="true">
+            <circle class="goal-ring-track" cx="40" cy="40" r="${radius}"></circle>
+            <circle class="goal-ring-fill ${dash > 0 ? '' : 'empty'}" cx="40" cy="40" r="${radius}"
+              stroke-dasharray="${dash.toFixed(1)} ${(circumference - dash).toFixed(1)}"></circle>
+          </svg>
+          <span class="goal-ring-label">${pct}%</span>
+        </div>
+        <div class="goal-text">
+          <h2>${w.reached ? '🎉 Weekdoel gehaald' : '🎯 Weekdoel'}</h2>
+          <p class="muted goal-numbers"><strong>${w.xp}</strong> van ${w.goalXp} XP deze week &middot; <strong>${w.days}</strong> van ${w.goalDays} dagen geoefend</p>
+          <div class="goal-days" id="goal-days"></div>
+        </div>
+      </div>
+      <p class="muted goal-freeze" id="goal-freeze"></p>
+    </div>
+  `);
+
+  const daysEl = card.querySelector('#goal-days');
+  for (let i = 0; i < 7; i++) {
+    const date = addDays(w.weekStart, i);
+    const frozen = frozenDays.has(date);
+    const done = doneDays.has(date);
+    const cls = frozen ? 'frozen' : done ? 'done' : date > today ? 'future' : 'missed';
+    const dot = el(`<span class="goal-day ${cls} ${date === today ? 'today' : ''}" title="${date}">${frozen ? '❄' : WEEKDAY_LETTERS[i]}</span>`);
+    daysEl.appendChild(dot);
+  }
+
+  const freezeEl = card.querySelector('#goal-freeze');
+  const freezes = stats.freezes || 0;
+  const yesterday = addDays(today, -1);
+  const parts = [];
+  if (stats.freezeSpentOn === yesterday) parts.push('❄️ Een vriezer heeft gisteren opgevangen: je reeks loopt gewoon door.');
+  parts.push(freezes
+    ? `❄️ ${freezes} ${freezes === 1 ? 'vriezer' : 'vriezers'} op zak. Eén gemiste dag wordt automatisch opgevangen.`
+    : 'Nog geen vriezer. Elke volle week op rij levert er één op, waarmee één gemiste dag je reeks niet breekt.');
+  freezeEl.innerHTML = parts.map((p) => escapeHtml(p)).join('<br>');
+  return card;
+}
+
+// Settings card: how much XP and how many days per week you aim for.
+function renderGoalSettingsCard() {
+  const card = el(`
+    <div class="card">
+      <h2>🎯 Weekdoel</h2>
+      <p class="muted">Je doel loopt van maandag tot en met zondag en telt alle XP mee: oefeningen, toetsen, spelletjes en verhalen. Houd je het vol, dan verdien je elke volle week een vriezer die één gemiste dag opvangt. Dit doel hoort bij je account en geldt dus op al je toestellen.</p>
+      <div class="setting-row">
+        <label for="goal-xp">XP per week</label>
+        <select id="goal-xp"></select>
+      </div>
+      <div class="setting-row">
+        <label for="goal-days-sel">Dagen per week</label>
+        <select id="goal-days-sel"></select>
+      </div>
+      <p class="muted setting-hint" id="goal-status"></p>
+    </div>
+  `);
+  const xpSel = card.querySelector('#goal-xp');
+  const daysSel = card.querySelector('#goal-days-sel');
+  const status = card.querySelector('#goal-status');
+  const XP_LABELS = { 250: '250 XP — rustig aan (ongeveer 25 goede antwoorden)', 500: '500 XP — standaard', 1000: '1000 XP — stevig tempo', 2000: '2000 XP — intensief' };
+
+  function fill(w) {
+    xpSel.innerHTML = '';
+    (w.xpChoices || [250, 500, 1000, 2000]).forEach((v) => {
+      xpSel.appendChild(el(`<option value="${v}" ${v === w.goalXp ? 'selected' : ''}>${escapeHtml(XP_LABELS[v] || v + ' XP')}</option>`));
+    });
+    daysSel.innerHTML = '';
+    (w.dayChoices || [3, 4, 5, 6, 7]).forEach((v) => {
+      daysSel.appendChild(el(`<option value="${v}" ${v === w.goalDays ? 'selected' : ''}>${v} ${v === 1 ? 'dag' : 'dagen'}</option>`));
+    });
+    status.textContent = `Deze week: ${w.xp} XP op ${w.days} ${w.days === 1 ? 'dag' : 'dagen'}.`;
+  }
+
+  async function save() {
+    status.textContent = 'Opslaan…';
+    try {
+      const w = await api('/progress/goal', { method: 'POST', body: { weeklyXp: Number(xpSel.value), weeklyDays: Number(daysSel.value) } });
+      fill(w);
+      status.textContent = `Opgeslagen. Deze week: ${w.xp} van ${w.goalXp} XP op ${w.days} van ${w.goalDays} dagen.`;
+      await pullStats().catch(() => {});
+    } catch (e) {
+      status.textContent = 'Opslaan lukte niet. Probeer het opnieuw zodra je online bent.';
+    }
+  }
+
+  xpSel.addEventListener('change', save);
+  daysSel.addEventListener('change', save);
+
+  api('/progress/goal')
+    .then(fill)
+    .catch(() => { status.textContent = 'Het weekdoel is alleen online in te stellen.'; });
+  return card;
+}
+
+// ---------- graded readers ----------
+
+function storiesOf(content) {
+  return content.stories || [];
+}
+
+// Word -> translation, for tapping a word in a story: the story's own
+// glossary first (those entries are the ones chosen for this text), then the
+// full dictionary from the content bundle as a fallback.
+function storyLookup(content, story) {
+  const map = new Map();
+  const norm = (s) => s.toLowerCase().replace(/[̀-ͯ]/g, '').replace(/ё/g, 'е').trim();
+  for (const w of Object.values(content.words || {})) {
+    const key = norm(w.ru);
+    if (key && !map.has(key)) map.set(key, w.nl);
+  }
+  for (const [ru, nl] of story.glossary || []) map.set(norm(ru), nl);
+
+  // Russian inflects heavily, so an exact hit on the headword is the
+  // exception. Index the dictionary by its first four letters and, when the
+  // exact form is unknown, offer the headword with the longest shared stem --
+  // labelled as a guess, because a shared stem is not proof of a shared word.
+  const byStem = new Map();
+  for (const key of map.keys()) {
+    if (key.length < 4 || key.includes(' ')) continue;
+    const stem = key.slice(0, 4);
+    if (!byStem.has(stem)) byStem.set(stem, []);
+    byStem.get(stem).push(key);
+  }
+  const sharedPrefix = (a, b) => {
+    let i = 0;
+    while (i < a.length && i < b.length && a[i] === b[i]) i++;
+    return i;
+  };
+
+  return (word) => {
+    const key = norm(word);
+    const exact = map.get(key);
+    if (exact) return { nl: exact, exact: true };
+    if (key.length < 4) return null;
+    let best = null;
+    let bestLen = 0;
+    for (const candidate of byStem.get(key.slice(0, 4)) || []) {
+      const shared = sharedPrefix(key, candidate);
+      if (shared >= 4 && Math.abs(candidate.length - key.length) <= 4 && shared > bestLen) {
+        best = candidate;
+        bestLen = shared;
+      }
+    }
+    return best ? { nl: map.get(best), exact: false, headword: best } : null;
+  };
+}
+
+async function renderStoryList() {
+  const content = await ensureContentLoaded();
+  if (!content) return renderNoContentMessage();
+  const stories = storiesOf(content);
+  const read = Storage.loadStories(state.user.username);
+
+  app.innerHTML = '';
+  const wrap = el(`
+    <div class="stories">
+      <h1>📖 Leesverhalen</h1>
+      <p class="muted">Korte verhalen die meegroeien met je niveau. Tik op een zin voor de Nederlandse vertaling en op een los woord voor de betekenis. Na elk verhaal volgen begripsvragen die XP opleveren. Werkt offline.</p>
+      <div class="pb-tabs" id="story-tabs"></div>
+      <div id="story-list"></div>
+    </div>
+  `);
+  app.appendChild(wrap);
+
+  const tabs = wrap.querySelector('#story-tabs');
+  const list = wrap.querySelector('#story-list');
+  const levels = LEVEL_ORDER.filter((l) => stories.some((s) => s.level === l));
+  let current = 'ALLE';
+
+  function paint() {
+    tabs.innerHTML = '';
+    list.innerHTML = '';
+    ['ALLE', ...levels].forEach((lvl) => {
+      const t = el(`<button type="button" class="level-pill ${lvl === current ? 'passed' : ''}">${lvl === 'ALLE' ? 'Alle' : lvl}</button>`);
+      t.addEventListener('click', () => { current = lvl; paint(); });
+      tabs.appendChild(t);
+    });
+    const shown = current === 'ALLE' ? stories : stories.filter((s) => s.level === current);
+    for (const s of shown) {
+      const done = read[s.id];
+      const card = el(`
+        <button type="button" class="card story-card ${done ? 'read' : ''}">
+          <div class="row1"><h2>${s.icon} ${escapeHtml(s.title)}</h2><span class="level-badge">${escapeHtml(s.level)}</span></div>
+          <p class="story-card-nl">${escapeHtml(s.titleNl)}</p>
+          <p class="muted">${escapeHtml(s.intro)}</p>
+          <p class="muted story-meta">${s.paragraphs.length} alinea's &middot; ± ${s.minutes} min &middot; ${s.questions.length} vragen${done ? ` &middot; ✓ gelezen, ${done.score}/${done.total} goed` : ''}</p>
+        </button>
+      `);
+      card.addEventListener('click', () => { location.hash = `#/story/${s.id}`; });
+      list.appendChild(card);
+    }
+    if (!shown.length) list.appendChild(el(`<p class="muted">Voor dit niveau staat nog geen verhaal klaar.</p>`));
+  }
+  paint();
+}
+
+async function renderStory(storyId) {
+  const content = await ensureContentLoaded();
+  if (!content) return renderNoContentMessage();
+  const story = storiesOf(content).find((s) => s.id === storyId);
+  if (!story) { location.hash = '#/stories'; return; }
+  const lookup = storyLookup(content, story);
+
+  app.innerHTML = '';
+  const wrap = el(`
+    <div class="story-reader">
+      <a class="secondary-link" href="#/stories">← Alle verhalen</a>
+      <h1>${story.icon} ${escapeHtml(story.title)}</h1>
+      <p class="muted">${escapeHtml(story.titleNl)} &middot; niveau ${escapeHtml(story.level)} &middot; ± ${story.minutes} min lezen</p>
+      <div class="story-controls">
+        <button type="button" class="secondary" id="story-translate">Alle vertalingen tonen</button>
+        <span id="story-listen"></span>
+      </div>
+      <div id="story-body"></div>
+      <div class="card story-glossary">
+        <h2>Woorden om te onthouden</h2>
+        <div class="pb-list" id="story-gloss"></div>
+      </div>
+      <div id="story-quiz"></div>
+    </div>
+  `);
+  app.appendChild(wrap);
+
+  const listenSlot = wrap.querySelector('#story-listen');
+  const wholeText = story.paragraphs.map(([ru]) => ru).join(' ');
+  const listen = renderSpeakButton(wholeText, '🔊 Hele verhaal');
+  if (listen) listenSlot.replaceWith(listen); else listenSlot.remove();
+
+  const body = wrap.querySelector('#story-body');
+  const paraEls = [];
+  story.paragraphs.forEach(([ru, nl], i) => {
+    const p = el(`
+      <div class="card story-para">
+        <p class="story-ru" id="story-ru-${i}"></p>
+        <div class="story-para-tools">
+          <button type="button" class="secondary story-toggle">Vertaling</button>
+          <span class="story-speak"></span>
+        </div>
+        <p class="story-nl muted" hidden></p>
+        <p class="story-hint" hidden></p>
+      </div>
+    `);
+    const ruEl = p.querySelector('.story-ru');
+    const hint = p.querySelector('.story-hint');
+    // Tokenise so each word is tappable while punctuation and spacing stay put.
+    for (const token of ru.split(/(\s+)/)) {
+      if (/^\s+$/.test(token)) { ruEl.appendChild(document.createTextNode(token)); continue; }
+      const bare = token.replace(/^[^\p{L}]+|[^\p{L}]+$/gu, '');
+      if (!bare) { ruEl.appendChild(document.createTextNode(token)); continue; }
+      const [before, after] = token.split(bare);
+      if (before) ruEl.appendChild(document.createTextNode(before));
+      const span = document.createElement('span');
+      span.className = 'story-word';
+      span.textContent = bare;
+      span.addEventListener('click', () => {
+        const hit = lookup(bare);
+        hint.hidden = false;
+        if (!hit) hint.textContent = `${bare} — staat niet in de woordenlijst`;
+        else if (hit.exact) hint.textContent = `${bare} — ${hit.nl}`;
+        else hint.textContent = `${bare} — vermoedelijk een vorm van «${hit.headword}»: ${hit.nl}`;
+        hint.classList.toggle('unknown', !hit);
+      });
+      ruEl.appendChild(span);
+      if (after) ruEl.appendChild(document.createTextNode(after));
+    }
+    p.querySelector('.story-nl').textContent = nl;
+    const sp = renderSpeakButton(ru, '🔊');
+    const slot = p.querySelector('.story-speak');
+    if (sp) slot.replaceWith(sp); else slot.remove();
+    p.querySelector('.story-toggle').addEventListener('click', () => {
+      const nlEl = p.querySelector('.story-nl');
+      nlEl.hidden = !nlEl.hidden;
+    });
+    body.appendChild(p);
+    paraEls.push(p);
+  });
+
+  let allShown = false;
+  wrap.querySelector('#story-translate').addEventListener('click', (e) => {
+    allShown = !allShown;
+    paraEls.forEach((p) => { p.querySelector('.story-nl').hidden = !allShown; });
+    e.currentTarget.textContent = allShown ? 'Vertalingen verbergen' : 'Alle vertalingen tonen';
+  });
+
+  const gloss = wrap.querySelector('#story-gloss');
+  for (const [ru, nl] of story.glossary || []) {
+    const row = el(`<div class="pb-row"><div class="pb-text"><p class="pb-ru"></p><p class="pb-nl muted"></p></div><span class="pb-speak"></span></div>`);
+    row.querySelector('.pb-ru').textContent = ru;
+    row.querySelector('.pb-nl').textContent = nl;
+    const sp = renderSpeakButton(ru, '🔊');
+    if (sp) row.querySelector('.pb-speak').replaceWith(sp); else row.querySelector('.pb-speak').remove();
+    gloss.appendChild(row);
+  }
+
+  renderStoryQuizIntro(story, wrap.querySelector('#story-quiz'));
+}
+
+function renderStoryQuizIntro(story, mount) {
+  mount.innerHTML = '';
+  const card = el(`
+    <div class="card">
+      <h2>Begripsvragen</h2>
+      <p class="muted">${story.questions.length} vragen over de tekst. Je mag terugbladeren in het verhaal; het gaat erom dat je begrijpt wat er staat, niet dat je het uit je hoofd kent.</p>
+      <button type="button" class="primary" id="story-start">Start de vragen</button>
+    </div>
+  `);
+  card.querySelector('#story-start').addEventListener('click', () => runStoryQuiz(story, mount));
+  mount.appendChild(card);
+}
+
+function runStoryQuiz(story, mount) {
+  let index = 0;
+  let score = 0;
+  const given = [];
+
+  function paint() {
+    mount.innerHTML = '';
+    if (index >= story.questions.length) return finish();
+    const q = story.questions[index];
+    const card = el(`
+      <div class="card story-quiz">
+        <div class="exercise-progress"><span>Vraag ${index + 1} van ${story.questions.length}</span><span class="muted">${score} goed</span></div>
+        <div class="prompt-row"><h2 class="story-question"></h2></div>
+        <div class="options" id="story-options"></div>
+        <div id="story-feedback"></div>
+      </div>
+    `);
+    card.querySelector('.story-question').textContent = q.q;
+    const options = card.querySelector('#story-options');
+    const feedback = card.querySelector('#story-feedback');
+    shuffle([...q.options]).forEach((opt) => {
+      const btn = el(`<button type="button" class="option-btn"></button>`);
+      btn.textContent = opt;
+      btn.addEventListener('click', () => {
+        if (options.classList.contains('answered')) return;
+        options.classList.add('answered');
+        const correct = opt === q.answer;
+        if (correct) score++;
+        given.push({ q: q.q, given: opt, answer: q.answer, correct, explanation: q.explanation });
+        [...options.children].forEach((b) => {
+          b.disabled = true;
+          if (b.textContent === q.answer) b.classList.add('correct');
+          else if (b === btn) b.classList.add('wrong');
+        });
+        const fb = el(`
+          <div class="feedback ${correct ? 'correct' : 'incorrect'}">
+            <strong>${correct ? 'Goed!' : `Het juiste antwoord is: ${escapeHtml(q.answer)}`}</strong>
+            <div class="explanation">${escapeHtml(q.explanation)}</div>
+            <button type="button" class="primary" id="story-next" style="margin-top:12px">${index + 1 < story.questions.length ? 'Volgende vraag' : 'Resultaat'}</button>
+          </div>
+        `);
+        fb.querySelector('#story-next').addEventListener('click', () => { index++; paint(); });
+        feedback.appendChild(fb);
+      });
+      options.appendChild(btn);
+    });
+    mount.appendChild(card);
+    card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function finish() {
+    const total = story.questions.length;
+    // A story pays out once; the server enforces this, the badge only has to
+    // tell the same story so the number never comes as a surprise.
+    const reread = !!Storage.loadStories(state.user.username)[story.id];
+    const xp = reread ? 0 : 10 + score * 5;
+    recordActivity('story_finished', { story: story.id, level: story.level, score, total });
+    Storage.markStoryRead(state.user.username, story.id, score, total);
+    const card = el(`
+      <div class="card">
+        <h2>${score === total ? 'Alles goed!' : `${score} van de ${total} goed`} ${xp ? `<span class="xp-gain">+${xp} XP</span>` : ''}</h2>
+        <p class="muted">${reread
+          ? 'Je had dit verhaal al gelezen, dus het levert geen XP meer op — herlezen is wél het beste wat je met een tekst kunt doen.'
+          : score === total
+            ? 'Je hebt de tekst helemaal begrepen. Lees er meteen nog een, of pak er een van een niveau hoger.'
+            : 'Loop de uitleg hieronder na en lees de bijbehorende alinea nog eens terug — daar zit de winst.'}</p>
+        <div class="story-review" id="story-review"></div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">
+          <a class="secondary-link" href="#/stories">Ander verhaal</a>
+          <a class="secondary-link" href="#/dashboard">Terug naar lessen</a>
+        </div>
+      </div>
+    `);
+    const review = card.querySelector('#story-review');
+    for (const g of given) {
+      const row = el(`
+        <div class="story-review-row ${g.correct ? 'ok' : 'bad'}">
+          <p class="story-review-q"></p>
+          <p class="muted story-review-a"></p>
+          <p class="explanation"></p>
+        </div>
+      `);
+      row.querySelector('.story-review-q').textContent = `${g.correct ? '✓' : '✗'} ${g.q}`;
+      row.querySelector('.story-review-a').textContent = g.correct ? g.answer : `Jouw antwoord: ${g.given} · juist: ${g.answer}`;
+      row.querySelector('.explanation').textContent = g.explanation;
+      review.appendChild(row);
+    }
+    mount.innerHTML = '';
+    mount.appendChild(card);
+    card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  paint();
+}
+
+// ---------- handwriting: trace the Cyrillic letters ----------
+
+// name = how the letter is called, sound = what it sounds like in Dutch terms
+const CYRILLIC_LETTERS = [
+  ['А', 'а', 'a', 'als de a in "dag"'],
+  ['Б', 'б', 'be', 'als de b in "boek"'],
+  ['В', 'в', 've', 'als de v/w in "vis"'],
+  ['Г', 'г', 'ge', 'als de g in "goal"'],
+  ['Д', 'д', 'de', 'als de d in "dak"'],
+  ['Е', 'е', 'je', 'als "je" in "jelui"'],
+  ['Ё', 'ё', 'jo', 'als "jo", altijd beklemtoond'],
+  ['Ж', 'ж', 'zje', 'als de g in "garage"'],
+  ['З', 'з', 'ze', 'als de z in "zon"'],
+  ['И', 'и', 'i', 'als de ie in "niet"'],
+  ['Й', 'й', 'korte i', 'als de j in "saai"'],
+  ['К', 'к', 'ka', 'als de k in "kat"'],
+  ['Л', 'л', 'el', 'als de l in "lamp"'],
+  ['М', 'м', 'em', 'als de m in "maan"'],
+  ['Н', 'н', 'en', 'als de n in "nacht"'],
+  ['О', 'о', 'o', 'als de o in "boot", onbeklemtoond bijna "a"'],
+  ['П', 'п', 'pe', 'als de p in "pen"'],
+  ['Р', 'р', 'er', 'rollende r'],
+  ['С', 'с', 'es', 'als de s in "sok"'],
+  ['Т', 'т', 'te', 'als de t in "tak"'],
+  ['У', 'у', 'oe', 'als de oe in "boek"'],
+  ['Ф', 'ф', 'ef', 'als de f in "fiets"'],
+  ['Х', 'х', 'cha', 'als de ch in "lachen"'],
+  ['Ц', 'ц', 'tse', 'als de ts in "tsaar"'],
+  ['Ч', 'ч', 'tsje', 'als de tsj in "Tsjechië"'],
+  ['Ш', 'ш', 'sja', 'als de sj in "sjaal"'],
+  ['Щ', 'щ', 'sjtsja', 'zachte, lange sj'],
+  ['Ъ', 'ъ', 'hard teken', 'geen klank: scheidt de lettergreep'],
+  ['Ы', 'ы', 'y', 'doffe i, achter in de mond'],
+  ['Ь', 'ь', 'zacht teken', 'geen klank: maakt de vorige letter zacht'],
+  ['Э', 'э', 'e', 'als de e in "bed"'],
+  ['Ю', 'ю', 'joe', 'als "joe"'],
+  ['Я', 'я', 'ja', 'als "ja"']
+];
+
+const HW_W = 300;
+const HW_H = 260;
+const HW_ROUND = 8;
+const HW_PASS = 60;
+
+function hwMaskCanvas() {
+  const c = document.createElement('canvas');
+  c.width = HW_W;
+  c.height = HW_H;
+  return c;
+}
+
+function hwDrawGlyph(ctx, char, { dilate = 0 } = {}) {
+  ctx.clearRect(0, 0, HW_W, HW_H);
+  ctx.font = '190px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#000';
+  ctx.fillText(char, HW_W / 2, HW_H / 2);
+  if (dilate) {
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = dilate * 2;
+    ctx.lineJoin = 'round';
+    ctx.strokeText(char, HW_W / 2, HW_H / 2);
+  }
+}
+
+function hwDrawStrokes(ctx, strokes, width) {
+  ctx.clearRect(0, 0, HW_W, HW_H);
+  ctx.strokeStyle = '#000';
+  ctx.lineWidth = width;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  for (const stroke of strokes) {
+    if (!stroke.length) continue;
+    ctx.beginPath();
+    ctx.moveTo(stroke[0].x, stroke[0].y);
+    if (stroke.length === 1) ctx.lineTo(stroke[0].x + 0.1, stroke[0].y);
+    else for (let i = 1; i < stroke.length; i++) ctx.lineTo(stroke[i].x, stroke[i].y);
+    ctx.stroke();
+  }
+}
+
+// How well the traced ink matches the letter, in two halves that catch two
+// different mistakes: accuracy punishes ink outside the letter (scribbling),
+// coverage punishes parts of the letter left undrawn (a single swipe).
+function hwScore(char, strokes) {
+  if (!strokes.some((s) => s.length > 1)) return 0;
+  const mask = (draw) => {
+    const c = hwMaskCanvas();
+    const ctx = c.getContext('2d', { willReadFrequently: true });
+    draw(ctx);
+    return ctx.getImageData(0, 0, HW_W, HW_H).data;
+  };
+  const glyph = mask((ctx) => hwDrawGlyph(ctx, char));
+  const glyphWide = mask((ctx) => hwDrawGlyph(ctx, char, { dilate: 18 }));
+  const inkThin = mask((ctx) => hwDrawStrokes(ctx, strokes, 9));
+  const inkWide = mask((ctx) => hwDrawStrokes(ctx, strokes, 38));
+
+  let inkTotal = 0, inkInside = 0, glyphTotal = 0, glyphCovered = 0;
+  for (let i = 3; i < glyph.length; i += 4) {
+    const g = glyph[i] > 40, gw = glyphWide[i] > 40, it = inkThin[i] > 40, iw = inkWide[i] > 40;
+    if (it) { inkTotal++; if (gw) inkInside++; }
+    if (g) { glyphTotal++; if (iw) glyphCovered++; }
+  }
+  if (!inkTotal || !glyphTotal) return 0;
+  const accuracy = inkInside / inkTotal;
+  const coverage = glyphCovered / glyphTotal;
+  return Math.round(100 * (0.5 * accuracy + 0.5 * coverage));
+}
+
+async function renderHandwriting() {
+  const round = shuffle([...CYRILLIC_LETTERS]).slice(0, HW_ROUND);
+  let index = 0;
+  const scores = [];
+
+  app.innerHTML = '';
+  const wrap = el(`
+    <div class="handwriting">
+      <h1>✍️ Schrijven met de hand</h1>
+      <p class="muted">Trek de letter na met je vinger of muis. De app kijkt na of je binnen de vorm blijft én of je de hele letter hebt gehad. Dit zijn de drukletters; die staan op straat, op formulieren en op het toetsenbord.</p>
+      <div class="card hw-card">
+        <div class="exercise-progress"><span id="hw-progress"></span><span class="muted" id="hw-score"></span></div>
+        <div class="hw-letter-head">
+          <div>
+            <h2 id="hw-letter"></h2>
+            <p class="muted" id="hw-hint"></p>
+          </div>
+          <span id="hw-speak"></span>
+        </div>
+        <canvas id="hw-canvas" width="${HW_W}" height="${HW_H}" aria-label="Schrijfvlak"></canvas>
+        <div class="hw-buttons">
+          <button type="button" class="secondary" id="hw-clear">Wissen</button>
+          <button type="button" class="primary" id="hw-check">Nakijken</button>
+          <button type="button" class="secondary" id="hw-skip">Overslaan</button>
+        </div>
+        <div id="hw-feedback"></div>
+      </div>
+    </div>
+  `);
+  app.appendChild(wrap);
+
+  const canvas = wrap.querySelector('#hw-canvas');
+  const ctx = canvas.getContext('2d');
+  const letterEl = wrap.querySelector('#hw-letter');
+  const hintEl = wrap.querySelector('#hw-hint');
+  const progressEl = wrap.querySelector('#hw-progress');
+  const scoreEl = wrap.querySelector('#hw-score');
+  const feedback = wrap.querySelector('#hw-feedback');
+  const speakSlot = wrap.querySelector('#hw-speak');
+
+  let strokes = [];
+  let currentStroke = null;
+  // alternate capital and small letters so both shapes get practised
+  const formFor = (i) => (i % 2 === 0 ? 0 : 1);
+
+  function currentChar() {
+    const entry = round[index];
+    return entry[formFor(index)];
+  }
+
+  function repaint() {
+    ctx.clearRect(0, 0, HW_W, HW_H);
+    // guide lines: baseline and x-height, like ruled paper
+    ctx.strokeStyle = 'rgba(125, 135, 160, 0.35)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([6, 6]);
+    [70, 130, 190].forEach((y) => { ctx.beginPath(); ctx.moveTo(12, y); ctx.lineTo(HW_W - 12, y); ctx.stroke(); });
+    ctx.setLineDash([]);
+    // the letter to trace, faint
+    ctx.globalAlpha = 0.16;
+    hwDrawGlyphOn(ctx, currentChar());
+    ctx.globalAlpha = 1;
+    // the learner's ink
+    ctx.strokeStyle = '#1f6feb';
+    ctx.lineWidth = 9;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    for (const stroke of strokes) {
+      if (!stroke.length) continue;
+      ctx.beginPath();
+      ctx.moveTo(stroke[0].x, stroke[0].y);
+      if (stroke.length === 1) ctx.lineTo(stroke[0].x + 0.1, stroke[0].y);
+      else for (let i = 1; i < stroke.length; i++) ctx.lineTo(stroke[i].x, stroke[i].y);
+      ctx.stroke();
+    }
+  }
+
+  // same glyph geometry as the scoring masks, drawn onto the visible canvas
+  function hwDrawGlyphOn(target, char) {
+    target.font = '190px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+    target.textAlign = 'center';
+    target.textBaseline = 'middle';
+    target.fillStyle = '#101828';
+    target.fillText(char, HW_W / 2, HW_H / 2);
+  }
+
+  function pointFrom(e) {
+    const rect = canvas.getBoundingClientRect();
+    return { x: ((e.clientX - rect.left) / rect.width) * HW_W, y: ((e.clientY - rect.top) / rect.height) * HW_H };
+  }
+
+  canvas.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    canvas.setPointerCapture(e.pointerId);
+    currentStroke = [pointFrom(e)];
+    strokes.push(currentStroke);
+    repaint();
+  });
+  canvas.addEventListener('pointermove', (e) => {
+    if (!currentStroke) return;
+    e.preventDefault();
+    currentStroke.push(pointFrom(e));
+    repaint();
+  });
+  const endStroke = () => { currentStroke = null; };
+  canvas.addEventListener('pointerup', endStroke);
+  canvas.addEventListener('pointercancel', endStroke);
+  canvas.addEventListener('pointerleave', endStroke);
+
+  function paintItem() {
+    if (index >= round.length) return finishRound();
+    const [upper, lower, name, sound] = round[index];
+    strokes = [];
+    currentStroke = null;
+    feedback.innerHTML = '';
+    letterEl.textContent = `${upper} ${lower}`;
+    letterEl.classList.toggle('hw-target-lower', formFor(index) === 1);
+    hintEl.textContent = `Schrijf de ${formFor(index) === 0 ? 'hoofdletter' : 'kleine letter'} «${currentChar()}» — heet «${name}», klinkt ${sound}.`;
+    progressEl.textContent = `Letter ${index + 1} van ${round.length}`;
+    scoreEl.textContent = scores.length ? `gemiddeld ${Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)}%` : '';
+    speakSlot.innerHTML = '';
+    const sp = renderSpeakButton(currentChar(), '🔊');
+    if (sp) speakSlot.appendChild(sp);
+    repaint();
+  }
+
+  wrap.querySelector('#hw-clear').addEventListener('click', () => { strokes = []; feedback.innerHTML = ''; repaint(); });
+  wrap.querySelector('#hw-skip').addEventListener('click', () => { scores.push(0); index++; paintItem(); });
+  wrap.querySelector('#hw-check').addEventListener('click', () => {
+    if (!strokes.some((s) => s.length > 1)) {
+      feedback.innerHTML = '<p class="muted">Trek eerst de letter na op het vlak hierboven.</p>';
+      return;
+    }
+    const score = hwScore(currentChar(), strokes);
+    scores.push(score);
+    const good = score >= HW_PASS;
+    const fb = el(`
+      <div class="feedback ${good ? 'correct' : 'incorrect'}">
+        <strong>${score}% — ${good ? 'goed getroffen!' : 'nog niet helemaal'}</strong>
+        <div class="explanation">${good
+          ? 'Je bleef netjes binnen de vorm en hebt de hele letter gehad.'
+          : 'Blijf dichter op de grijze vorm en zorg dat je elk onderdeel van de letter aandoet — ook de kleine streepjes.'}</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
+          <button type="button" class="secondary" id="hw-retry">Opnieuw proberen</button>
+          <button type="button" class="primary" id="hw-next">${index + 1 < round.length ? 'Volgende letter' : 'Ronde afsluiten'}</button>
+        </div>
+      </div>
+    `);
+    fb.querySelector('#hw-retry').addEventListener('click', () => { scores.pop(); strokes = []; feedback.innerHTML = ''; repaint(); });
+    fb.querySelector('#hw-next').addEventListener('click', () => { index++; paintItem(); });
+    feedback.innerHTML = '';
+    feedback.appendChild(fb);
+  });
+
+  function finishRound() {
+    const avg = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+    const xp = 20 + (avg >= 80 ? 10 : 0);
+    recordActivity('handwriting_round', { score: avg, letters: round.length });
+    wrap.querySelector('.hw-card').innerHTML = `
+      <h2>Ronde klaar! <span class="xp-gain">+${xp} XP</span></h2>
+      <p>Gemiddeld ${avg}% nauwkeurig over ${round.length} letters.${avg >= 80 ? ' Bonus voor nauwkeurigheid.' : ''} Elke ronde telt als oefendag voor je reeks.</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
+        <button class="primary" id="hw-again">Nog een ronde</button>
+        <a class="secondary-link" href="#/dashboard">Terug naar lessen</a>
+      </div>`;
+    wrap.querySelector('#hw-again').addEventListener('click', () => renderHandwriting());
+  }
+
+  paintItem();
+}
+
 // ---------- Home Assistant: notification target + sensor ----------
 
 function renderHaCard() {
@@ -2531,7 +3261,8 @@ function renderSpeechCard() {
 
 async function renderSettings() {
   app.innerHTML = '';
-  app.appendChild(el(`<div><h1>⚙️ Instellingen</h1><p class="muted">Deze instellingen gelden voor dit toestel.</p></div>`));
+  app.appendChild(el(`<div><h1>⚙️ Instellingen</h1><p class="muted">Uitspraak en herinneringen gelden voor dit toestel; je weekdoel hoort bij je account en werkt overal.</p></div>`));
+  app.appendChild(renderGoalSettingsCard());
   app.appendChild(renderSpeechCard());
   app.appendChild(renderReminderCard());
   if (navigator.onLine) app.appendChild(renderHaCard());

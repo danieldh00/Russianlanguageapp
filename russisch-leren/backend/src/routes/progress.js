@@ -1,8 +1,9 @@
 const express = require('express');
 const db = require('../db');
 const { requireAuth } = require('../middleware');
-const { levelForXp, computeStreak, computeAchievements } = require('../gamification');
+const { levelForXp, computeAchievements } = require('../gamification');
 const { computeXp } = require('../xp');
+const { maintainStreak, weeklyProgress, setGoal, GOAL_XP_CHOICES, GOAL_DAYS_CHOICES } = require('../goals');
 const { LEVELS, LEVEL_TITLES } = require('../levels');
 
 const router = express.Router();
@@ -63,8 +64,12 @@ router.get('/stats', requireAuth, (req, res) => {
   const certifiedLevels = certifications.map((c) => c.level);
   const level = levelForXp(xp);
 
-  const studyDates = db.prepare('SELECT study_date FROM study_days WHERE user_id = ?').all(userId).map((r) => r.study_date);
-  const { currentStreak, longestStreak } = computeStreak(studyDates);
+  // Spends a freeze on a just-missed day and pays out newly earned ones
+  // before the streak is read, so the number the user sees is the number the
+  // app will keep using.
+  const streak = maintainStreak(userId);
+  const { currentStreak, longestStreak } = streak;
+  const weekly = weeklyProgress(userId);
 
   const wordsMastered = db
     .prepare('SELECT COUNT(*) c FROM user_word_progress WHERE user_id = ? AND interval_days >= 6')
@@ -104,11 +109,28 @@ router.get('/stats', requireAuth, (req, res) => {
     ...level,
     currentStreak,
     longestStreak,
+    freezes: streak.freezes,
+    maxFreezes: streak.maxFreezes,
+    freezeSpentOn: streak.freezeSpentOn,
+    freezesEarned: streak.freezesEarned,
+    weekly,
     achievements,
     certifications,
     certifiedLevels,
     cefrLevels: LEVELS.map((l) => ({ level: l, title: LEVEL_TITLES[l] }))
   });
+});
+
+// GET/POST /api/progress/goal -> the weekly goal (XP since Monday and days
+// present). Stored per account so it follows the learner between devices.
+router.get('/goal', requireAuth, (req, res) => {
+  res.json({ ...weeklyProgress(req.session.userId), xpChoices: GOAL_XP_CHOICES, dayChoices: GOAL_DAYS_CHOICES });
+});
+
+router.post('/goal', requireAuth, (req, res) => {
+  const { weeklyXp, weeklyDays } = req.body || {};
+  setGoal(req.session.userId, { weeklyXp, weeklyDays });
+  res.json({ ...weeklyProgress(req.session.userId), xpChoices: GOAL_XP_CHOICES, dayChoices: GOAL_DAYS_CHOICES });
 });
 
 router.get('/mistakes', requireAuth, (req, res) => {

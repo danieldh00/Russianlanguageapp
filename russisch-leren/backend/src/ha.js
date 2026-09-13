@@ -16,6 +16,7 @@ const db = require('./db');
 const { localNow } = require('./localtime');
 const { levelForXp, computeStreak } = require('./gamification');
 const { computeXp } = require('./xp');
+const { weeklyProgress, getPrefs } = require('./goals');
 
 const SUPERVISOR = process.env.SUPERVISOR_URL || 'http://supervisor';
 const TOKEN = process.env.SUPERVISOR_TOKEN || '';
@@ -85,14 +86,20 @@ function learnerStats(userId) {
   const { currentStreak, longestStreak } = computeStreak(studyDates);
   const mastered = db.prepare('SELECT COUNT(*) c FROM user_word_progress WHERE user_id = ? AND interval_days >= 6').get(userId).c;
   const today = new Date().toISOString().slice(0, 10);
-  return { due, xp, level: levelForXp(xp), currentStreak, longestStreak, mastered, studiedToday: studyDates.includes(today), lastStudied: studyDates.sort().pop() || null };
+  const weekly = weeklyProgress(userId);
+  const freezes = getPrefs(userId).freezes;
+  return { due, xp, level: levelForXp(xp), currentStreak, longestStreak, mastered, weekly, freezes, studiedToday: studyDates.includes(today), lastStudied: studyDates.sort().pop() || null };
 }
 
 function reminderText(username, s) {
   const body = s.due
     ? `${s.due} ${s.due === 1 ? 'woord wacht' : 'woorden wachten'} op herhaling. Tien minuten houdt je reeks van ${s.currentStreak} ${s.currentStreak === 1 ? 'dag' : 'dagen'} in leven.`
     : 'Nog niet geoefend vandaag. Een korte les houdt je reeks in leven.';
-  return { title: `Russisch Leren — ${username}`, message: body };
+  // Only mention the weekly goal while it is still in reach and not yet met:
+  // a reminder that reports an unreachable number stops being a reminder.
+  const left = s.weekly ? s.weekly.goalXp - s.weekly.xp : 0;
+  const goalLine = s.weekly && !s.weekly.reached && left > 0 ? ` Nog ${left} XP tot je weekdoel.` : '';
+  return { title: `Russisch Leren — ${username}`, message: body + goalLine };
 }
 
 // Once a minute (called from the push scheduler): every enabled learner
@@ -137,6 +144,12 @@ async function updateSensors() {
             level: s.level.level,
             level_title: s.level.title,
             words_mastered: s.mastered,
+            weekly_xp: s.weekly.xp,
+            weekly_goal_xp: s.weekly.goalXp,
+            weekly_days: s.weekly.days,
+            weekly_goal_days: s.weekly.goalDays,
+            weekly_goal_reached: s.weekly.reached,
+            streak_freezes: s.freezes,
             studied_today: s.studiedToday,
             last_studied: s.lastStudied,
             updated: new Date().toISOString()
