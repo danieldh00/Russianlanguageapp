@@ -159,6 +159,37 @@ is en welke grammaticaregel erachter zit.
   woorden — handig om onderling een beetje te wedijveren. Vereist een internetverbinding (`GET /api/leaderboard`),
   net als inloggen en registreren.
 
+## Beveiliging
+
+Home Assistant scoort deze add-on 8 van 8 (`rating_security` in
+`supervisor/apps/utils.py`: basis 5, +1 voor een eigen AppArmor-profiel, +2
+voor Ingress; het laatste punt is voor ondertekende images en dat is in
+Supervisor hard uitgeschakeld).
+
+- **AppArmor** (`russisch-leren/apparmor.txt`): mounts, `pivot_root`, ptrace,
+  het laden van kernelmodules en schrijven naar `/proc/sys` en `/sys` zijn
+  geblokkeerd. Gewone bestands- en netwerktoegang blijft toegestaan, want de
+  app moet `/data` beschrijven en uitgaande verbindingen maken.
+- **Ingress** (`ingress: true`, `ingress_port: 3000`): Home Assistant serveert
+  de app achter zijn eigen login onder `/api/hassio_ingress/<token>/` en
+  strípt dat pad voordat het de add-on bereikt. De app-shell verwijst daarom
+  relatief naar zijn assets en leidt zijn basis af uit de URL van
+  `js/app.js`; onder Ingress wordt de service worker overgeslagen, omdat het
+  pad per sessie verandert. De rechtstreekse toegang op poort 3000 (de weg
+  van de geïnstalleerde PWA, mét offline ondersteuning) verandert niet.
+- **Beveiligingsheaders** op elke respons: een CSP die alleen eigen scripts
+  toestaat (`frame-ancestors 'self'` houdt de Ingress-iframe werkend),
+  `nosniff`, `Referrer-Policy: same-origin`, een `Permissions-Policy` die
+  alleen de microfoon toelaat, en HSTS uitsluitend op https-verzoeken.
+- **Sessies**: cookie `httpOnly` + `SameSite=Lax` + `secure: 'auto'` achter
+  `trust proxy`, opgeslagen in SQLite (`src/sessionStore.js`) in plaats van
+  in het geheugen, en een nieuw sessie-id bij elke login
+  (sessiefixatie). Verlopen sessies worden opgeruimd.
+- **Inlogrem** (`src/rateLimit.js`): tien mislukte pogingen per kwartier, per
+  IP-adres én per gebruikersnaam; geslaagde pogingen tellen niet mee. Een
+  onbekende gebruikersnaam kost evenveel tijd als een fout wachtwoord, zodat
+  bestaande namen niet te achterhalen zijn.
+
 ## Techniek
 
 - **Backend**: Node.js + Express, SQLite via `better-sqlite3` (bestandsgebaseerd,

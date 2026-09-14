@@ -1,13 +1,28 @@
 const state = { user: null, syncing: false, pendingCount: 0 };
 let syncInFlight = false;
 
+// Where this app is mounted. Normally "/", but Home Assistant's Ingress serves
+// the add-on under /api/hassio_ingress/<token>/ and strips that prefix before
+// the request reaches us, so the server cannot tell us -- the browser can.
+// This script's own URL is the authoritative answer; the document path is the
+// fallback for the case where currentScript is unavailable.
+const APP_BASE = (() => {
+  const src = (document.currentScript && document.currentScript.src) || '';
+  const match = src.match(/^https?:\/\/[^/]+(\/(?:.*\/)?)js\/app\.js(?:[?#].*)?$/);
+  if (match) return match[1];
+  return location.pathname.endsWith('/') ? location.pathname : '/';
+})();
+// Ingress runs inside an authenticated Home Assistant frame under a path that
+// changes every session, so an offline service worker there would be useless.
+const IS_INGRESS = APP_BASE !== '/';
+
 // the content bundle shape this client understands (see /api/content)
 const CONTENT_SCHEMA_VERSION = 5;
 
-if ('serviceWorker' in navigator) {
+if ('serviceWorker' in navigator && !IS_INGRESS) {
   window.addEventListener('load', () => {
     navigator.serviceWorker
-      .register('/sw.js')
+      .register(APP_BASE + 'sw.js')
       .then((registration) => {
         // The browser only checks for a new service worker on its own
         // schedule (up to ~24h), which is why a deploy could sit unnoticed
@@ -50,7 +65,7 @@ if ('serviceWorker' in navigator) {
 async function api(path, options = {}) {
   let res;
   try {
-    res = await fetch('/api' + path, {
+    res = await fetch(APP_BASE + 'api' + path, {
       method: options.method || 'GET',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',

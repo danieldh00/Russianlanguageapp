@@ -1,5 +1,5 @@
 name: "Russisch Leren"
-version: "1.10.0"
+version: "1.11.0"
 slug: russisch_leren
 description: >-
   Russisch leren van A1 tot C2 met niveautoetsen, voortgangsregistratie,
@@ -16,6 +16,13 @@ ports:
 ports_description:
   3000/tcp: "Webinterface"
 webui: "http://[HOST]:[PORT:3000]/"
+# Ingress lets Home Assistant serve the app behind its own login, on the same
+# port the server already listens on. The published port stays as it is: the
+# installed PWA on a phone reaches the app directly through the tunnel, which
+# Ingress cannot do (its path changes every session, so a service worker and
+# an installed app are not possible there).
+ingress: true
+ingress_port: 3000
 homeassistant_api: true
 environment:
   DATA_DIR: /data

@@ -4,6 +4,38 @@ Alle merkbare wijzigingen aan de "Russisch Leren" add-on staan hier, nieuwste
 versie bovenaan. Dit bestand wordt door Home Assistant Supervisor automatisch
 getoond onder de "Changelog"-knop van de add-on.
 
+## 1.11.0
+
+Beveiliging. De veiligheidsscore die Home Assistant aan deze add-on geeft
+gaat van 5 naar 8 — de hoogst haalbare waarde, want ondertekening van
+images is in Supervisor uitgeschakeld en levert niemand meer punten op.
+
+- **AppArmor-profiel** (+1). De add-on draait nu onder een eigen profiel dat
+  mounts, ptrace, het laden van kernelmodules en schrijven naar `/proc/sys`
+  en `/sys` verbiedt. Gewone bestands- en netwerktoegang blijft ongemoeid.
+- **Ingress** (+2). Je kunt de app voortaan ook vanuit Home Assistant zelf
+  openen, achter de HA-login, zonder dat er een poort aan te pas komt. De
+  gewone toegang via poort 3000 en je eigen adres blijft precies zoals hij
+  was: dát is de weg die de geïnstalleerde app op je telefoon gebruikt, met
+  offline ondersteuning. Onder Ingress werkt de offline modus niet, omdat het
+  adres daar elke sessie verandert.
+- Verder aangescherpt, los van de score:
+  - Beveiligingsheaders op elke respons, waaronder een Content Security
+    Policy die alleen scripts van de app zelf toestaat en inbedding door
+    andere sites blokkeert.
+  - De sessiecookie is nu `httpOnly` met `SameSite=Lax`, en krijgt de
+    `Secure`-vlag zodra je via https binnenkomt — zonder dat
+    `http://<pi>:3000` op je eigen netwerk stukgaat.
+  - Sessies staan in de database in plaats van in het geheugen. Je blijft
+    dus ingelogd na een herstart of update van de add-on, en de
+    waarschuwing over `MemoryStore` in het logboek is weg.
+  - Bij inloggen krijg je een nieuw sessie-id, zodat een van tevoren
+    geplaatste cookie nooit een ingelogde cookie kan worden.
+  - Een rem op inloggen: tien mislukte pogingen per kwartier per IP-adres én
+    per gebruikersnaam. Geslaagde pogingen tellen niet mee. Een onbekende
+    gebruikersnaam en een fout wachtwoord geven dezelfde melding en kosten
+    evenveel tijd, zodat niet te achterhalen is welke namen bestaan.
+
 ## 1.10.0
 
 - De oefenvormen hebben een **eigen tab** gekregen: ✨ Oefenen, naast Lessen.

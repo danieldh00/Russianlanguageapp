@@ -29,18 +29,69 @@ const pushRoutes = require('./routes/push');
 const wordRoutes = require('./routes/words');
 const haRoutes = require('./routes/ha');
 const { startScheduler: startReminderScheduler } = require('./push');
+const { SqliteSessionStore } = require('./sessionStore');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const SESSION_SECRET = process.env.SESSION_SECRET || 'dev-secret-change-me';
 
-app.use(express.json());
+// Home Assistant's Ingress and a Cloudflare Tunnel both put a reverse proxy in
+// front of this server. Trusting one hop lets req.ip report the real client
+// (so the login limiter counts the right thing) and lets the session cookie
+// know whether the browser is really on HTTPS.
+app.set('trust proxy', 1);
+app.disable('x-powered-by');
+
+// Everything this app loads comes from itself, apart from the two Google Fonts
+// hosts. Saying so closes off injected scripts and framing by other sites;
+// 'self' as a frame-ancestor is what keeps the Ingress iframe working, since
+// Ingress serves the add-on from the Home Assistant origin.
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "font-src 'self' https://fonts.gstatic.com",
+  "img-src 'self' data:",
+  "connect-src 'self'",
+  "manifest-src 'self'",
+  "worker-src 'self'",
+  "frame-ancestors 'self'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "object-src 'none'"
+].join('; ');
+
+app.use((req, res, next) => {
+  res.setHeader('Content-Security-Policy', CSP);
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('Referrer-Policy', 'same-origin');
+  // The app asks for the microphone itself (speech recognition); nothing else
+  // is ever needed, so the rest is switched off at the browser level.
+  res.setHeader('Permissions-Policy', 'microphone=(self), camera=(), geolocation=(), payment=(), usb=()');
+  // Only meaningful -- and only sent -- when the browser is already on HTTPS.
+  // A month, so a mistake here cannot lock anyone out for long.
+  if (req.secure) res.setHeader('Strict-Transport-Security', 'max-age=2592000');
+  next();
+});
+
+app.use(express.json({ limit: '256kb' }));
 app.use(
   session({
+    name: 'russisch.sid',
     secret: SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
-    cookie: { maxAge: 30 * 24 * 60 * 60 * 1000 }
+    store: new SqliteSessionStore(),
+    cookie: {
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+      httpOnly: true,
+      sameSite: 'lax',
+      // 'auto' marks the cookie Secure on an HTTPS request and leaves it
+      // unmarked on plain HTTP, so the tunnel gets a secure cookie without
+      // breaking http://<pi>:3000 on the home network.
+      secure: 'auto'
+    }
   })
 );
 
@@ -91,9 +142,15 @@ app.use(
     }
   })
 );
+// The app shell references its CSS, JS and icons relatively so that it also
+// works under Ingress, where it is served from /api/hassio_ingress/<token>/.
+// That means index.html may only be answered on a path ending in a slash --
+// from anywhere else the browser would resolve "js/app.js" against the wrong
+// directory. Deep links are bounced to the root; routing happens on the hash.
 app.get('*', (req, res, next) => {
   if (req.path.startsWith('/api/')) return next();
-  res.sendFile(path.join(FRONTEND_DIR, 'index.html'));
+  if (req.path.endsWith('/')) return res.sendFile(path.join(FRONTEND_DIR, 'index.html'));
+  res.redirect(302, '/');
 });
 
 app.use((err, req, res, next) => {

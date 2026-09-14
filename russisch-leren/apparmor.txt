@@ -1,0 +1,43 @@
+#include <tunables/global>
+
+# AppArmor profile for the "Russisch Leren" add-on.
+#
+# This add-on is a Node.js web server with a SQLite database. It needs to read
+# its own image, read and write /data, and open TCP sockets (serving port 3000,
+# plus outbound calls to the Supervisor API, the Anthropic API and web-push
+# endpoints). It never needs to mount filesystems, trace other processes, load
+# kernel modules or write to kernel tunables -- which is exactly what the deny
+# rules below take away. The container already runs with Docker's default,
+# reduced capability set; this profile does not widen it.
+#
+# Supervisor rewrites the profile name to the add-on slug when it loads the
+# file, so the name here is only for readability.
+
+profile russisch_leren flags=(attach_disconnected,mediate_deleted) {
+  #include <abstractions/base>
+
+  capability,
+  network,
+
+  file,
+  umount,
+  signal (send,receive) set=(kill,term,int,hup,cont,usr1,usr2,winch,chld),
+
+  # No filesystem surgery from inside a language app.
+  deny mount,
+  deny pivot_root,
+
+  # No looking into, or attaching to, other processes.
+  deny ptrace (trace,tracedby,read,readby),
+
+  # Kernel tunables and hardware interfaces stay read-only.
+  deny /proc/sys/** wklx,
+  deny /sys/** wklx,
+  deny /proc/kcore rwklx,
+  deny /proc/kallsyms rwklx,
+
+  # The bootloader and kernel modules are none of its business.
+  deny /boot/** rwklx,
+  deny /lib/modules/** rwklx,
+  deny /usr/lib/modules/** rwklx,
+}

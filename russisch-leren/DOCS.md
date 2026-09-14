@@ -79,6 +79,29 @@ verdien je een vriezer (maximaal twee tegelijk). Mis je daarna één dag, dan
 wordt die automatisch opgevangen en blijft je reeks staan; meerdere dagen
 achter elkaar missen wordt niet opgevangen.
 
+## Beveiliging
+
+Home Assistant geeft deze add-on een veiligheidsscore van 8 van 8. Dat komt
+doordat de add-on een eigen AppArmor-profiel meebrengt (mounts, ptrace,
+kernelmodules en schrijven naar `/proc/sys` en `/sys` zijn geblokkeerd) en
+Ingress ondersteunt. Hoger dan 8 kan niet: het laatste punt is voor
+ondertekende images, en die ondersteuning is in Supervisor uitgeschakeld.
+
+Je kunt de app op twee manieren openen:
+
+- **Via Home Assistant (Ingress).** Klik op **OPEN WEB UI** bij de add-on.
+  Je gebruikt dan de HA-login; er hoeft geen poort open te staan. Offline
+  gebruik en installeren als app werken hier niet, omdat het adres per
+  sessie verandert.
+- **Rechtstreeks op poort 3000**, bijvoorbeeld via je eigen domein. Dit is de
+  weg voor de geïnstalleerde app op je telefoon, met offline ondersteuning en
+  pushmeldingen.
+
+De sessiecookie is `httpOnly` en `SameSite=Lax`, en wordt `Secure` zodra je
+via https binnenkomt. Sessies staan in de database, dus een herstart van de
+add-on logt je niet uit. Tien mislukte inlogpogingen per kwartier (per
+IP-adres en per gebruikersnaam) zetten de deur tijdelijk dicht.
+
 ## Bereikbaar maken van buiten je netwerk
 
 Deze add-on regelt zelf geen HTTPS. Als je 'm ook buiten je thuisnetwerk wilt
