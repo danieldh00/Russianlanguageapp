@@ -133,6 +133,19 @@ is en welke grammaticaregel erachter zit.
   en dekking (hoeveel van de letter je hebt geraakt), berekend uit twee
   maskers, dus zowel krabbelen als één veeg scoort laag. Acht letters per
   ronde: 20 XP, met 10 XP bonus vanaf gemiddeld 80%.
+- **Lesonderdelen per toestel**: elke oefenvorm (meerkeuze, typen,
+  gatenzinnen, zinnen bouwen, luisteren, lezen, plaatjes, klemtoon) en elke
+  tegel op het lessenscherm is aan of uit te zetten onder ⚙️ Instellingen. De
+  keuze staat in `localStorage`, dus per toestel: de schrijftrainer kan uit op
+  de telefoon en aan op de tablet. Lessen, dagelijkse herhaling en "Oefen je
+  fouten" filteren erop; de niveautoets nooit, anders zegt het certificaat
+  niets. Minstens één oefenvorm moet aan blijven, en een les die door de
+  filtering leeg zou zijn legt uit welke vormen uitstaan.
+- **Stille modus**: twee knopjes boven elke oefenvraag, "Even niet luisteren"
+  en "Even niet praten". De eerste weert luisteroefeningen en stopt alle
+  automatische weergave, de tweede verbergt de microfoonknoppen en "Zeg het
+  na". Omschakelen herfiltert de rest van de lopende sessie meteen, zonder de
+  al gegeven antwoorden kwijt te raken.
 - **Voortgangsdashboard**: nauwkeurigheid, aantal geoefende/onder-de-knie
   woorden per les, niveau/streak/badges, en overzichten van de vaakst gemaakte
   fouten en recente fouten (met uitleg).

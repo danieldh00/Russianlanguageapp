@@ -128,6 +128,120 @@ function saveSpeechSettings(patch) {
   all.speech = { ...speechSettings(), ...patch };
   Storage.saveSettings(all);
 }
+// ---------- which lesson parts and tools this device shows ----------
+//
+// Two separate ideas, deliberately kept apart:
+//  - "onderdelen": a lasting choice per device. Handwriting on a phone is
+//    hopeless, so it should be possible to hide it there and keep it on the
+//    tablet, without that choice following the account around.
+//  - "stille modus": a right-now choice, switched from inside the lesson.
+//    You are on the train, you cannot speak or hear, and the session should
+//    just step around those exercises until you say otherwise.
+
+const LESSON_PARTS = [
+  { id: 'mc', icon: '🔤', label: 'Meerkeuze', types: ['mc', 'mc_ru_nl', 'mc_nl_ru'], desc: 'Kies het juiste woord uit de opties, Russisch → Nederlands en omgekeerd.' },
+  { id: 'typing', icon: '⌨️', label: 'Typen', types: ['typing'], desc: 'Typ het Russische woord zelf. Vraagt een Russisch toetsenbord op je toestel.' },
+  { id: 'cloze', icon: '✏️', label: 'Gatenzinnen', types: ['cloze'], desc: 'Vul het ontbrekende woord in de voorbeeldzin in, in de vorm die de zin vraagt.' },
+  { id: 'sentence', icon: '🧩', label: 'Zinnen bouwen', types: ['sentence_build'], desc: 'Zet losse woorden in de juiste volgorde.' },
+  { id: 'listen', icon: '🎧', label: 'Luisteren', types: ['listen'], desc: 'Een zin wordt voorgelezen en jij bouwt hem na. Heeft geluid nodig.' },
+  { id: 'reading', icon: '📄', label: 'Lezen', types: ['reading'], desc: 'Een korte tekst met een vraag erover.' },
+  { id: 'picture', icon: '🖼️', label: 'Plaatjes', types: ['picture', 'picture_choice'], desc: 'Welk woord hoort bij het plaatje, en welk plaatje bij het woord.' },
+  { id: 'stress', icon: '🎵', label: 'Klemtoon', types: ['stress'], desc: 'Kies op welke lettergreep de klemtoon ligt.' }
+];
+
+const TOOL_TILES = [
+  { id: 'dialogue', icon: '🗣️', label: 'Gesprek oefenen' },
+  { id: 'match', icon: '🃏', label: 'Koppelspel' },
+  { id: 'dictation', icon: '🔢', label: 'Getallen & tijd' },
+  { id: 'phrasebook', icon: '📕', label: 'Zakboekje' },
+  { id: 'stories', icon: '📖', label: 'Leesverhalen' },
+  { id: 'keyboard', icon: '⌨️', label: 'Toetsenbord ЙЦУКЕН' },
+  { id: 'handwriting', icon: '✍️', label: 'Schrijven met de hand' }
+];
+
+const PART_OF_TYPE = new Map();
+for (const part of LESSON_PARTS) for (const t of part.types) PART_OF_TYPE.set(t, part.id);
+
+function partSettings() {
+  const saved = Storage.loadSettings().parts || {};
+  const out = {};
+  for (const p of LESSON_PARTS) out[p.id] = saved[p.id] !== false; // default on
+  return out;
+}
+function savePartSettings(patch) {
+  const all = Storage.loadSettings();
+  all.parts = { ...partSettings(), ...patch };
+  Storage.saveSettings(all);
+}
+function toolSettings() {
+  const saved = Storage.loadSettings().tools || {};
+  const out = {};
+  for (const t of TOOL_TILES) out[t.id] = saved[t.id] !== false;
+  return out;
+}
+function saveToolSettings(patch) {
+  const all = Storage.loadSettings();
+  all.tools = { ...toolSettings(), ...patch };
+  Storage.saveSettings(all);
+}
+function toolEnabled(id) {
+  return toolSettings()[id] !== false;
+}
+
+const QUIET_DEFAULTS = { noListen: false, noSpeak: false };
+function quietSettings() {
+  return { ...QUIET_DEFAULTS, ...(Storage.loadSettings().quiet || {}) };
+}
+function saveQuietSettings(patch) {
+  const all = Storage.loadSettings();
+  all.quiet = { ...quietSettings(), ...patch };
+  Storage.saveSettings(all);
+}
+function micAvailable() {
+  return !quietSettings().noSpeak;
+}
+
+// An exercise type is shown when its part is on AND quiet mode does not rule
+// it out. Types this table does not know (new content, older cached bundle)
+// are always allowed, so an unknown type can never make a lesson disappear.
+function exerciseTypeAllowed(type) {
+  const partId = PART_OF_TYPE.get(type);
+  if (!partId) return true;
+  if (partId === 'listen' && quietSettings().noListen) return false;
+  return partSettings()[partId] !== false;
+}
+function allowedExercises(list) {
+  return list.filter((ex) => exerciseTypeAllowed(ex.type));
+}
+// Names of the parts that are switched off, for the "nothing left" message.
+function disabledPartLabels() {
+  const parts = partSettings();
+  const quiet = quietSettings();
+  return LESSON_PARTS.filter((p) => parts[p.id] === false || (p.id === 'listen' && quiet.noListen)).map((p) => p.label);
+}
+
+// The two switches in the lesson header. Flipping one re-filters the rest of
+// the session straight away, so it takes effect on the very next question.
+function renderQuietBar(onChange) {
+  const quiet = quietSettings();
+  const bar = el(`<div class="quiet-bar"></div>`);
+  const chip = (key, onLabel, offLabel, title) => {
+    const active = quiet[key];
+    const btn = el(`<button type="button" class="quiet-chip ${active ? 'active' : ''}" title="${escapeHtml(title)}" aria-pressed="${active}"></button>`);
+    btn.textContent = active ? onLabel : offLabel;
+    btn.addEventListener('click', () => {
+      saveQuietSettings({ [key]: !active });
+      onChange();
+    });
+    bar.appendChild(btn);
+  };
+  chip('noListen', '🔇 Luisteren staat uit', '🎧 Even niet luisteren',
+    'Slaat luisteroefeningen over en speelt niets vanzelf af. De knoppen om zelf iets af te spelen blijven staan.');
+  chip('noSpeak', '🙊 Spreken staat uit', '🎤 Even niet praten',
+    'Verbergt de microfoonknoppen en "Zeg het na".');
+  return bar;
+}
+
 function russianVoices() {
   if (!('speechSynthesis' in window)) return [];
   return window.speechSynthesis.getVoices().filter((v) => /^ru/i.test(v.lang));
@@ -670,7 +784,10 @@ async function renderDashboard() {
   const openMistakes = mistakeExercises(content, username).length;
   const dueCount = dueWordIds(content, username).length;
   const tools = el(`<div class="tool-grid"></div>`);
-  const tool = (cls, icon, title, text, badge, hash) => {
+  // `id` is the switch in Instellingen -> Lesonderdelen; tiles without one
+  // (today's review, your mistakes) are the core of the app and always show.
+  const tool = (cls, icon, title, text, badge, hash, id) => {
+    if (id && !toolEnabled(id)) return;
     const card = el(`
       <button type="button" class="card tool-card ${cls}">
         <div class="row1"><h2>${icon} ${escapeHtml(title)}</h2>${badge != null ? `<span class="level-badge">${badge}</span>` : ''}</div>
@@ -688,19 +805,19 @@ async function renderDashboard() {
       `${openMistakes === 1 ? 'Eén vraag die je fout had' : `${openMistakes} vragen die je fout had`} en nog niet hebt rechtgezet, de vaakst gemiste eerst.`,
       openMistakes, '#/practice');
   }
-  tool('dialogue-card', '🗣️', 'Gesprek oefenen', 'Rollenspel met de AI: apotheek, hotel, politie, huurbaas… Jij typt of spreekt Russisch, de AI antwoordt in zijn rol en corrigeert je.', null, '#/dialogue');
-  tool('match-card', '🃏', 'Koppelspel', 'Vijf Russische en vijf Nederlandse woorden: tik de paren bij elkaar, zo snel mogelijk. Telt mee voor je herhaling.', null, '#/match');
-  tool('dictation-card', '🔢', 'Getallen & tijd', 'Luister naar prijzen, tijden, datums en telefoonnummers en typ wat je hoort — het eerste wat misgaat in een winkel of taxi.', null, '#/dictation');
-  tool('phrasebook-card', '📕', 'Zakboekje', 'Per situatie de zinnen die je écht nodig hebt — apotheek, noodgeval, taxi, hotel — groot, met uitspraak, ook offline.', null, '#/phrasebook');
-  tool('keyboard-card', '⌨️', 'Toetsenbord ЙЦУКЕН', 'Leer blind typen op de Russische indeling: woorden en zinnen uit de lessen, met de toets die je zoekt uitgelicht.', null, '#/keyboard');
+  tool('dialogue-card', '🗣️', 'Gesprek oefenen', 'Rollenspel met de AI: apotheek, hotel, politie, huurbaas… Jij typt of spreekt Russisch, de AI antwoordt in zijn rol en corrigeert je.', null, '#/dialogue', 'dialogue');
+  tool('match-card', '🃏', 'Koppelspel', 'Vijf Russische en vijf Nederlandse woorden: tik de paren bij elkaar, zo snel mogelijk. Telt mee voor je herhaling.', null, '#/match', 'match');
+  tool('dictation-card', '🔢', 'Getallen & tijd', 'Luister naar prijzen, tijden, datums en telefoonnummers en typ wat je hoort — het eerste wat misgaat in een winkel of taxi.', null, '#/dictation', 'dictation');
+  tool('phrasebook-card', '📕', 'Zakboekje', 'Per situatie de zinnen die je écht nodig hebt — apotheek, noodgeval, taxi, hotel — groot, met uitspraak, ook offline.', null, '#/phrasebook', 'phrasebook');
+  tool('keyboard-card', '⌨️', 'Toetsenbord ЙЦУКЕН', 'Leer blind typen op de Russische indeling: woorden en zinnen uit de lessen, met de toets die je zoekt uitgelicht.', null, '#/keyboard', 'keyboard');
   const storiesRead = Object.keys(Storage.loadStories(username)).length;
   const storyTotal = (content.stories || []).length;
   if (storyTotal) {
     tool('stories-card', '📖', 'Leesverhalen',
       `Korte verhalen van A1 tot C2. Tik op een zin voor de vertaling, op een woord voor de betekenis, en beantwoord daarna de begripsvragen.`,
-      `${storiesRead}/${storyTotal}`, '#/stories');
+      `${storiesRead}/${storyTotal}`, '#/stories', 'stories');
   }
-  tool('handwriting-card', '✍️', 'Schrijven met de hand', 'Trek de Cyrillische letters na op het scherm. De app kijkt na hoe nauwkeurig je bent — schrijven laat de vorm pas echt beklijven.', null, '#/handwriting');
+  tool('handwriting-card', '✍️', 'Schrijven met de hand', 'Trek de Cyrillische letters na op het scherm. De app kijkt na hoe nauwkeurig je bent — schrijven laat de vorm pas echt beklijven.', null, '#/handwriting', 'handwriting');
   wrapper.querySelector('#practice-slot').appendChild(tools);
 
   const goalCard = renderWeeklyGoalCard();
@@ -843,7 +960,24 @@ async function renderLesson(slug) {
   if (!content) return renderNoContentMessage();
 
   const category = content.categories.find((c) => c.slug === slug);
-  const exercises = content.exercises.filter((e) => e.category === slug);
+  const allExercises = content.exercises.filter((e) => e.category === slug);
+  const exercises = allowedExercises(allExercises);
+  if (category && allExercises.length && !exercises.length) {
+    // every exercise in this lesson is of a kind the learner switched off
+    const off = disabledPartLabels();
+    app.innerHTML = '';
+    app.appendChild(el(`
+      <div class="card">
+        <h1>${escapeHtml(category.name)}</h1>
+        <p class="muted">Deze les bestaat alleen uit oefenvormen die je hebt uitgezet${off.length ? ` (${escapeHtml(off.join(', '))})` : ''}. Zet er één weer aan om verder te kunnen.</p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
+          <a class="secondary-link" href="#/settings">Naar instellingen</a>
+          <a class="secondary-link" href="#/dashboard">Terug naar lessen</a>
+        </div>
+      </div>
+    `));
+    return;
+  }
   if (!category || !exercises.length) {
     app.innerHTML = `<div class="card"><h1>${escapeHtml(category ? category.name : 'Les')}</h1><p class="muted">Geen oefeningen beschikbaar in deze les.</p><a href="#/dashboard">Terug naar lessen</a></div>`;
     return;
@@ -868,6 +1002,17 @@ async function renderLesson(slug) {
 
   const session = { category, items, index: 0, correctCount: 0 };
   renderExercise(session);
+}
+
+// A quiet switch flipped mid-session: drop the questions that are now out of
+// bounds from the part still to come, keeping the ones already answered so
+// the score stays honest. If nothing is left, the session is simply done.
+function refilterSession(session) {
+  const answered = session.items.slice(0, session.index);
+  const rest = session.items.slice(session.index).filter((ex) => exerciseTypeAllowed(ex.type));
+  session.items = [...answered, ...rest];
+  if (session.index >= session.items.length) renderLessonComplete(session);
+  else renderExercise(session);
 }
 
 function gradeAndRecord(ex) {
@@ -997,14 +1142,16 @@ function renderExercise(session) {
   const wrapper = el(`
     <div class="card">
       <div class="exercise-progress">${escapeHtml(session.category.name)} &middot; vraag ${session.index + 1} van ${session.items.length}</div>
+      <div id="quiet"></div>
       <div id="head"></div>
       <div id="options"></div>
       <div id="feedback"></div>
     </div>
   `);
   app.appendChild(wrapper);
+  wrapper.querySelector('#quiet').replaceWith(renderQuietBar(() => refilterSession(session)));
   wrapper.querySelector('#head').replaceWith(renderExerciseHead(ex, { showContextText: false }));
-  if (ex.type === 'listen') speakRussian(ex.context);
+  if (ex.type === 'listen' && !quietSettings().noListen) speakRussian(ex.context);
 
   const optionsDiv = wrapper.querySelector('#options');
   const feedbackDiv = wrapper.querySelector('#feedback');
@@ -1035,8 +1182,9 @@ function renderExercise(session) {
     if (exampleBlock) fb.querySelector('#example-slot').replaceWith(exampleBlock);
     fb.appendChild(renderAfterAnswerTools(ex));
     feedbackDiv.appendChild(fb);
-    // hearing the stress is the whole point of a stress question: play it, slowly
-    if (ex.type === 'stress') speakRussian(ex.correctAnswer, { slow: true });
+    // hearing the stress is the whole point of a stress question: play it,
+    // slowly -- unless the learner said they cannot listen right now
+    if (ex.type === 'stress' && !quietSettings().noListen) speakRussian(ex.correctAnswer, { slow: true });
 
     if (!isCorrect && navigator.onLine) {
       fb.querySelector('#ai-explain-slot').appendChild(renderAiExplainButton(ex.id, chosenAnswer));
@@ -1149,6 +1297,23 @@ function dueWordIds(content, username) {
     .sort((a, b) => new Date(wordProgress[a].nextReviewAt) - new Date(wordProgress[b].nextReviewAt));
 }
 
+// Shown when a session has material but every piece of it is an exercise
+// kind the learner switched off (or quiet mode rules out right now).
+function renderNoAllowedExercises(title) {
+  const off = disabledPartLabels();
+  app.innerHTML = '';
+  app.appendChild(el(`
+    <div class="card">
+      <h1>${escapeHtml(title)}</h1>
+      <p class="muted">Er staat wel materiaal klaar, maar alleen in oefenvormen die nu uitstaan${off.length ? ` (${escapeHtml(off.join(', '))})` : ''}. Zet er één weer aan, of schakel de stille modus uit.</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
+        <a class="secondary-link" href="#/settings">Naar instellingen</a>
+        <a class="secondary-link" href="#/dashboard">Terug naar lessen</a>
+      </div>
+    </div>
+  `));
+}
+
 // One exercise per due word (the most overdue first), preferring the
 // production forms -- typing and cloze -- over recognition, since a word
 // you can still produce is the one that's really still known.
@@ -1174,11 +1339,13 @@ async function renderReviewSession() {
     byWord.get(ex.wordId).push(ex);
   }
   const items = ids.map((id) => {
-    const pool = byWord.get(id) || [];
+    const pool = allowedExercises(byWord.get(id) || []);
+    if (!pool.length) return null;
     const production = pool.filter((e) => e.type === 'typing' || e.type === 'cloze');
     const pick = shuffle((production.length && Math.random() < 0.6) ? production : pool)[0];
     return withGrammarRule(content, pick);
   }).filter(Boolean);
+  if (!items.length) return renderNoAllowedExercises('🔁 Vandaag herhalen');
   renderExercise({ category: { slug: '__review__', name: 'Herhaling van vandaag' }, items, index: 0, correctCount: 0 });
 }
 
@@ -1208,7 +1375,10 @@ function mistakeExercises(content, username) {
 async function renderMistakesPractice() {
   const content = await ensureContentLoaded();
   if (!content) return renderNoContentMessage();
-  const pool = mistakeExercises(content, state.user.username);
+  const pool = allowedExercises(mistakeExercises(content, state.user.username));
+  if (!pool.length && mistakeExercises(content, state.user.username).length) {
+    return renderNoAllowedExercises('Oefen je fouten');
+  }
   if (!pool.length) {
     app.innerHTML = '';
     app.appendChild(el(`
@@ -1662,7 +1832,7 @@ function listenOnce() {
 }
 
 function renderMicButton(onText) {
-  if (!speechRecognitionSupported()) return null;
+  if (!speechRecognitionSupported() || !micAvailable()) return null;
   const btn = el(`<button type="button" class="mic-btn" title="Spreek je antwoord in (Russisch)" aria-label="Spreek je antwoord in">🎤</button>`);
   btn.addEventListener('click', async () => {
     btn.classList.add('listening');
@@ -1692,7 +1862,7 @@ function pronunciationTarget(ex) {
 function renderAfterAnswerTools(ex) {
   const wrap = el(`<div class="after-tools"></div>`);
   const target = pronunciationTarget(ex);
-  if (target && speechRecognitionSupported()) {
+  if (target && speechRecognitionSupported() && micAvailable()) {
     const btn = el(`<button type="button" class="tool-btn">🎤 Zeg het na</button>`);
     const out = el(`<div class="shadow-result"></div>`);
     btn.addEventListener('click', async () => {
@@ -3259,9 +3429,108 @@ function renderSpeechCard() {
   return card;
 }
 
+// Settings: which exercise kinds a lesson may draw from on this device, and
+// which tiles the dashboard shows. Per device on purpose -- the phone and the
+// tablet are not equally good at every exercise.
+function renderPartsCard() {
+  const card = el(`
+    <div class="card">
+      <h2>🎛️ Lesonderdelen</h2>
+      <p class="muted">Wat je hier uitzet, komt niet meer voor in je lessen, de dagelijkse herhaling en het oefenen van je fouten. Dit geldt alleen voor dit toestel, zodat je op je telefoon iets anders kunt uitzetten dan op je tablet. De niveautoets blijft altijd alle vormen toetsen, anders zegt het certificaat niets.</p>
+      <div class="parts-list" id="parts-list"></div>
+      <h3 class="parts-heading">Onderdelen op het lessenscherm</h3>
+      <p class="muted">Verbergt de tegel. "Vandaag herhalen" en "Oefen je fouten" blijven altijd staan.</p>
+      <div class="parts-list" id="tools-list"></div>
+      <p class="muted setting-hint" id="parts-status"></p>
+    </div>
+  `);
+  const partsList = card.querySelector('#parts-list');
+  const toolsList = card.querySelector('#tools-list');
+  const status = card.querySelector('#parts-status');
+
+  for (const part of LESSON_PARTS) {
+    const on = partSettings()[part.id] !== false;
+    const row = el(`
+      <label class="part-row">
+        <input type="checkbox" ${on ? 'checked' : ''} />
+        <span class="part-text">
+          <span class="part-label">${part.icon} ${escapeHtml(part.label)}</span>
+          <span class="part-desc muted">${escapeHtml(part.desc)}</span>
+        </span>
+      </label>
+    `);
+    const box = row.querySelector('input');
+    box.addEventListener('change', () => {
+      const next = { ...partSettings(), [part.id]: box.checked };
+      if (!Object.values(next).some(Boolean)) {
+        // there has to be something left to practise with
+        box.checked = true;
+        status.textContent = 'Er moet minstens één oefenvorm aan blijven staan.';
+        return;
+      }
+      savePartSettings({ [part.id]: box.checked });
+      const off = Object.entries(next).filter(([, v]) => !v).length;
+      status.textContent = off ? `${off} ${off === 1 ? 'oefenvorm staat' : 'oefenvormen staan'} uit op dit toestel.` : 'Alle oefenvormen staan aan.';
+    });
+    partsList.appendChild(row);
+  }
+
+  for (const t of TOOL_TILES) {
+    const on = toolEnabled(t.id);
+    const row = el(`
+      <label class="part-row">
+        <input type="checkbox" ${on ? 'checked' : ''} />
+        <span class="part-text"><span class="part-label">${t.icon} ${escapeHtml(t.label)}</span></span>
+      </label>
+    `);
+    const box = row.querySelector('input');
+    box.addEventListener('change', () => {
+      saveToolSettings({ [t.id]: box.checked });
+      status.textContent = box.checked ? `${t.label} staat weer op het lessenscherm.` : `${t.label} is verborgen op dit toestel.`;
+    });
+    toolsList.appendChild(row);
+  }
+  return card;
+}
+
+// Settings: the same two switches that sit in the lesson header, so they can
+// also be found (and turned off again) from here.
+function renderQuietCard() {
+  const card = el(`
+    <div class="card">
+      <h2>🤫 Stille modus</h2>
+      <p class="muted">Voor onderweg. Je zet dit ook midden in een les aan met de twee knopjes boven de vraag; het werkt meteen op de rest van die sessie en blijft aan tot je het weer uitzet.</p>
+      <div class="parts-list" id="quiet-list"></div>
+      <p class="muted setting-hint">Met luisteren uit krijg je geen luisteroefeningen meer en speelt er niets vanzelf af. De knoppen om zelf een woord af te spelen blijven staan, zodat je met een koptelefoon op verder kunt.</p>
+    </div>
+  `);
+  const list = card.querySelector('#quiet-list');
+  const rows = [
+    { key: 'noListen', icon: '🎧', label: 'Even niet luisteren', desc: 'Luisteroefeningen worden overgeslagen en niets speelt vanzelf af.' },
+    { key: 'noSpeak', icon: '🎤', label: 'Even niet praten', desc: 'De microfoonknoppen en "Zeg het na" verdwijnen.' }
+  ];
+  for (const r of rows) {
+    const on = quietSettings()[r.key];
+    const row = el(`
+      <label class="part-row">
+        <input type="checkbox" ${on ? 'checked' : ''} />
+        <span class="part-text">
+          <span class="part-label">${r.icon} ${escapeHtml(r.label)}</span>
+          <span class="part-desc muted">${escapeHtml(r.desc)}</span>
+        </span>
+      </label>
+    `);
+    row.querySelector('input').addEventListener('change', (e) => saveQuietSettings({ [r.key]: e.currentTarget.checked }));
+    list.appendChild(row);
+  }
+  return card;
+}
+
 async function renderSettings() {
   app.innerHTML = '';
   app.appendChild(el(`<div><h1>⚙️ Instellingen</h1><p class="muted">Uitspraak en herinneringen gelden voor dit toestel; je weekdoel hoort bij je account en werkt overal.</p></div>`));
+  app.appendChild(renderPartsCard());
+  app.appendChild(renderQuietCard());
   app.appendChild(renderGoalSettingsCard());
   app.appendChild(renderSpeechCard());
   app.appendChild(renderReminderCard());

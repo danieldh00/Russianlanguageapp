@@ -51,6 +51,16 @@ Attributen: `streak`, `longest_streak`, `xp`, `level`, `level_title`,
 `weekly_goal_days`, `weekly_goal_reached`, `streak_freezes`,
 `studied_today` en `last_studied`.
 
+## Lesonderdelen en stille modus
+
+Onder ⚙️ Instellingen → Lesonderdelen zet je per oefenvorm aan of uit of die
+nog in je lessen voorkomt, en verberg je tegels op het lessenscherm (zoals de
+schrijftrainer op een telefoon). Dat is een keuze per toestel. Midden in een
+les staan twee knopjes boven de vraag: "Even niet luisteren" en "Even niet
+praten" — handig in de trein. Luisteroefeningen worden dan overgeslagen en de
+microfoonknoppen verdwijnen, meteen voor de rest van die sessie. De
+niveautoets blijft altijd alle oefenvormen toetsen.
+
 ## Weekdoel en streak-vriezers
 
 Onder ⚙️ Instellingen → Weekdoel stel je in hoeveel XP en hoeveel dagen per

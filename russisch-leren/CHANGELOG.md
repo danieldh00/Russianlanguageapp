@@ -4,6 +4,28 @@ Alle merkbare wijzigingen aan de "Russisch Leren" add-on staan hier, nieuwste
 versie bovenaan. Dit bestand wordt door Home Assistant Supervisor automatisch
 getoond onder de "Changelog"-knop van de add-on.
 
+## 1.9.0
+
+- Nieuw: **Lesonderdelen aan- en uitzetten** (Instellingen → Lesonderdelen).
+  Per oefenvorm — meerkeuze, typen, gatenzinnen, zinnen bouwen, luisteren,
+  lezen, plaatjes, klemtoon — bepaal je of die nog in je lessen voorkomt.
+  Daaronder zet je de tegels op het lessenscherm aan of uit, zoals de
+  schrijftrainer, die op een telefoon nu eenmaal niet te doen is. Deze
+  keuzes gelden per toestel, zodat je op je telefoon iets anders kunt
+  uitzetten dan op je tablet. "Vandaag herhalen" en "Oefen je fouten"
+  blijven altijd staan, er moet minstens één oefenvorm aan blijven, en de
+  niveautoets blijft alle vormen toetsen.
+- Nieuw: **Stille modus** met twee knopjes boven elke oefenvraag: "Even niet
+  luisteren" en "Even niet praten". Luisteroefeningen worden dan
+  overgeslagen en er speelt niets meer vanzelf af; de microfoonknoppen en
+  "Zeg het na" verdwijnen. Het werkt meteen op de rest van de sessie die je
+  al bezig bent, en blijft aan tot je het weer uitzet — ook via
+  Instellingen → Stille modus. De knoppen om zelf een woord af te spelen
+  blijven staan, zodat je met een koptelefoon op verder kunt.
+- Als een les of herhaalronde door die keuzes helemaal leeg zou zijn, zegt
+  het scherm welke vormen uitstaan en verwijst het naar de instellingen, in
+  plaats van je met een lege les achter te laten.
+
 ## 1.8.0
 
 - Nieuw: **Leesverhalen** (Lessen → Leesverhalen). Twaalf korte verhalen,

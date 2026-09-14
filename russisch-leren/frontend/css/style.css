@@ -926,3 +926,25 @@ select#dialogue-level { padding: 9px 12px; border: 1.5px solid var(--glass-borde
   .story-ru { font-size: 1.08rem; }
   .hw-letter-head h2 { font-size: 1.5rem; }
 }
+
+/* ---------- lesson parts + quiet mode ---------- */
+.parts-list { display: flex; flex-direction: column; gap: 2px; margin: 10px 0 4px; }
+.part-row {
+  display: flex; align-items: flex-start; gap: 12px; padding: 11px 4px;
+  border-bottom: 1px solid var(--glass-border); cursor: pointer; font-weight: 400;
+}
+.part-row:last-child { border-bottom: none; }
+.part-row input { accent-color: var(--accent); width: 20px; height: 20px; flex: 0 0 auto; margin-top: 2px; }
+.part-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.part-label { font-size: 0.95rem; font-weight: 600; color: var(--ink); }
+.part-desc { font-size: 0.82rem; line-height: 1.45; }
+.parts-heading { margin: 20px 0 2px; font-size: 1rem; }
+
+.quiet-bar { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 14px; }
+.quiet-chip {
+  font-family: inherit; font-size: 0.78rem; font-weight: 600; padding: 6px 12px;
+  border-radius: 999px; border: 1.5px solid var(--glass-border);
+  background: var(--glass-bg); color: var(--muted); cursor: pointer;
+}
+.quiet-chip:hover { border-color: var(--accent); color: var(--accent-ink); }
+.quiet-chip.active { background: var(--accent2-soft); border-color: var(--accent2); color: var(--accent2); }
