@@ -124,10 +124,17 @@ const LEVEL_FALLBACK_TITLES = { A1: 'Beginner', A2: 'Elementair', B1: 'Drempelni
 
 const CYRILLIC_RUN = /[Ѐ-ӿ][Ѐ-ӿ\s.,!?'"()-]*[Ѐ-ӿ]|[Ѐ-ӿ]/;
 
+// What the listen button next to a question may say out loud: only Russian
+// that is already on screen. It used to fall back to the correct answer
+// whenever that was Cyrillic, which read the answer aloud on 1812 of the
+// multiple-choice questions ("Welke letter klinkt als 'v' in 'vis'?" -> "В в").
+// After answering, the feedback has its own listen button.
 function extractSpeakText(ex) {
   if (ex.type === 'listen') return ex.context || null;
   if (ex.type === 'reading') return ex.context || null;
-  if (CYRILLIC_RUN.test(ex.correctAnswer)) return ex.correctAnswer;
+  // A stress question asks where the stress falls, so hearing the word spoken
+  // is the answer. It is played slowly on its own once you have answered.
+  if (ex.type === 'stress') return null;
   const match = ex.prompt.match(CYRILLIC_RUN);
   return match ? match[0].trim() : null;
 }
@@ -235,12 +242,34 @@ function disabledPartLabels() {
   return LESSON_PARTS.filter((p) => parts[p.id] === false || (p.id === 'listen' && quiet.noListen)).map((p) => p.label);
 }
 
-// The two switches in the lesson header. Flipping one re-filters the rest of
-// the session straight away, so it takes effect on the very next question.
-function renderQuietBar(onChange) {
+// Does this question actually play audio by itself? A listening exercise is
+// nothing without sound, and a stress question plays the answer slowly after
+// you answer. A plain multiple-choice question with an optional listen button
+// does not qualify -- nobody needs to switch off a button they can ignore.
+function needsHearing(ex) {
+  return !!ex && (ex.type === 'listen' || ex.type === 'stress');
+}
+// Does it offer the microphone as a way to answer? That is the free-text
+// exercises: typing and gatenzinnen.
+function offersMicrophone(ex) {
+  return !!ex && !(ex.options && ex.options.length) && speechRecognitionSupported();
+}
+
+// The two switches in the lesson header. They only appear where they mean
+// something -- on a question that makes sound or asks you to speak -- plus
+// whenever one is already on, because otherwise there would be no way back.
+// Instellingen → Stille modus is the permanent home for both.
+function renderQuietBar(onChange, ex) {
   const quiet = quietSettings();
+  const show = {
+    noListen: quiet.noListen || (needsHearing(ex) && 'speechSynthesis' in window),
+    noSpeak: quiet.noSpeak || offersMicrophone(ex)
+  };
+  if (!show.noListen && !show.noSpeak) return null;
+
   const bar = el(`<div class="quiet-bar"></div>`);
   const chip = (key, onLabel, offLabel, title) => {
+    if (!show[key]) return;
     const active = quiet[key];
     const btn = el(`<button type="button" class="quiet-chip ${active ? 'active' : ''}" title="${escapeHtml(title)}" aria-pressed="${active}"></button>`);
     btn.textContent = active ? onLabel : offLabel;
@@ -268,19 +297,46 @@ function pickVoice() {
   return voices.find((v) => v.voiceURI === voiceURI) || voices.find((v) => v.localService) || voices[0];
 }
 
-function speakRussian(text, { slow = false } = {}) {
-  if (!text || !('speechSynthesis' in window)) return;
+// Why speaking would produce nothing, in words the learner can act on. The
+// common case on an iPhone is simply that no Russian voice is installed: iOS
+// then stays completely silent for lang="ru-RU" rather than falling back to
+// another language, which looks like a broken button.
+function speechProblem() {
+  if (!('speechSynthesis' in window)) return 'Deze browser kan geen tekst voorlezen.';
+  const all = window.speechSynthesis.getVoices();
+  if (!all.length) return 'Dit toestel heeft geen stemmen voor tekst-naar-spraak. Installeer er een via de systeeminstellingen van je telefoon of computer.';
+  if (!russianVoices().length) {
+    return 'Er staat geen Russische stem op dit toestel, daarom blijft het stil. Op iPhone/iPad: Instellingen → Toegankelijkheid → Gesproken materiaal → Stemmen → Russisch (kies Milena). Op Android: Instellingen → Systeem → Talen → Tekst-naar-spraak.';
+  }
+  return 'Er kwam geen geluid. Zet het schakelaartje voor stil op je iPhone uit en het volume omhoog; op een computer: controleer of het geluid niet gedempt staat.';
+}
+
+function speakRussian(text, { slow = false, onProblem } = {}) {
+  if (!text || !('speechSynthesis' in window)) {
+    if (onProblem) onProblem(text ? speechProblem() : 'Er is niets om voor te lezen.');
+    return;
+  }
   try {
-    window.speechSynthesis.cancel();
+    // Cancelling an idle engine is what silences the next utterance on iOS,
+    // so only clear a sentence that is actually still running.
+    if (window.speechSynthesis.speaking || window.speechSynthesis.pending) window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text.replace(/́/g, ''));
     utterance.lang = 'ru-RU';
     const s = speechSettings();
     utterance.rate = slow ? s.slowRate : s.rate;
     const voice = pickVoice();
     if (voice) utterance.voice = voice;
+
+    if (onProblem) {
+      let started = false;
+      utterance.onstart = () => { started = true; };
+      utterance.onerror = () => onProblem(speechProblem());
+      // Nothing started within a second and a half means nothing is coming.
+      setTimeout(() => { if (!started) onProblem(speechProblem()); }, 1500);
+    }
     window.speechSynthesis.speak(utterance);
   } catch (e) {
-    /* Web Speech API not available or blocked -- listening is a bonus, not required */
+    if (onProblem) onProblem('Voorlezen lukte niet op dit toestel.');
   }
 }
 
@@ -290,11 +346,23 @@ function renderSpeakButton(text, label = '🔊 Luister') {
   if (!text || !('speechSynthesis' in window)) return null;
   const group = el(`<span class="speak-group"></span>`);
   const btn = el(`<button type="button" class="speak-btn" aria-label="Luister naar de Russische uitspraak">${label}</button>`);
-  btn.addEventListener('click', () => speakRussian(text));
   const slow = el(`<button type="button" class="speak-btn speak-slow" title="Langzaam" aria-label="Langzaam beluisteren">🐢</button>`);
-  slow.addEventListener('click', () => speakRussian(text, { slow: true }));
   group.appendChild(btn);
   group.appendChild(slow);
+
+  // A silent button is indistinguishable from a broken app, so say what is
+  // wrong right where it happened instead of leaving the learner guessing.
+  let notice = null;
+  const onProblem = (message) => {
+    if (notice) return;
+    notice = el(`<span class="speak-problem"></span>`);
+    notice.textContent = message;
+    group.insertAdjacentElement('afterend', notice);
+  };
+  const clearNotice = () => { if (notice) { notice.remove(); notice = null; } };
+
+  btn.addEventListener('click', () => { clearNotice(); speakRussian(text, { onProblem }); });
+  slow.addEventListener('click', () => { clearNotice(); speakRussian(text, { slow: true, onProblem }); });
   return group;
 }
 
@@ -1241,7 +1309,9 @@ function renderExercise(session) {
     </div>
   `);
   app.appendChild(wrapper);
-  wrapper.querySelector('#quiet').replaceWith(renderQuietBar(() => refilterSession(session)));
+  const quietBar = renderQuietBar(() => refilterSession(session), ex);
+  const quietSlot = wrapper.querySelector('#quiet');
+  if (quietBar) quietSlot.replaceWith(quietBar); else quietSlot.remove();
   wrapper.querySelector('#head').replaceWith(renderExerciseHead(ex, { showContextText: false }));
   if (ex.type === 'listen' && !quietSettings().noListen) speakRussian(ex.context);
 
@@ -1265,11 +1335,18 @@ function renderExercise(session) {
         ${isCorrect ? '' : `<div>Het juiste antwoord is: <strong>${escapeHtml(ex.correctAnswer)}</strong></div>`}
         ${ex.type === 'listen' && ex.context ? `<div class="listen-reveal">Je hoorde: <strong>${escapeHtml(ex.context)}</strong></div>` : ''}
         <div class="explanation">${escapeHtml(ex.explanation)}</div>
+        <div id="answer-speak-slot"></div>
         <div id="example-slot"></div>
         ${ex.grammarRule ? `<div class="grammar-rule"><strong>${escapeHtml(ex.grammarRule.title)}:</strong> ${escapeHtml(ex.grammarRule.explanation)}</div>` : ''}
         <div id="ai-explain-slot"></div>
       </div>
     `);
+    // Now that the answer is on screen, hearing it gives nothing away.
+    const answerSlot = fb.querySelector('#answer-speak-slot');
+    const spokenAnswer = CYRILLIC_RUN.test(ex.correctAnswer || '') ? ex.correctAnswer : null;
+    const answerSpeak = spokenAnswer && !quietSettings().noListen ? renderSpeakButton(spokenAnswer, '🔊 Hoor het antwoord') : null;
+    if (answerSpeak) answerSlot.replaceWith(answerSpeak); else answerSlot.remove();
+
     const exampleBlock = renderExampleBlock(ex.example);
     if (exampleBlock) fb.querySelector('#example-slot').replaceWith(exampleBlock);
     fb.appendChild(renderAfterAnswerTools(ex));
@@ -1943,9 +2020,12 @@ function renderMicButton(onText) {
 }
 
 // The Russian a learner should be able to say after this exercise.
+// Only ever used after an answer has been given, so here the correct answer
+// is fair game -- it is already on screen, and repeating it is the point.
 function pronunciationTarget(ex) {
   if (ex.type === 'listen' || ex.type === 'reading') return ex.context || null;
   if (ex.example && ex.example.ru && (ex.type === 'cloze')) return ex.example.ru;
+  if (CYRILLIC_RUN.test(ex.correctAnswer || '')) return ex.correctAnswer;
   return extractSpeakText(ex);
 }
 

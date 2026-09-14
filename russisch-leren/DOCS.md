@@ -60,6 +60,15 @@ en tijd, leesverhalen, het zakboekje, het koppelspel, de toetsenbordtrainer en
 de schrijftrainer. Daarna volgen **Voortgang**, **Ranglijst** en
 **Instellingen**.
 
+## Voorlezen werkt niet?
+
+Hoor je niets als je op 🔊 tikt, dan verschijnt er sinds 1.11.1 een korte
+uitleg onder de knop. Meestal staat er geen Russische stem op het toestel: iOS
+blijft dan volledig stil in plaats van een andere taal te gebruiken. Zet er
+een bij via Instellingen → Toegankelijkheid → Gesproken materiaal → Stemmen →
+Russisch (Milena is de beste). Controleer daarnaast het schakelaartje voor
+stil aan de zijkant van de iPhone; dat staat los van het volume.
+
 ## Lesonderdelen en stille modus
 
 Onder ⚙️ Instellingen → Lesonderdelen zet je per oefenvorm aan of uit of die

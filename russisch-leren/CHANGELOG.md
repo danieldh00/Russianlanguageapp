@@ -4,6 +4,30 @@ Alle merkbare wijzigingen aan de "Russisch Leren" add-on staan hier, nieuwste
 versie bovenaan. Dit bestand wordt door Home Assistant Supervisor automatisch
 getoond onder de "Changelog"-knop van de add-on.
 
+## 1.11.1
+
+- **Opgelost: de luisterknop verklapte het antwoord.** Bij 1812 meerkeuze-
+  vragen las de knop naast de vraag het juiste antwoord voor — bij "Welke
+  letter klinkt als 'v' in 'vis'?" hoorde je gewoon «В в». De knop leest nu
+  alleen nog Russisch voor dat al in de vraag staat, en bij klemtoonvragen
+  zwijgt hij helemaal, want daar ís het horen het antwoord. Staat er geen
+  Russisch in de vraag, dan is er ook geen knop meer.
+- Nieuw op zijn plaats: **nadat je hebt geantwoord** verschijnt "🔊 Hoor het
+  antwoord" in de uitleg, zodat je het juiste Russisch alsnog hoort — nu
+  zonder iets weg te geven.
+- **Opgelost: een luisterknop die zwijgt zegt nu waaróm.** Blijft het stil,
+  dan verschijnt er onder de knop een korte uitleg: geen Russische stem op
+  dit toestel (met het pad in de iOS-instellingen), helemaal geen stemmen
+  geïnstalleerd, of controleer het schakelaartje voor stil en het volume.
+  Op een iPhone zonder Russische stem blijft iOS namelijk volledig stil in
+  plaats van naar een andere taal terug te vallen.
+- De knopjes **"Even niet luisteren"** en **"Even niet praten"** staan niet
+  meer boven élke vraag. Ze verschijnen alleen bij een vraag die zelf geluid
+  maakt (luisteren, klemtoon) of waar je in de microfoon kunt antwoorden — en
+  natuurlijk zolang je ze aan hebt staan, zodat je ze altijd weer uit kunt
+  zetten. Alle twee blijven ook gewoon onder Instellingen → Stille modus
+  staan.
+
 ## 1.11.0
 
 Beveiliging. De veiligheidsscore die Home Assistant aan deze add-on geeft

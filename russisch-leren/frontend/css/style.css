@@ -984,3 +984,10 @@ select#dialogue-level { padding: 9px 12px; border: 1.5px solid var(--glass-borde
 @media (max-width: 480px) {
   .goal-ring, .goal-ring svg { width: 58px; height: 58px; }
 }
+
+/* a listen button that produced no sound explains itself right there */
+.speak-problem {
+  display: block; margin: 8px 0 0; font-size: 0.8rem; line-height: 1.5;
+  color: var(--accent2); background: var(--accent2-soft);
+  border-radius: 12px; padding: 8px 12px;
+}
