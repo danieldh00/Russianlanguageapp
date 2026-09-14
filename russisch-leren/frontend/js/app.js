@@ -463,6 +463,7 @@ const bottomNav = document.getElementById('bottom-nav');
 // once badges + username + several links are all fighting for the same line.
 const NAV_ITEMS = [
   { route: 'dashboard', label: 'Lessen', icon: '📚' },
+  { route: 'tools', label: 'Oefenen', icon: '✨' },
   { route: 'progress', label: 'Voortgang', icon: '📊' },
   { route: 'leaderboard', label: 'Ranglijst', icon: '🏆' },
   { route: 'settings', label: 'Instellingen', icon: '⚙️' }
@@ -471,7 +472,10 @@ const NAV_ITEMS = [
 function currentRouteSection() {
   const route = (location.hash || '#/dashboard').split('/')[1] || 'dashboard';
   // a lesson or exam screen is reached from, and belongs to, the "Lessen" tab
-  return ['lesson', 'exam', 'practice', 'review', 'dialogue', 'keyboard', 'phrasebook', 'dictation', 'match', 'stories', 'story', 'handwriting'].includes(route) ? 'dashboard' : route;
+  if (['lesson', 'exam'].includes(route)) return 'dashboard';
+  // every practice screen is reached from, and belongs to, the "Oefenen" tab
+  if (['tools', 'practice', 'review', 'dialogue', 'keyboard', 'phrasebook', 'dictation', 'match', 'stories', 'story', 'handwriting'].includes(route)) return 'tools';
+  return route;
 }
 
 function renderNav() {
@@ -561,6 +565,7 @@ async function router() {
   if (route === 'phrasebook') return renderPhrasebook();
   if (route === 'dictation') return renderDictation();
   if (route === 'match') return renderMatchGame();
+  if (route === 'tools') return renderToolsMenu();
   if (route === 'stories') return renderStoryList();
   if (route === 'story') return renderStory(param);
   if (route === 'handwriting') return renderHandwriting();
@@ -769,7 +774,7 @@ async function renderDashboard() {
   const wrapper = el(`
     <div>
       <h1>Jouw pad door het Russisch</h1>
-      <p class="muted">Van A1 tot C2. Elke les opent zodra je de vorige helemaal hebt geoefend; een nieuw niveau opent na de toets (of na alle lessen) van het niveau ervoor. Alles werkt ook zonder internet, behalve de toetsen.</p>
+      <p class="muted">Van A1 tot C2. Extra oefenvormen staan onder ✨ Oefenen.</p>
       <div class="level-jump" id="level-jump"></div>
       <div id="goal-slot"></div>
       <div id="practice-slot"></div>
@@ -779,46 +784,22 @@ async function renderDashboard() {
   app.innerHTML = '';
   app.appendChild(wrapper);
 
-  // Daily tools above the path: today's reviews across all lessons, the
-  // mistakes round, role-play dialogues and the keyboard trainer.
+  // The lesson path is what this screen is for, so the practice tools moved
+  // to their own tab. What stays here is only what is due today, as a single
+  // line of chips: eight tiles pushed the first lesson off the screen.
   const openMistakes = mistakeExercises(content, username).length;
   const dueCount = dueWordIds(content, username).length;
-  const tools = el(`<div class="tool-grid"></div>`);
-  // `id` is the switch in Instellingen -> Lesonderdelen; tiles without one
-  // (today's review, your mistakes) are the core of the app and always show.
-  const tool = (cls, icon, title, text, badge, hash, id) => {
-    if (id && !toolEnabled(id)) return;
-    const card = el(`
-      <button type="button" class="card tool-card ${cls}">
-        <div class="row1"><h2>${icon} ${escapeHtml(title)}</h2>${badge != null ? `<span class="level-badge">${badge}</span>` : ''}</div>
-        <p class="muted">${text}</p>
-      </button>
-    `);
-    card.addEventListener('click', () => { location.hash = hash; });
-    tools.appendChild(card);
+  const strip = el(`<div class="daily-strip"></div>`);
+  const chip = (cls, label, href, count) => {
+    const a = el(`<a class="daily-chip ${cls}" href="${href}"></a>`);
+    a.appendChild(document.createTextNode(label));
+    if (count != null) a.appendChild(el(`<span class="daily-count">${count}</span>`));
+    strip.appendChild(a);
   };
-  tool('review-card', '🔁', 'Vandaag herhalen',
-    dueCount ? `${dueCount === 1 ? 'Eén woord is' : `${dueCount} woorden zijn`} aan herhaling toe, uit al je lessen samen. Dít is wat het laat beklijven.` : 'Niets aan herhaling toe — alles zit nog vers. Kom morgen terug of ga verder op het pad.',
-    dueCount || null, dueCount ? '#/review' : '#/dashboard');
-  if (openMistakes) {
-    tool('practice-card', '🎯', 'Oefen je fouten',
-      `${openMistakes === 1 ? 'Eén vraag die je fout had' : `${openMistakes} vragen die je fout had`} en nog niet hebt rechtgezet, de vaakst gemiste eerst.`,
-      openMistakes, '#/practice');
-  }
-  tool('dialogue-card', '🗣️', 'Gesprek oefenen', 'Rollenspel met de AI: apotheek, hotel, politie, huurbaas… Jij typt of spreekt Russisch, de AI antwoordt in zijn rol en corrigeert je.', null, '#/dialogue', 'dialogue');
-  tool('match-card', '🃏', 'Koppelspel', 'Vijf Russische en vijf Nederlandse woorden: tik de paren bij elkaar, zo snel mogelijk. Telt mee voor je herhaling.', null, '#/match', 'match');
-  tool('dictation-card', '🔢', 'Getallen & tijd', 'Luister naar prijzen, tijden, datums en telefoonnummers en typ wat je hoort — het eerste wat misgaat in een winkel of taxi.', null, '#/dictation', 'dictation');
-  tool('phrasebook-card', '📕', 'Zakboekje', 'Per situatie de zinnen die je écht nodig hebt — apotheek, noodgeval, taxi, hotel — groot, met uitspraak, ook offline.', null, '#/phrasebook', 'phrasebook');
-  tool('keyboard-card', '⌨️', 'Toetsenbord ЙЦУКЕН', 'Leer blind typen op de Russische indeling: woorden en zinnen uit de lessen, met de toets die je zoekt uitgelicht.', null, '#/keyboard', 'keyboard');
-  const storiesRead = Object.keys(Storage.loadStories(username)).length;
-  const storyTotal = (content.stories || []).length;
-  if (storyTotal) {
-    tool('stories-card', '📖', 'Leesverhalen',
-      `Korte verhalen van A1 tot C2. Tik op een zin voor de vertaling, op een woord voor de betekenis, en beantwoord daarna de begripsvragen.`,
-      `${storiesRead}/${storyTotal}`, '#/stories', 'stories');
-  }
-  tool('handwriting-card', '✍️', 'Schrijven met de hand', 'Trek de Cyrillische letters na op het scherm. De app kijkt na hoe nauwkeurig je bent — schrijven laat de vorm pas echt beklijven.', null, '#/handwriting', 'handwriting');
-  wrapper.querySelector('#practice-slot').appendChild(tools);
+  if (dueCount) chip('due', '🔁 Herhalen', '#/review', dueCount);
+  if (openMistakes) chip('mistakes', '🎯 Je fouten', '#/practice', openMistakes);
+  chip('more', dueCount || openMistakes ? '✨ Meer oefenen' : '✨ Oefenen', '#/tools', null);
+  wrapper.querySelector('#practice-slot').appendChild(strip);
 
   const goalCard = renderWeeklyGoalCard();
   if (goalCard) wrapper.querySelector('#goal-slot').appendChild(goalCard);
@@ -922,6 +903,102 @@ async function renderDashboard() {
 
     levelsRoot.appendChild(section);
   });
+}
+
+// ---------- "Oefenen": everything that is not the lesson path ----------
+
+// One description of every practice tool, grouped, so the tab can render them
+// and the dashboard can stay a lesson path. `id` is the switch in
+// Instellingen; the two daily ones have none and can never be hidden.
+function toolTiles(content, username) {
+  const openMistakes = mistakeExercises(content, username).length;
+  const dueCount = dueWordIds(content, username).length;
+  const storiesRead = Object.keys(Storage.loadStories(username)).length;
+  const storyTotal = (content.stories || []).length;
+
+  const tiles = [
+    { group: 'dag', cls: 'review-card', icon: '🔁', title: 'Vandaag herhalen',
+      text: dueCount
+        ? `${dueCount === 1 ? 'Eén woord is' : `${dueCount} woorden zijn`} aan herhaling toe, uit al je lessen samen. Dít is wat het laat beklijven.`
+        : 'Niets aan herhaling toe — alles zit nog vers. Kom morgen terug of ga verder op het pad.',
+      badge: dueCount || null, hash: dueCount ? '#/review' : '#/dashboard' },
+    { group: 'dag', cls: 'practice-card', icon: '🎯', title: 'Oefen je fouten',
+      text: openMistakes
+        ? `${openMistakes === 1 ? 'Eén vraag die je fout had' : `${openMistakes} vragen die je fout had`} en nog niet hebt rechtgezet, de vaakst gemiste eerst.`
+        : 'Niets open: alles wat je fout had, heb je daarna goed beantwoord.',
+      badge: openMistakes || null, hash: openMistakes ? '#/practice' : '#/dashboard' },
+
+    { group: 'spreken', id: 'dialogue', cls: 'dialogue-card', icon: '🗣️', title: 'Gesprek oefenen',
+      text: 'Rollenspel met de AI: apotheek, hotel, politie, huurbaas… Jij typt of spreekt Russisch, de AI antwoordt in zijn rol en corrigeert je.', badge: null, hash: '#/dialogue' },
+    { group: 'spreken', id: 'dictation', cls: 'dictation-card', icon: '🔢', title: 'Getallen & tijd',
+      text: 'Luister naar prijzen, tijden, datums en telefoonnummers en typ wat je hoort — het eerste wat misgaat in een winkel of taxi.', badge: null, hash: '#/dictation' },
+
+    { group: 'lezen', id: 'stories', cls: 'stories-card', icon: '📖', title: 'Leesverhalen',
+      text: 'Korte verhalen van A1 tot C2. Tik op een zin voor de vertaling, op een woord voor de betekenis, en beantwoord daarna de begripsvragen.',
+      badge: storyTotal ? `${storiesRead}/${storyTotal}` : null, hash: '#/stories', hide: !storyTotal },
+    { group: 'lezen', id: 'phrasebook', cls: 'phrasebook-card', icon: '📕', title: 'Zakboekje',
+      text: 'Per situatie de zinnen die je écht nodig hebt — apotheek, noodgeval, taxi, hotel — groot, met uitspraak, ook offline.', badge: null, hash: '#/phrasebook' },
+    { group: 'lezen', id: 'match', cls: 'match-card', icon: '🃏', title: 'Koppelspel',
+      text: 'Vijf Russische en vijf Nederlandse woorden: tik de paren bij elkaar, zo snel mogelijk. Telt mee voor je herhaling.', badge: null, hash: '#/match' },
+
+    { group: 'schrijven', id: 'keyboard', cls: 'keyboard-card', icon: '⌨️', title: 'Toetsenbord ЙЦУКЕН',
+      text: 'Leer blind typen op de Russische indeling: woorden en zinnen uit de lessen, met de toets die je zoekt uitgelicht.', badge: null, hash: '#/keyboard' },
+    { group: 'schrijven', id: 'handwriting', cls: 'handwriting-card', icon: '✍️', title: 'Schrijven met de hand',
+      text: 'Trek de Cyrillische letters na op het scherm. De app kijkt na hoe nauwkeurig je bent — schrijven laat de vorm pas echt beklijven.', badge: null, hash: '#/handwriting' }
+  ];
+  return tiles.filter((t) => !t.hide && (!t.id || toolEnabled(t.id)));
+}
+
+const TOOL_GROUPS = [
+  { id: 'dag', title: 'Elke dag', desc: 'De twee rondes die je voortgang echt vasthouden.' },
+  { id: 'spreken', title: 'Luisteren & spreken', desc: 'Oefenen met wat er in het echt op je afkomt.' },
+  { id: 'lezen', title: 'Lezen & woorden', desc: 'Woordenschat en leestempo, ook zonder internet.' },
+  { id: 'schrijven', title: 'Typen & schrijven', desc: 'Cyrillisch onder je vingers krijgen.' }
+];
+
+async function renderToolsMenu() {
+  const content = await ensureContentLoaded();
+  if (!content) return renderNoContentMessage();
+  const tiles = toolTiles(content, state.user.username);
+
+  app.innerHTML = '';
+  const wrap = el(`
+    <div>
+      <h1>✨ Oefenen</h1>
+      <p class="muted">Alles naast het lessenpad. Welke hiervan je ziet, bepaal je onder Instellingen → Lesonderdelen.</p>
+      <div id="tool-groups"></div>
+    </div>
+  `);
+  app.appendChild(wrap);
+  const root = wrap.querySelector('#tool-groups');
+
+  for (const group of TOOL_GROUPS) {
+    const inGroup = tiles.filter((t) => t.group === group.id);
+    if (!inGroup.length) continue;
+    const section = el(`
+      <section class="tool-group">
+        <h2>${escapeHtml(group.title)}</h2>
+        <p class="muted tool-group-desc">${escapeHtml(group.desc)}</p>
+        <div class="tool-grid"></div>
+      </section>
+    `);
+    const grid = section.querySelector('.tool-grid');
+    for (const t of inGroup) {
+      const card = el(`
+        <button type="button" class="card tool-card ${t.cls}">
+          <div class="row1"><h2>${t.icon} ${escapeHtml(t.title)}</h2>${t.badge != null ? `<span class="level-badge">${escapeHtml(String(t.badge))}</span>` : ''}</div>
+          <p class="muted">${escapeHtml(t.text)}</p>
+        </button>
+      `);
+      card.addEventListener('click', () => { location.hash = t.hash; });
+      grid.appendChild(card);
+    }
+    root.appendChild(section);
+  }
+
+  if (!tiles.length) {
+    root.appendChild(el(`<div class="card"><p class="muted">Je hebt alle oefenvormen verborgen. Zet ze weer aan onder Instellingen → Lesonderdelen.</p><a class="secondary-link" href="#/settings">Naar instellingen</a></div>`));
+  }
 }
 
 // ---------- lesson / quiz (fully local: grading, SRS update, outbox) ----------
@@ -2595,7 +2672,7 @@ function renderWeeklyGoalCard() {
   const w = stats && stats.weekly;
   if (!w) return null;
 
-  const radius = 34;
+  const radius = 27;
   const circumference = 2 * Math.PI * radius;
   const pct = Math.max(0, Math.min(100, w.xpPct || 0));
   const dash = (pct / 100) * circumference;
@@ -2607,9 +2684,9 @@ function renderWeeklyGoalCard() {
     <div class="card goal-card ${w.reached ? 'reached' : ''}">
       <div class="goal-main">
         <div class="goal-ring">
-          <svg viewBox="0 0 80 80" width="80" height="80" aria-hidden="true">
-            <circle class="goal-ring-track" cx="40" cy="40" r="${radius}"></circle>
-            <circle class="goal-ring-fill ${dash > 0 ? '' : 'empty'}" cx="40" cy="40" r="${radius}"
+          <svg viewBox="0 0 64 64" width="64" height="64" aria-hidden="true">
+            <circle class="goal-ring-track" cx="32" cy="32" r="${radius}"></circle>
+            <circle class="goal-ring-fill ${dash > 0 ? '' : 'empty'}" cx="32" cy="32" r="${radius}"
               stroke-dasharray="${dash.toFixed(1)} ${(circumference - dash).toFixed(1)}"></circle>
           </svg>
           <span class="goal-ring-label">${pct}%</span>
@@ -2634,15 +2711,15 @@ function renderWeeklyGoalCard() {
     daysEl.appendChild(dot);
   }
 
-  const freezeEl = card.querySelector('#goal-freeze');
+  // Freezes sit in the day row as a small chip; the explanation lives in
+  // Instellingen, where you set the goal. Only news gets its own line.
   const freezes = stats.freezes || 0;
+  if (freezes) daysEl.appendChild(el(`<span class="goal-freeze-chip" title="Vangt één gemiste dag op">❄ ${freezes}</span>`));
+
+  const freezeEl = card.querySelector('#goal-freeze');
   const yesterday = addDays(today, -1);
-  const parts = [];
-  if (stats.freezeSpentOn === yesterday) parts.push('❄️ Een vriezer heeft gisteren opgevangen: je reeks loopt gewoon door.');
-  parts.push(freezes
-    ? `❄️ ${freezes} ${freezes === 1 ? 'vriezer' : 'vriezers'} op zak. Eén gemiste dag wordt automatisch opgevangen.`
-    : 'Nog geen vriezer. Elke volle week op rij levert er één op, waarmee één gemiste dag je reeks niet breekt.');
-  freezeEl.innerHTML = parts.map((p) => escapeHtml(p)).join('<br>');
+  if (stats.freezeSpentOn === yesterday) freezeEl.textContent = '❄️ Een vriezer ving gisteren op, je reeks loopt door.';
+  else freezeEl.remove();
   return card;
 }
 
@@ -2677,7 +2754,10 @@ function renderGoalSettingsCard() {
     (w.dayChoices || [3, 4, 5, 6, 7]).forEach((v) => {
       daysSel.appendChild(el(`<option value="${v}" ${v === w.goalDays ? 'selected' : ''}>${v} ${v === 1 ? 'dag' : 'dagen'}</option>`));
     });
-    status.textContent = `Deze week: ${w.xp} XP op ${w.days} ${w.days === 1 ? 'dag' : 'dagen'}.`;
+    const stats = Storage.loadStats(state.user.username);
+    const freezes = (stats && stats.freezes) || 0;
+    status.textContent = `Deze week: ${w.xp} XP op ${w.days} ${w.days === 1 ? 'dag' : 'dagen'}. `
+      + (freezes ? `Je hebt ${freezes} ${freezes === 1 ? 'vriezer' : 'vriezers'} op zak.` : 'Nog geen vriezer op zak.');
   }
 
   async function save() {
@@ -3438,8 +3518,8 @@ function renderPartsCard() {
       <h2>🎛️ Lesonderdelen</h2>
       <p class="muted">Wat je hier uitzet, komt niet meer voor in je lessen, de dagelijkse herhaling en het oefenen van je fouten. Dit geldt alleen voor dit toestel, zodat je op je telefoon iets anders kunt uitzetten dan op je tablet. De niveautoets blijft altijd alle vormen toetsen, anders zegt het certificaat niets.</p>
       <div class="parts-list" id="parts-list"></div>
-      <h3 class="parts-heading">Onderdelen op het lessenscherm</h3>
-      <p class="muted">Verbergt de tegel. "Vandaag herhalen" en "Oefen je fouten" blijven altijd staan.</p>
+      <h3 class="parts-heading">Tegels onder ✨ Oefenen</h3>
+      <p class="muted">Verbergt de tegel in het oefenmenu. "Vandaag herhalen" en "Oefen je fouten" blijven altijd staan.</p>
       <div class="parts-list" id="tools-list"></div>
       <p class="muted setting-hint" id="parts-status"></p>
     </div>
@@ -3486,7 +3566,7 @@ function renderPartsCard() {
     const box = row.querySelector('input');
     box.addEventListener('change', () => {
       saveToolSettings({ [t.id]: box.checked });
-      status.textContent = box.checked ? `${t.label} staat weer op het lessenscherm.` : `${t.label} is verborgen op dit toestel.`;
+      status.textContent = box.checked ? `${t.label} staat weer in het oefenmenu.` : `${t.label} is verborgen op dit toestel.`;
     });
     toolsList.appendChild(row);
   }

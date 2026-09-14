@@ -4,6 +4,18 @@ Alle merkbare wijzigingen aan de "Russisch Leren" add-on staan hier, nieuwste
 versie bovenaan. Dit bestand wordt door Home Assistant Supervisor automatisch
 getoond onder de "Changelog"-knop van de add-on.
 
+## 1.10.0
+
+- De oefenvormen hebben een **eigen tab** gekregen: ✨ Oefenen, naast Lessen.
+  Daar staan ze gegroepeerd per soort — elke dag (herhalen, je fouten),
+  luisteren & spreken, lezen & woorden, typen & schrijven. Het lessenscherm
+  toont nu alleen nog het pad zelf, met bovenin één regel met wat er vandaag
+  klaarstaat: herhalen, je fouten en een knop naar het oefenmenu. De eerste
+  les staat daardoor weer meteen in beeld in plaats van acht tegels lager.
+- Het weekdoel op het lessenscherm is compacter: kleinere ring en de
+  vriezers als klein ❄-teken naast de dagenbalk. Hoeveel vriezers je hebt
+  staat nu ook bij Instellingen → Weekdoel, waar je het doel instelt.
+
 ## 1.9.0
 
 - Nieuw: **Lesonderdelen aan- en uitzetten** (Instellingen → Lesonderdelen).

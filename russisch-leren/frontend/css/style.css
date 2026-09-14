@@ -948,3 +948,39 @@ select#dialogue-level { padding: 9px 12px; border: 1.5px solid var(--glass-borde
 }
 .quiet-chip:hover { border-color: var(--accent); color: var(--accent-ink); }
 .quiet-chip.active { background: var(--accent2-soft); border-color: var(--accent2); color: var(--accent2); }
+
+/* ---------- dashboard daily strip + Oefenen tab ---------- */
+.daily-strip { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 18px; }
+.daily-chip {
+  display: inline-flex; align-items: center; gap: 7px; text-decoration: none;
+  font-size: 0.85rem; font-weight: 600; padding: 9px 15px; border-radius: 999px;
+  border: 1.5px solid var(--glass-border); background: var(--glass-bg-strong); color: var(--ink);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+}
+.daily-chip:hover { border-color: var(--accent); color: var(--accent-ink); }
+.daily-chip.due { border-color: var(--accent); color: var(--accent-ink); }
+.daily-chip.mistakes { border-color: var(--accent2); color: var(--accent2); }
+.daily-count {
+  font-size: 0.72rem; font-weight: 700; line-height: 1; padding: 4px 8px; border-radius: 999px;
+  background: var(--accent); color: #fff; font-variant-numeric: tabular-nums;
+}
+.daily-chip.mistakes .daily-count { background: var(--accent2); }
+
+.tool-group { margin-bottom: 26px; }
+.tool-group h2 { margin: 0 0 2px; font-size: 1.1rem; }
+.tool-group-desc { margin: 0 0 12px; font-size: 0.85rem; }
+
+/* compact weekly goal card: the ring shrank and the freeze line became a chip */
+.goal-card { padding: 16px 18px; }
+.goal-ring, .goal-ring svg { width: 64px; height: 64px; }
+.goal-ring-track, .goal-ring-fill { stroke-width: 7; }
+.goal-ring-label { font-size: 0.8rem; }
+.goal-card .goal-freeze { margin-top: 10px; }
+.goal-freeze-chip {
+  display: inline-flex; align-items: center; height: 26px; padding: 0 10px; border-radius: 999px;
+  font-size: 0.72rem; font-weight: 700; margin-left: 4px;
+  background: var(--accent-soft); color: var(--accent-ink); border: 1.5px solid var(--accent);
+}
+@media (max-width: 480px) {
+  .goal-ring, .goal-ring svg { width: 58px; height: 58px; }
+}

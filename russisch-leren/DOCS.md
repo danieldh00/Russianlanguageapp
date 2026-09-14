@@ -51,10 +51,19 @@ Attributen: `streak`, `longest_streak`, `xp`, `level`, `level_title`,
 `weekly_goal_days`, `weekly_goal_reached`, `streak_freezes`,
 `studied_today` en `last_studied`.
 
+## Waar staat wat
+
+Onderin staan vijf tabs. **Lessen** is het pad van A1 tot C2, met bovenaan je
+weekdoel en één regel met wat er vandaag klaarstaat. **Oefenen** verzamelt
+alles daarnaast: dagelijkse herhaling, je fouten, het AI-rollenspel, getallen
+en tijd, leesverhalen, het zakboekje, het koppelspel, de toetsenbordtrainer en
+de schrijftrainer. Daarna volgen **Voortgang**, **Ranglijst** en
+**Instellingen**.
+
 ## Lesonderdelen en stille modus
 
 Onder ⚙️ Instellingen → Lesonderdelen zet je per oefenvorm aan of uit of die
-nog in je lessen voorkomt, en verberg je tegels op het lessenscherm (zoals de
+nog in je lessen voorkomt, en verberg je tegels in het oefenmenu (zoals de
 schrijftrainer op een telefoon). Dat is een keuze per toestel. Midden in een
 les staan twee knopjes boven de vraag: "Even niet luisteren" en "Even niet
 praten" — handig in de trein. Luisteroefeningen worden dan overgeslagen en de
