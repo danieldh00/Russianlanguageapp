@@ -2,8 +2,15 @@ const express = require('express');
 const Anthropic = require('@anthropic-ai/sdk');
 const db = require('../db');
 const { requireAuth } = require('../middleware');
+const { aiGuard } = require('../rateLimit');
 
 const router = express.Router();
+
+// Sonnet is plenty for a few sentences of Dutch feedback or one dialogue
+// turn, at a fraction of Opus's cost -- configurable via the add-on option
+// for anyone who wants Opus's extra nuance for the roleplay dialogues.
+const DEFAULT_MODEL = 'claude-sonnet-5';
+const MODEL = process.env.ANTHROPIC_API_MODEL || DEFAULT_MODEL;
 
 let client = null;
 function getClient() {
@@ -18,7 +25,7 @@ Leg in het Nederlands, in maximaal 4 korte zinnen, precies uit waarom het gegeve
 Wees concreet over het specifieke antwoord dat de leerling gaf -- herhaal niet enkel de standaarduitleg. Gebruik geen opsommingstekens, geen aanhef en geen afsluitende groet. Antwoord uitsluitend met de uitleg zelf.`;
 
 // POST /api/ai/explain -> a deeper, personalized explanation for one mistake, via Claude.
-router.post('/explain', requireAuth, async (req, res) => {
+router.post('/explain', requireAuth, aiGuard, async (req, res) => {
   const anthropic = getClient();
   if (!anthropic) {
     return res.status(503).json({
@@ -43,7 +50,7 @@ ${grammarRule ? `Onderliggende grammaticaregel (${grammarRule.title}): ${grammar
 
   try {
     const response = await anthropic.messages.create({
-      model: 'claude-opus-5',
+      model: MODEL,
       max_tokens: 500,
       system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: userPrompt }]
@@ -121,7 +128,7 @@ router.get('/scenarios', requireAuth, (req, res) => {
 
 // POST /api/ai/dialogue { scenario, level, messages: [{ role: 'user'|'assistant', content }] }
 // With an empty messages list the assistant opens the conversation.
-router.post('/dialogue', requireAuth, async (req, res) => {
+router.post('/dialogue', requireAuth, aiGuard, async (req, res) => {
   const anthropic = getClient();
   if (!anthropic) {
     return res.status(503).json({ error: 'Rollenspellen vereisen een ANTHROPIC_API_KEY op de server (add-on-optie anthropic_api_key).' });
@@ -147,7 +154,7 @@ router.post('/dialogue', requireAuth, async (req, res) => {
 
   try {
     const response = await anthropic.messages.create({
-      model: 'claude-opus-5',
+      model: MODEL,
       max_tokens: 700,
       system: dialogueSystemPrompt(scenario, lvl),
       messages: clean

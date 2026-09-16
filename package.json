@@ -1,0 +1,11 @@
+{
+  "name": "russisch-leren-tooling",
+  "private": true,
+  "description": "Repo-brede devtooling (lint). Los van russisch-leren/backend/package.json, dat de add-on zelf blijft; buiten de Docker-buildcontext (die begint bij russisch-leren/) en heeft dus geen invloed op de gebouwde image.",
+  "scripts": {
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+    "eslint": "^9.19.0"
+  }
+}

@@ -23,6 +23,15 @@ function loadAddonOptions() {
   if (options.anthropic_api_key && !process.env.ANTHROPIC_API_KEY) {
     process.env.ANTHROPIC_API_KEY = options.anthropic_api_key;
   }
+  if (options.ai_model && !process.env.ANTHROPIC_API_MODEL) {
+    process.env.ANTHROPIC_API_MODEL = options.ai_model;
+  }
+  // Off by default is wrong for the existing household install (it would
+  // silently disappear on upgrade), so this only ever *disables* on an
+  // explicit opt-out -- never require the option to be present to work.
+  if (options.leaderboard_enabled === false) {
+    process.env.LEADERBOARD_ENABLED = 'false';
+  }
   // the address the app is reachable on from a phone (e.g. the Cloudflare
   // hostname), used as the link inside Home Assistant notifications
   if (options.public_url && !process.env.PUBLIC_URL) {

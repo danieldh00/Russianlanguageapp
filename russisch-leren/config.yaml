@@ -1,5 +1,5 @@
 name: "Russisch Leren"
-version: "1.11.2"
+version: "1.12.0"
 slug: russisch_leren
 description: >-
   Russisch leren van A1 tot C2 met niveautoetsen, voortgangsregistratie,
@@ -32,3 +32,11 @@ schema:
   session_secret: "password"
   anthropic_api_key: "password?"
   public_url: "str?"
+  # Sonnet is the default: plenty for the mistake-uitleg and dialogue turns at
+  # a fraction of Opus's cost. Pick Opus for extra nuance in the roleplays, or
+  # Haiku to cut cost further.
+  ai_model: "list(claude-opus-5|claude-sonnet-5|claude-haiku-4-5-20251001)?"
+  # Ranglijst toont voor iedereen met een account naam, XP en voortgang van
+  # alle andere accounts. Uitschakelen als de add-on voor meer dan het eigen
+  # huishouden bereikbaar is.
+  leaderboard_enabled: "bool?"

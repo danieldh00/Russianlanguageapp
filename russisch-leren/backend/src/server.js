@@ -108,6 +108,19 @@ app.use('/api/words', wordRoutes);
 app.use('/api/ha', haRoutes);
 app.use('/api/ai', aiRoutes);
 
+// Unauthenticated on purpose: an external uptime check (Uptime Kuma, HA's
+// own REST binary_sensor, ...) needs to reach this without a session cookie.
+// It only proves the process is up and the database is readable, nothing
+// user-specific.
+app.get('/api/health', (req, res) => {
+  try {
+    db.prepare('SELECT 1').get();
+    res.json({ status: 'ok', version: APP_VERSION });
+  } catch (err) {
+    res.status(503).json({ status: 'error', error: err.message });
+  }
+});
+
 const FRONTEND_DIR = path.join(__dirname, '..', '..', 'frontend');
 
 // Hashing the app-shell files at boot gives the service worker an automatic,

@@ -55,4 +55,30 @@ function computeXp(userId) {
   return { xp, correctCount, certifications, activityXp: activity.s, activityCount: activity.n };
 }
 
-module.exports = { ACTIVITY_XP, activityXp, computeXp, certificationsFor };
+// Same formula as computeXp, but for every user in three queries total
+// instead of three per user -- the leaderboard would otherwise be an N+1
+// query pattern that gets slower with every new account. Kept next to
+// computeXp so the one formula (XP_PER_CORRECT / XP_PER_CERTIFICATION) can
+// never drift between a single lookup and the leaderboard's.
+function computeXpForAllUsers() {
+  const correctByUser = new Map(
+    db.prepare('SELECT user_id, COUNT(*) c FROM attempts WHERE is_correct = 1 GROUP BY user_id').all().map((r) => [r.user_id, r.c])
+  );
+  const activityByUser = new Map(
+    db.prepare('SELECT user_id, COALESCE(SUM(xp), 0) s FROM activity_events GROUP BY user_id').all().map((r) => [r.user_id, r.s])
+  );
+  const certsByUser = new Map();
+  for (const r of db.prepare('SELECT user_id, level FROM level_certifications').all()) {
+    if (!certsByUser.has(r.user_id)) certsByUser.set(r.user_id, []);
+    certsByUser.get(r.user_id).push(r.level);
+  }
+  return (userId) => {
+    const correctCount = correctByUser.get(userId) || 0;
+    const certLevels = certsByUser.get(userId) || [];
+    const activityXp = activityByUser.get(userId) || 0;
+    const xp = correctCount * XP_PER_CORRECT + certLevels.length * XP_PER_CERTIFICATION + activityXp;
+    return { xp, certLevels };
+  };
+}
+
+module.exports = { ACTIVITY_XP, activityXp, computeXp, computeXpForAllUsers, certificationsFor };

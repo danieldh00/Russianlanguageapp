@@ -4,6 +4,29 @@ Alle merkbare wijzigingen aan de "Russisch Leren" add-on staan hier, nieuwste
 versie bovenaan. Dit bestand wordt door Home Assistant Supervisor automatisch
 getoond onder de "Changelog"-knop van de add-on.
 
+## 1.12.0
+
+- **AI-verzoeken (uitleg bij fouten, gesprek oefenen) zijn nu begrensd per
+  account**, zodat één account de Claude-kosten van de server niet meer
+  ongelimiteerd kan opdrijven.
+- **AI-uitleg en het rollenspel gebruiken standaard een goedkoper model**
+  (Sonnet in plaats van Opus) — merkbaar niet aan de kwaliteit van de uitleg,
+  wel aan de kosten. Instelbaar via de nieuwe add-on-optie "ai_model" voor
+  wie liever Opus of Haiku gebruikt.
+- **Nieuwe add-on-optie "leaderboard_enabled"** om de ranglijst uit te
+  schakelen. Die toont standaard aan iedereen met een account de
+  gebruikersnaam en voortgang van alle andere accounts — prima binnen één
+  huishouden, maar uit te zetten zodra de add-on breder bereikbaar is.
+- De ranglijst berekent de score van alle gebruikers nu in een handvol
+  query's in plaats van een paar per gebruiker: merkbaar sneller naarmate
+  er meer accounts bijkomen.
+- Nieuw, ongeauthenticeerd `/api/health`-endpoint voor externe
+  monitoring (bijv. Uptime Kuma of een Home Assistant REST-sensor).
+- Achter de schermen: ESLint en een eerste geautomatiseerde testsuite
+  (`npm test` in `backend/`) toegevoegd, plus een GitHub Actions-check die
+  beide bij elke push draait. Geen effect op de app zelf, wel op hoe
+  betrouwbaar toekomstige releases zijn.
+
 ## 1.11.2
 
 - **Opgelost: dezelfde vraag kwam twee keer achter elkaar.** Bij het alfabet

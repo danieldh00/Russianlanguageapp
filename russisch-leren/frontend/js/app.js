@@ -1299,8 +1299,8 @@ function gradeAndRecord(ex) {
 }
 
 function renderSentenceBuild(ex, container, onSubmit, { submitLabel = 'Controleren' } = {}) {
-  let pool = shuffle(ex.options);
-  let selected = [];
+  const pool = shuffle(ex.options);
+  const selected = [];
   let submitted = false;
 
   function paint() {

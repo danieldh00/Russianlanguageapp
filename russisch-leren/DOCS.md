@@ -24,10 +24,19 @@ schrijftrainer voor de Cyrillische letters.
    diepere uitleg" bij foute antwoorden én voor **Gesprek oefenen** (de
    AI-rollenspellen). Vereist een sleutel van
    [console.anthropic.com](https://console.anthropic.com/); zonder sleutel
-   werkt de rest van de app gewoon.
-3. Start de add-on. Open de webinterface via de **OPEN WEB UI**-knop, of via
+   werkt de rest van de app gewoon. Elk account is begrensd op maximaal 20
+   AI-verzoeken per 10 minuten en 150 per dag, zodat één account de kosten
+   niet ongelimiteerd kan opdrijven.
+3. `ai_model` is optioneel: welk Claude-model de AI-uitleg en de
+   rollenspellen gebruikt. Staat standaard op het goedkopere Sonnet; kies
+   Opus voor iets genuanceerdere rollenspellen, of Haiku om de kosten verder
+   te beperken.
+4. `leaderboard_enabled` is optioneel (standaard aan): de ranglijst toont
+   gebruikersnaam en voortgang van alle accounts aan elkaar. Zet 'm uit
+   zodra de add-on breder bereikbaar is dan je eigen huishouden.
+5. Start de add-on. Open de webinterface via de **OPEN WEB UI**-knop, of via
    poort 3000 op het IP-adres van je Home Assistant-instantie.
-4. Maak een account aan en begin met een les.
+6. Maak een account aan en begin met een les.
 
 ## Dagelijkse herinnering (pushmelding)
 
@@ -109,7 +118,9 @@ Je kunt de app op twee manieren openen:
 De sessiecookie is `httpOnly` en `SameSite=Lax`, en wordt `Secure` zodra je
 via https binnenkomt. Sessies staan in de database, dus een herstart van de
 add-on logt je niet uit. Tien mislukte inlogpogingen per kwartier (per
-IP-adres en per gebruikersnaam) zetten de deur tijdelijk dicht.
+IP-adres en per gebruikersnaam) zetten de deur tijdelijk dicht, en AI-
+verzoeken zijn per account begrensd zodat één account de Claude-kosten niet
+kan opdrijven.
 
 ## Bereikbaar maken van buiten je netwerk
 

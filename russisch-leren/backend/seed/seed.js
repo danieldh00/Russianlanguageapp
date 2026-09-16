@@ -18,8 +18,6 @@ function pickDistractors(pool, excludeValue, count) {
   return candidates.slice(0, count);
 }
 
-const LEVEL_RANK = { A1: 1, A2: 2, B1: 3, B2: 4, C1: 5, C2: 6 };
-
 // Finds the word inside its example sentence -- usually in a declined or
 // conjugated form (вода -> воду, читать -> читаю) -- and blanks it out.
 // Match on the longest shared prefix with the headword, which is how
@@ -65,7 +63,7 @@ function buildStress(accented) {
   const correctIdx = variants.indexOf(nfc);
   if (correctIdx === -1) return null;
   // at most 4 options: the answer plus its nearest neighbours
-  let keep = variants.map((v, i) => ({ v, d: Math.abs(i - correctIdx) })).sort((a, b) => a.d - b.d).slice(0, 4).map((x) => x.v);
+  const keep = variants.map((v, i) => ({ v, d: Math.abs(i - correctIdx) })).sort((a, b) => a.d - b.d).slice(0, 4).map((x) => x.v);
   return { bare, correct: nfc, options: shuffle(keep), syllable: correctIdx + 1, syllables: vowelIdx.length, hasYo: bare.includes('ё'), unstressedO: chars.some((c, i) => c === 'о' && i !== vowelIdx[correctIdx]) };
 }
 
