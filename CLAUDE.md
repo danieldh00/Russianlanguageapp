@@ -15,6 +15,8 @@ Raspberry Pi. Draait live op https://russisch.den-hollander.com/.
 | `russisch-leren/backend/seed/` | `seed.js` + `data/` (woorden, zinnen, verhalen, per niveau) |
 | `russisch-leren/frontend/js/app.js` | ±3400 regels vanilla JS: de hele SPA |
 | `russisch-leren/frontend/js/storage.js` | localStorage-laag (`ru:<user>:<key>`) |
+| `russisch-leren/backend/test/` | Unit- en smoketests; draaien via `npm test` in `backend/` en in CI |
+| `russisch-leren/qa/playwright/` | End-to-end-suites; handmatig, bewust buiten `backend/` |
 
 ## Harde regels
 
@@ -34,18 +36,38 @@ Raspberry Pi. Draait live op https://russisch.den-hollander.com/.
 
 ## Lokaal draaien en testen
 
+Backend met een eigen `DATA_DIR`, zodat echte voortgang er buiten blijft:
+
 ```sh
-SCRATCH=/tmp/claude-0/-home-user-Russianlanguageapp/bc484c34-fc0c-50b5-924d-adfa21fa1683/scratchpad
+export DATA_DIR=/tmp/russisch-leren-test
 cd russisch-leren/backend
-DATA_DIR=$SCRATCH/testdata11 SESSION_SECRET=testsecret node src/server.js
+DATA_DIR=$DATA_DIR SESSION_SECRET=testsecret node src/server.js
 # seeden duurt ~20 s; wacht op "Sync voltooid"
 ```
 
-`DATA_DIR` moet `$SCRATCH/testdata11` zijn: de Playwright-suites openen die
-SQLite direct. Suites staan in `$SCRATCH/pw-test` (`test-v16..v24`,
-`test-exam.js`); draaien met `node test-vNN.js`, Chromium op
-`/opt/pw-browsers/chromium`. `./run-regress.sh` draait alles naar
-`regress-*.log`. Elke test print `OK -` / `FAIL -` regels.
+Twee testlagen, los van elkaar:
+
+- **`npm test` in `russisch-leren/backend/`** (`node --test`) draait de
+  unit- en smoketests in `backend/test/`. `npm run lint` in de repo-root
+  draait eslint over alles. Beide lopen in CI bij elke push.
+- **`russisch-leren/qa/playwright/`** bevat de end-to-end-suites
+  (`test-v13..v24`, `test-exam.js` en ouder). Die draaien met de hand:
+  `npm install` daar, dan `node test-vNN.js`, of `./run-regress.sh` voor de
+  hele reeks. Elke test print `OK   -` / `FAIL -` regels. Zie
+  `qa/playwright/README.md`.
+
+Die map staat **bewust buiten `backend/`**: `node --test` pikt automatisch elk
+bestand op dat `test-*.js` heet of in een map `test`/`tests` staat, en deze
+suites hebben een browser en een geseede server nodig. Verplaats ze niet.
+
+Instelbaar via de omgeving (defaults tussen haakjes):
+
+| Variabele | Default | Waarvoor |
+|---|---|---|
+| `DATA_DIR` | `/tmp/russisch-leren-test` | Map met `russian.sqlite`. `test-v14.js` en `test-v19.js` openen die direct, dus exporteer 'm ook in de shell van de tests |
+| `PW_CHROMIUM` | `/opt/pw-browsers/chromium` | Chromium die Playwright start |
+| `OUT_DIR` | map van de test | Waar `test-ipad.js` schermafbeeldingen neerzet |
+| `REGRESS_LOG` | `regress.log` | Logbestand van `run-regress.sh` |
 
 `test-v22.js` heeft daarnaast de ingress-stand-in nodig: `node fake-ingress.js`
 (poort 3998, strippt het prefix precies zoals Supervisor). Staat die niet aan,
