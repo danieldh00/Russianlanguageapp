@@ -1,0 +1,7 @@
+node_modules
+regress*.log
+*-run.log
+*-rerun.log
+*.done
+*.out
+*.png
