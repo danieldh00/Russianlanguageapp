@@ -128,7 +128,7 @@ const FRONTEND_DIR = path.join(__dirname, '..', '..', 'frontend');
 // always forces installed PWAs to fetch fresh assets, without depending on
 // remembering to bump a version string in sw.js by hand (the bug that left
 // users stuck seeing an old version until they manually cleared their cache).
-const APP_SHELL_FILES = ['index.html', 'css/style.css', 'js/app.js', 'js/storage.js', 'js/srs.js', 'manifest.webmanifest'];
+const APP_SHELL_FILES = ['index.html', 'css/style.css', 'js/app.js', 'js/core.js', 'js/storage.js', 'js/srs.js', 'manifest.webmanifest'];
 function computeAppVersion() {
   const hash = crypto.createHash('sha256');
   for (const file of APP_SHELL_FILES) hash.update(fs.readFileSync(path.join(FRONTEND_DIR, file)));
