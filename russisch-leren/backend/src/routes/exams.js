@@ -3,6 +3,7 @@ const db = require('../db');
 const { requireAuth } = require('../middleware');
 const { isCorrectAnswer } = require('../grading');
 const { LEVELS, LEVEL_TITLES, LEVEL_DESCRIPTIONS } = require('../levels');
+const { spreadRelated } = require('../spacing');
 
 const router = express.Router();
 
@@ -95,7 +96,8 @@ router.get('/:level', requireAuth, (req, res) => {
 
   const rows = db
     .prepare(
-      `SELECT e.id, e.type, e.prompt, e.options, e.context, c.slug AS category_slug, c.name AS category_name
+      `SELECT e.id, e.type, e.prompt, e.options, e.context, e.word_id, e.correct_answer,
+              c.slug AS category_slug, c.name AS category_name
        FROM exercises e JOIN categories c ON c.id = e.category_id
        WHERE c.level = ?`
     )
@@ -145,7 +147,11 @@ router.get('/:level', requireAuth, (req, res) => {
     title: LEVEL_TITLES[level],
     questionCount: picked.length,
     passPct: PASS_PCT,
-    questions: shuffle(picked).map((q) => ({
+    // Shuffled, then spread so two questions about the same word (the sound
+    // and the letter of Ж, say) never follow one another. `correct_answer` is
+    // only used for that spacing -- it never leaves the server before the
+    // exam is submitted.
+    questions: spreadRelated(shuffle(picked)).map((q) => ({
       id: q.id,
       type: q.type,
       prompt: q.prompt,

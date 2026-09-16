@@ -122,7 +122,11 @@ const LEVEL_FALLBACK_TITLES = { A1: 'Beginner', A2: 'Elementair', B1: 'Drempelni
 
 // ---------- immersion: listen to the Russian text ----------
 
-const CYRILLIC_RUN = /[Ѐ-ӿ][Ѐ-ӿ\s.,!?'"()-]*[Ѐ-ӿ]|[Ѐ-ӿ]/;
+// The combining stress mark (́) sits between the letters of an accented
+// word, so it has to be part of the run: without it 'де́вять' matched only
+// 'де', which both truncated what the listen button said out loud and made
+// two unrelated words look like the same question.
+const CYRILLIC_RUN = /[Ѐ-ӿ][Ѐ-ӿ́\s.,!?'"()-]*[Ѐ-ӿ́]|[Ѐ-ӿ]/;
 
 // What the listen button next to a question may say out loud: only Russian
 // that is already on screen. It used to fall back to the correct answer
@@ -1086,12 +1090,100 @@ async function renderToolsMenu() {
 
 // ---------- lesson / quiz (fully local: grading, SRS update, outbox) ----------
 
-// Session order: words due for review first, then words never practised
-// (one exercise per new word before a second one of the same word, so a
-// lesson's vocabulary is covered in as few sessions as possible), then
-// exercises without a tracked word, and finally words that are scheduled
+// ---------- keeping near-identical questions apart ----------
+
+// How many questions must sit between two questions about the same thing.
+const MIN_RELATED_GAP = 3;
+
+const QUOTED_CYRILLIC = /'([^']*[Ѐ-ӿ][^']*)'/;
+
+// What a question is "about", as a set of keys. Two questions that share any
+// key are near-identical: the sound question and the letter question of Ж
+// share a word ("Hoe klinkt de letter 'Ж ж'?" / "Welke letter klinkt als
+// 'zj'?"), and a typed question and a multiple-choice question about дом
+// share their Russian subject even when they belong to different lessons.
+function relatedKeys(ex) {
+  const keys = new Set();
+  if (ex.wordId != null) keys.add(`w:${ex.wordId}`);
+  const answer = normalizeAnswer(ex.correctAnswer);
+  if (answer) keys.add(`a:${answer}`);
+  // The Russian the question quotes -- "Wat betekent 'дом'?", "Hoe klinkt de
+  // letter 'Ж ж'?" -- which is the word the question is about, and which ties
+  // it to the question whose *answer* is that same word. Only what is between
+  // quotes counts: the Russian in a cloze sentence or a reading text is the
+  // material, not the subject, and keying on that would pull apart the
+  // questions belonging to one story.
+  const quoted = String(ex.prompt || '').match(QUOTED_CYRILLIC);
+  const run = quoted && quoted[1].match(CYRILLIC_RUN);
+  if (run) {
+    const subject = normalizeAnswer(run[0]);
+    if (subject && subject.length <= 20 && subject.split(' ').length <= 2) keys.add(`a:${subject}`);
+  }
+  return [...keys];
+}
+
+// Reorders a picked session so questions about the same thing end up apart.
+// Each step takes a question whose subject has been away at least MIN_RELATED_GAP
+// places (or, if none has, the one away the longest), and among those the one
+// with the most questions still waiting on the same subject -- otherwise the
+// duplicates all sink to the end and cluster there instead. Ties keep the
+// given order, so a due-first or mistakes-first ordering survives untouched
+// when nothing conflicts. Ten questions about five words come out as five,
+// then the other five, rather than in pairs.
+function spreadRelated(items, minGap = MIN_RELATED_GAP) {
+  if (items.length < 3) return [...items];
+  const remaining = items.map((ex) => ({ ex, keys: relatedKeys(ex) }));
+  const left = new Map();
+  remaining.forEach((r) => r.keys.forEach((key) => left.set(key, (left.get(key) || 0) + 1)));
+  const lastSeen = new Map();
+  const out = [];
+  while (remaining.length) {
+    let chosen = 0, bestGap = -1, bestGroup = -1;
+    for (let i = 0; i < remaining.length; i++) {
+      let gap = minGap, group = 1;
+      for (const key of remaining[i].keys) {
+        if (lastSeen.has(key)) gap = Math.min(gap, out.length - lastSeen.get(key));
+        group = Math.max(group, left.get(key) || 1);
+      }
+      if (gap > bestGap || (gap === bestGap && group > bestGroup)) { bestGap = gap; bestGroup = group; chosen = i; }
+    }
+    const [taken] = remaining.splice(chosen, 1);
+    taken.keys.forEach((key) => { lastSeen.set(key, out.length); left.set(key, (left.get(key) || 1) - 1); });
+    out.push(taken.ex);
+  }
+  return out;
+}
+
+// Deals the questions out word by word: every word gives one question before
+// any word gives a second, and so on. A session then covers as many different
+// words as it can, and what does not fit is cut from the tail -- rather than a
+// ten-question lesson spending its last four questions on one word, which is
+// what made the sound and the letter of Ж land together. Exercises without a
+// word (reading, dialogue) count as a word of their own.
+function roundRobinByWord(exercises) {
+  const buckets = new Map();
+  exercises.forEach((ex, i) => {
+    const key = ex.wordId != null ? `w${ex.wordId}` : `x${i}`;
+    if (!buckets.has(key)) buckets.set(key, []);
+    buckets.get(key).push(ex);
+  });
+  const lists = [...buckets.values()];
+  const deepest = lists.reduce((n, list) => Math.max(n, list.length), 0);
+  const out = [];
+  for (let round = 0; round < deepest; round++) {
+    for (const list of lists) if (round < list.length) out.push(list[round]);
+  }
+  return out;
+}
+
+
+// Session order: words due for review first, then words never practised,
+// then exercises without a tracked word, and finally words that are scheduled
 // for later -- so a lesson can always be redone as extra practice instead
-// of turning you away because "everything is planned for later".
+// of turning you away because "everything is planned for later". Within each
+// group the questions are dealt out word by word, so a lesson's vocabulary is
+// covered in as few sessions as possible. What is picked is finally spread,
+// so two questions about the same word never land next to each other.
 function pickBatch(exercises, wordProgress, limit) {
   const now = Date.now();
   const due = [], fresh = [], untracked = [], scheduled = [];
@@ -1104,15 +1196,13 @@ function pickBatch(exercises, wordProgress, limit) {
   });
   due.sort((a, b) => new Date(wordProgress[a.wordId].nextReviewAt) - new Date(wordProgress[b.wordId].nextReviewAt));
 
-  const seen = new Set();
-  const firstPerWord = [], repeats = [];
-  shuffle(fresh).forEach((ex) => {
-    if (seen.has(ex.wordId)) repeats.push(ex);
-    else { seen.add(ex.wordId); firstPerWord.push(ex); }
-  });
-
-  const pool = [...due, ...firstPerWord, ...repeats, ...shuffle(untracked), ...shuffle(scheduled)];
-  return pool.slice(0, limit);
+  const pool = [
+    ...roundRobinByWord(due),
+    ...roundRobinByWord(shuffle(fresh)),
+    ...shuffle(untracked),
+    ...roundRobinByWord(shuffle(scheduled))
+  ];
+  return spreadRelated(pool.slice(0, limit));
 }
 
 async function renderLesson(slug) {
@@ -1485,7 +1575,8 @@ function renderNoAllowedExercises(title) {
 
 // One exercise per due word (the most overdue first), preferring the
 // production forms -- typing and cloze -- over recognition, since a word
-// you can still produce is the one that's really still known.
+// you can still produce is the one that's really still known. The result is
+// spread, so words that ask nearly the same thing keep their distance.
 async function renderReviewSession() {
   const content = await ensureContentLoaded();
   if (!content) return renderNoContentMessage();
@@ -1515,7 +1606,7 @@ async function renderReviewSession() {
     return withGrammarRule(content, pick);
   }).filter(Boolean);
   if (!items.length) return renderNoAllowedExercises('🔁 Vandaag herhalen');
-  renderExercise({ category: { slug: '__review__', name: 'Herhaling van vandaag' }, items, index: 0, correctCount: 0 });
+  renderExercise({ category: { slug: '__review__', name: 'Herhaling van vandaag' }, items: spreadRelated(items), index: 0, correctCount: 0 });
 }
 
 // ---------- "Oefen je fouten": a session built from this device's mistake log ----------
@@ -1559,7 +1650,7 @@ async function renderMistakesPractice() {
     `));
     return;
   }
-  const items = pool.slice(0, 10).map((ex) => withGrammarRule(content, ex));
+  const items = spreadRelated(roundRobinByWord(pool).slice(0, 10)).map((ex) => withGrammarRule(content, ex));
   renderExercise({ category: { slug: '__mistakes__', name: 'Oefen je fouten' }, items, index: 0, correctCount: 0 });
 }
 

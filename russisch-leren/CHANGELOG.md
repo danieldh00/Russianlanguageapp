@@ -4,6 +4,25 @@ Alle merkbare wijzigingen aan de "Russisch Leren" add-on staan hier, nieuwste
 versie bovenaan. Dit bestand wordt door Home Assistant Supervisor automatisch
 getoond onder de "Changelog"-knop van de add-on.
 
+## 1.11.2
+
+- **Opgelost: dezelfde vraag kwam twee keer achter elkaar.** Bij het alfabet
+  hoorden "Hoe klinkt de letter 'Ж ж'?" en "Welke letter klinkt als 'zj'?" bij
+  hetzelfde woord, en in een herhaling stonden ze pal achter elkaar — de
+  eerste vraag gaf het antwoord op de tweede weg. Elke sessie houdt vragen
+  over hetzelfde woord nu minstens drie plaatsen uit elkaar. Dat geldt voor
+  de lessen, de dagelijkse herhaling, "Oefen je fouten" én de niveautoetsen.
+- Twee vragen tellen als hetzelfde zodra ze over hetzelfde woord gaan,
+  hetzelfde antwoord hebben, of het ene woord aanhalen wat het andere als
+  antwoord verwacht. Vragen bij één leesverhaal blijven wél bij elkaar: die
+  horen in volgorde.
+- Een les vult zich nu woord voor woord in plaats van woord na woord: eerst
+  één vraag per woord, dan pas een tweede. Een les van tien vragen besteedde
+  de laatste vier daarvan soms aan één woord.
+- **Opgelost: de luisterknop las beklemtoonde woorden maar half voor.** Het
+  klemtoonteken in 'де́вять' brak de tekst af, waardoor je «де» hoorde in
+  plaats van «девять». Dat raakte 538 vragen.
+
 ## 1.11.1
 
 - **Opgelost: de luisterknop verklapte het antwoord.** Bij 1812 meerkeuze-
