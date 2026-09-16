@@ -19,6 +19,12 @@ const APP_SHELL = [
   '/js/match-game.js',
   '/js/stories.js',
   '/js/handwriting.js',
+  '/js/review-mistakes.js',
+  '/js/exam.js',
+  '/js/progress.js',
+  '/js/goals.js',
+  '/js/settings.js',
+  '/js/leaderboard.js',
   '/manifest.webmanifest',
   '/icons/icon-192.png',
   '/icons/icon-512.png'
