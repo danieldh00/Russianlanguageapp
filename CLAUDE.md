@@ -15,7 +15,8 @@ Raspberry Pi. Draait live op https://russisch.den-hollander.com/.
 | `russisch-leren/backend/seed/` | `seed.js` + `data/` (woorden, zinnen, verhalen, per niveau) |
 | `russisch-leren/frontend/js/` | Vanilla JS SPA, per feature een eigen bestand (zie hieronder) — geen bundler, geen modules: Ingress heeft statische, relatieve bestanden nodig, dus alles deelt globale scope net als `storage.js`/`srs.js` altijd al deden |
 | `russisch-leren/frontend/js/storage.js` | localStorage-laag (`ru:<user>:<key>`) |
-| `russisch-leren/qa/playwright/` | Playwright-regressiesuites (buiten `backend/` om `node --test` niet te laten botsen — zie het `README.md` daar) |
+| `russisch-leren/backend/test/` | Unit- en smoketests; draaien via `npm test` in `backend/` en in CI |
+| `russisch-leren/qa/playwright/` | Handmatige end-to-end-suites; bewust buiten `backend/` zodat `node --test` ze niet meepakt — zie het `README.md` daar |
 
 **Bestandsindeling `frontend/js/`** (laadvolgorde in `index.html`; dezelfde lijst
 staat in `server.js`'s `APP_SHELL_FILES` (voor de PWA-versiehash) en `sw.js`'s
@@ -49,6 +50,8 @@ onderdeel-instellingen — gebruikt door vrijwel alles, dus laadt als eerste)
 
 ## Lokaal draaien en testen
 
+Backend met een eigen `DATA_DIR`, zodat echte voortgang er buiten blijft:
+
 ```sh
 export DATA_DIR=/tmp/russisch-leren-test
 cd russisch-leren/backend
@@ -56,14 +59,31 @@ DATA_DIR=$DATA_DIR SESSION_SECRET=testsecret node src/server.js
 # seeden duurt ~20 s; wacht op "Sync voltooid"
 ```
 
-De Playwright-suites staan in `russisch-leren/qa/playwright/` (bewust buiten
-`backend/`, zie het `README.md` daar — anders zou `node --test` in `backend/`
-ze willen meedraaien). `npm install` daar eenmalig (playwright), dan
-`export DATA_DIR=...` in dezelfde shell als de tests (`test-v14.js` en
-`test-v19.js` openen die SQLite rechtstreeks) en `node test-vNN.js` per suite,
-of `./run-regress.sh` voor de canonieke set naar `regress*.log`. Chromium op
-`/opt/pw-browsers/chromium` (env `PW_CHROMIUM` als dat afwijkt). Elke test
-print `OK -` / `FAIL -` regels.
+Twee testlagen, los van elkaar:
+
+- **`npm test` in `russisch-leren/backend/`** (`node --test`) draait de
+  unit- en smoketests in `backend/test/`. `npm run lint` in de repo-root
+  draait eslint over alles. Beide lopen in CI bij elke push.
+- **`russisch-leren/qa/playwright/`** bevat de handmatige end-to-end-suites
+  (`test-v13..v24`, `test-exam.js` en ouder). `npm install` daar eenmalig
+  (playwright), dan `export DATA_DIR=...` in dezelfde shell als de tests
+  (`test-v14.js` en `test-v19.js` openen die SQLite rechtstreeks) en
+  `node test-vNN.js` per suite, of `./run-regress.sh` voor de canonieke set
+  naar `regress*.log`. Elke test print `OK   -` / `FAIL -` regels. Zie
+  `qa/playwright/README.md`.
+
+Die map staat **bewust buiten `backend/`**: `node --test` pikt automatisch elk
+bestand op dat `test-*.js` heet of in een map `test`/`tests` staat, en deze
+suites hebben een browser en een geseede server nodig. Verplaats ze niet.
+
+Instelbaar via de omgeving (defaults tussen haakjes):
+
+| Variabele | Default | Waarvoor |
+|---|---|---|
+| `DATA_DIR` | `/tmp/russisch-leren-test` | Map met `russian.sqlite`. `test-v14.js` en `test-v19.js` openen die direct, dus exporteer 'm ook in de shell van de tests |
+| `PW_CHROMIUM` | `/opt/pw-browsers/chromium` | Chromium die Playwright start |
+| `OUT_DIR` | map van de test | Waar `test-ipad.js` schermafbeeldingen neerzet |
+| `REGRESS_LOG` | `regress.log` | Logbestand van `run-regress.sh` |
 
 `test-v22.js` heeft daarnaast de ingress-stand-in nodig: `node fake-ingress.js`
 (poort 3998, strippt het prefix precies zoals Supervisor). Staat die niet aan,
