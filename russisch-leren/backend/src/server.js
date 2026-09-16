@@ -131,6 +131,7 @@ const FRONTEND_DIR = path.join(__dirname, '..', '..', 'frontend');
 const APP_SHELL_FILES = [
   'index.html', 'css/style.css',
   'js/app.js', 'js/core.js', 'js/storage.js', 'js/srs.js',
+  'js/sync.js', 'js/nav.js', 'js/auth-views.js', 'js/dashboard.js', 'js/tools-menu.js',
   'js/speech-input.js', 'js/dialogue.js', 'js/keyboard-trainer.js', 'js/phrasebook.js',
   'js/dictation.js', 'js/match-game.js', 'js/stories.js', 'js/handwriting.js',
   'js/review-mistakes.js', 'js/exam.js', 'js/progress.js', 'js/goals.js', 'js/settings.js', 'js/leaderboard.js',
