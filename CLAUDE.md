@@ -46,7 +46,14 @@ onderdeel-instellingen — gebruikt door vrijwel alles, dus laadt als eerste)
 - Exports die de gebruiker vraagt: **Excel, geen CSV**, tenzij expliciet anders.
 - **Nooit `pkill -f`** in deze omgeving: het matcht en killt de eigen shell.
   Stop testservers via `kill $(lsof -ti tcp:3000)`.
-- Ontwikkelen en pushen op branch `claude/russian-learning-app-drxyc3`.
+- **Branchmodel:** `master` is de GitHub-default en dus de branch die
+  Home Assistant Supervisor standaard kloont als iemand deze repo als
+  add-on-store toevoegt zonder expliciet een branch te kiezen — hij bevat
+  dus altijd de laatst vrijgegeven, stabiele stand. `develop` is de
+  integratiebranch: nieuwe features komen op een eigen `feature/<naam>`-branch
+  vanaf `develop`, gaan via PR terug naar `develop`, en pas als `develop`
+  getest is wordt hij via PR gemerged naar `master` (met een `config.yaml`-bump
+  en `CHANGELOG.md`-entry, zie hierboven). Nooit direct naar `master` pushen.
 
 ## Lokaal draaien en testen
 
