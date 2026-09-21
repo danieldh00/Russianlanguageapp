@@ -48,12 +48,15 @@ onderdeel-instellingen — gebruikt door vrijwel alles, dus laadt als eerste)
   Stop testservers via `kill $(lsof -ti tcp:3000)`.
 - **Branchmodel:** `master` is de GitHub-default en dus de branch die
   Home Assistant Supervisor standaard kloont als iemand deze repo als
-  add-on-store toevoegt zonder expliciet een branch te kiezen — hij bevat
-  dus altijd de laatst vrijgegeven, stabiele stand. `develop` is de
-  integratiebranch: nieuwe features komen op een eigen `feature/<naam>`-branch
-  vanaf `develop`, gaan via PR terug naar `develop`, en pas als `develop`
-  getest is wordt hij via PR gemerged naar `master` (met een `config.yaml`-bump
-  en `CHANGELOG.md`-entry, zie hierboven). Nooit direct naar `master` pushen.
+  add-on-store toevoegt zonder expliciet een branch te kiezen. `develop` is
+  de integratiebranch voor nieuwe features (`feature/<naam>` vanaf `develop`,
+  via PR terug naar `develop`).
+  **Zolang er maar één gebruiker is** (huidige fase): direct naar `master`
+  pushen mag, juist om snel op de eigen Supervisor-omgeving te kunnen testen —
+  geen branch protection op `master`. Zodra dit naar andere gebruikers gaat:
+  branch protection aan op `master` (PR verplicht, geen directe pushes meer),
+  en pas dan releasen via PR van `develop` naar `master` (met een
+  `config.yaml`-bump en `CHANGELOG.md`-entry, zie hierboven).
 
 ## Lokaal draaien en testen
 
