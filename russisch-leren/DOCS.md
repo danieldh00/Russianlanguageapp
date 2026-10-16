@@ -133,3 +133,20 @@ Cloudflare Tunnel-add-on, wijzend naar `localhost:3000`.
 
 Je voortgang staat in een SQLite-database in de persistente opslag van deze
 add-on (`/data`) en blijft dus behouden bij herstarts en updates.
+
+## Verhuizen naar andere hardware
+
+De add-on draait op zowel ARM (`aarch64`, bijv. Raspberry Pi) als Intel/AMD
+(`amd64`, bijv. Home Assistant OS als VM op Proxmox). Supervisor bouwt de
+image automatisch voor de architectuur van de nieuwe host; er hoeft niets
+ingesteld te worden.
+
+Je voortgang gaat mee via een gewone Home Assistant-back-up: maak op de oude
+host een (volledige of gedeeltelijke) back-up mét deze add-on, en zet die
+terug op de nieuwe host. De SQLite-database is niet gebonden aan de
+processorarchitectuur. Controleer daarna wel:
+
+- **Poort 3000** — als de PWA of de Cloudflare Tunnel naar het IP-adres van
+  de oude host wees, pas dat aan naar het IP-adres van de nieuwe VM.
+- **Add-on-opties** (`session_secret` e.d.) komen mee in de back-up. Houd
+  `session_secret` gelijk, anders moet iedereen opnieuw inloggen.

@@ -4,6 +4,15 @@ Alle merkbare wijzigingen aan de "Russisch Leren" add-on staan hier, nieuwste
 versie bovenaan. Dit bestand wordt door Home Assistant Supervisor automatisch
 getoond onder de "Changelog"-knop van de add-on.
 
+## 1.12.1
+
+- **Klaar voor Intel/AMD-hardware**: de add-on wordt nu bij elke wijziging
+  automatisch gebouwd én opgestart voor zowel ARM (Raspberry Pi) als
+  Intel/AMD (bijv. Home Assistant als VM op Proxmox), zodat een verhuizing
+  naar andere hardware geen verrassingen geeft.
+- Nieuw in de documentatie: hoe je met een gewone Home Assistant-back-up je
+  voortgang meeneemt naar een nieuwe host.
+
 ## 1.12.0
 
 - **AI-verzoeken (uitleg bij fouten, gesprek oefenen) zijn nu begrensd per
